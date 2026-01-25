@@ -1,0 +1,72 @@
+export const TASKS = {
+  rest: [
+    "Sit quietly and take 5 slow breaths",
+    "Hold a warm drink and focus on the warmth",
+    "Listen to one calming song with eyes closed",
+    "Open a window and feel fresh air for 2 minutes",
+    "Put a hand on your chest and breathe slowly",
+    "Watch a short nature video (5 minutes)",
+    "Light a candle and sit with it for 3 minutes",
+    "Do a gentle body scan while lying down",
+    "Wrap in a blanket and rest without guilt",
+    "Wash your face with warm water, slowly",
+    "Smell a lotion or oil you like (one minute)",
+    "Sit in sunlight for 3–5 minutes (if possible)"
+  ],
+  gentle: [
+    "Sit outside for 5 minutes",
+    "Listen to one song without scrolling",
+    "Stretch shoulders gently for 2 minutes",
+    "Make a warm drink mindfully",
+    "Water a plant",
+    "Write one sentence about how you feel",
+    "Fold one item of clothing",
+    "Step into fresh air for 2 minutes",
+    "Do 3 slow breaths and relax your jaw",
+    "Watch something light for 10 minutes",
+    "Organize 5 photos on your phone",
+    "Send one kind message to someone you trust"
+  ],
+  steady: [
+    "Walk around the house for 5 minutes",
+    "Tidy one small surface (5 minutes)",
+    "Do a gentle stretch routine (8 minutes)",
+    "Choose a simple meal idea for later",
+    "Sort one drawer section for 10 minutes",
+    "Read 2 pages of a book",
+    "Put on music and do light movement for 5 minutes",
+    "Write a short list: 3 things that helped recently",
+    "Do a word search or easy puzzle (10 minutes)",
+    "Step outside and look at the sky for 5 minutes",
+    "Listen to a short podcast segment (10 minutes)",
+    "Set a 10-minute timer and do one calm task"
+  ],
+  capable: [
+    "Take a short walk outside (10–15 minutes if comfortable)",
+    "Prepare a simple snack or light meal",
+    "Do a gentle mobility routine (12 minutes)",
+    "Organize a small area (15 minutes)",
+    "Call or voice note someone supportive",
+    "Try a beginner yoga/stretch video (10 minutes)",
+    "Plan tomorrow’s one small task",
+    "Sort 20 photos into an album",
+    "Do a simple household task with breaks (15 minutes)",
+    "Write down 3 small wins from today",
+    "Spend 15 minutes on a hobby (music, craft, reading)",
+    "Do a seated strength routine (10 minutes if safe)"
+  ],
+  brave: [
+    "Take a short walk + one extra minute (if safe)",
+    "Do a slightly longer tidy session (20 minutes with breaks)",
+    "Try a new gentle stretch you haven’t done before",
+    "Write a short note: what you’re proud of surviving",
+    "Choose one uncomfortable-but-safe task and do 5 minutes of it",
+    "Do a small social reach-out (message or short call)",
+    "Try a guided relaxation + journaling (10 + 5 minutes)",
+    "Cook or prep something simple you’ll enjoy later",
+    "Sort a meaningful set of items/photos you’ve avoided",
+    "Do 10 minutes of movement, then stop (no pushing)",
+    "Pick one small boundary for tomorrow and write it down",
+    "Do a ‘reset’ shower or wash-up and change into fresh clothes"
+  ]
+};
