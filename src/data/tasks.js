@@ -3,29 +3,49 @@ export const TASKS = {
     "Sit quietly and take 5 slow breaths",
     "Hold a warm drink and focus on the warmth",
     "Listen to one calming song with eyes closed",
+    "Look at one photo that makes you feel safe",
     "Open a window and feel fresh air for 2 minutes",
     "Put a hand on your chest and breathe slowly",
     "Watch a short nature video (5 minutes)",
+    "Send a simple \"thinking of you\" message (optional)",
     "Light a candle and sit with it for 3 minutes",
     "Do a gentle body scan while lying down",
     "Wrap in a blanket and rest without guilt",
     "Wash your face with warm water, slowly",
     "Smell a lotion or oil you like (one minute)",
-    "Sit in sunlight for 3–5 minutes (if possible)"
+    "Sit in sunlight for 3–5 minutes (if possible)",
+    "Pick one tiny comfort: softer light, quieter sound, warmer socks"
   ],
   gentle: [
     "Sit outside for 5 minutes",
     "Listen to one song without scrolling",
+    "Put on a \"good\" song and do one small sway",
     "Stretch shoulders gently for 2 minutes",
     "Make a warm drink mindfully",
     "Water a plant",
     "Write one sentence about how you feel",
+    "Write one sentence about what you want more of",
     "Fold one item of clothing",
     "Step into fresh air for 2 minutes",
     "Do 3 slow breaths and relax your jaw",
     "Watch something light for 10 minutes",
     "Organize 5 photos on your phone",
-    "Send one kind message to someone you trust"
+    "Send one kind message to someone you trust",
+    "Make a small plan for something pleasant later (even 5 minutes)"
+  ],
+  light: [
+    "Take a short walk (5–8 minutes)",
+    "Tidy one small surface (5 minutes)",
+    "Do a quick stretch + shoulder roll (4 minutes)",
+    "Make a simple snack and actually sit to eat it",
+    "Reply to one message you’ve been avoiding (optional)",
+    "Start one small chore, then stop at 8 minutes",
+    "Put on music and do light movement (6 minutes)",
+    "Step outside for 3 minutes and reset your eyes on the sky",
+    "Write a tiny list: 2 priorities + 1 treat",
+    "Do one ‘future-you’ setup (water, charger, clothes)",
+    "Clear one tiny pile (counter, chair, desk corner)",
+    "Pick one nice thing for your space (light, scent, tidy)"
   ],
   steady: [
     "Walk around the house for 5 minutes",
@@ -36,10 +56,12 @@ export const TASKS = {
     "Read 2 pages of a book",
     "Put on music and do light movement for 5 minutes",
     "Write a short list: 3 things that helped recently",
+    "Write a short list: 3 things you’re looking forward to (even tiny)",
     "Do a word search or easy puzzle (10 minutes)",
     "Step outside and look at the sky for 5 minutes",
     "Listen to a short podcast segment (10 minutes)",
-    "Set a 10-minute timer and do one calm task"
+    "Set a 10-minute timer and do one calm task",
+    "Do one small thing that makes your space nicer (light, scent, tidy)"
   ],
   capable: [
     "Take a short walk outside (10–15 minutes if comfortable)",
@@ -47,13 +69,15 @@ export const TASKS = {
     "Do a gentle mobility routine (12 minutes)",
     "Organize a small area (15 minutes)",
     "Call or voice note someone supportive",
+    "Plan one enjoyable thing for this week (small + realistic)",
     "Try a beginner yoga/stretch video (10 minutes)",
     "Plan tomorrow’s one small task",
     "Sort 20 photos into an album",
     "Do a simple household task with breaks (15 minutes)",
     "Write down 3 small wins from today",
     "Spend 15 minutes on a hobby (music, craft, reading)",
-    "Do a seated strength routine (10 minutes if safe)"
+    "Do a seated strength routine (10 minutes if safe)",
+    "Do a small kindness for future-you (set out clothes, charge device, prep water)"
   ],
   brave: [
     "Take a short walk + one extra minute (if safe)",
@@ -62,6 +86,7 @@ export const TASKS = {
     "Write a short note: what you’re proud of surviving",
     "Choose one uncomfortable-but-safe task and do 5 minutes of it",
     "Do a small social reach-out (message or short call)",
+    "Share one small win with someone (or write it down)",
     "Try a guided relaxation + journaling (10 + 5 minutes)",
     "Cook or prep something simple you’ll enjoy later",
     "Sort a meaningful set of items/photos you’ve avoided",

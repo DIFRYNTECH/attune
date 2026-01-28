@@ -25,6 +25,9 @@ export function suggestLevelFromCheckin({ mood, energy, body }){
     suggested = (body==="tender" || mood==="low") ? "gentle" : "steady";
   }else if(energy==="okay"){
     suggested = (mood==="good" && body==="manageable") ? "capable" : "steady";
+  }else if(energy==="high"){
+    // "High / wired" can be usable energy, but we keep suggestions grounded.
+    suggested = (mood==="good" && body==="manageable") ? "capable" : "steady";
   }
 
   return suggested;
@@ -33,6 +36,85 @@ export function suggestLevelFromCheckin({ mood, energy, body }){
 export function generateOptions(level){
   const pool = TASKS[level] || TASKS.gentle;
   return shuffle(pool).slice(0,10).map(t => ({ text: t, level }));
+}
+
+export function dailyMessageFromCheckin(checkin, level){
+  const moodWords = checkin?.moodWords || [];
+  const energy = checkin?.energy;
+  const body = checkin?.body;
+
+  const has = (w) => moodWords.includes(w);
+
+  const depleted = energy === "verylow" || has("Worn out");
+  const drained = energy === "low" || has("Tired") || has("Flat");
+  const wired = energy === "high" || has("Restless");
+  const anxious = has("Anxious");
+  const irritable = has("Irritable");
+  const hopeful = has("Hopeful") || has("Steady");
+
+  const tender = body === "tender";
+  const sore = body === "achey";
+
+  // Priority rules: safety/soothing first.
+  if(depleted || tender){
+    return {
+      a: "Let today be small.",
+      b: "Comfort counts. Choose the gentlest version of anything."
+    };
+  }
+
+  if(wired && anxious){
+    return {
+      a: "High energy can still need softness.",
+      b: "Pick one grounding step, then give your nervous system a pause."
+    };
+  }
+
+  if(irritable){
+    return {
+      a: "Protect your edges today.",
+      b: "Choose low-friction tasks. Reduce noise. Keep decisions tiny."
+    };
+  }
+
+  if(anxious){
+    return {
+      a: "We can keep today simple.",
+      b: "One small step at a time. No urgency needed."
+    };
+  }
+
+  if(drained || sore){
+    return {
+      a: "Steady can be gentle.",
+      b: "Aim for a small win and stop early if you need to."
+    };
+  }
+
+  if(hopeful){
+    return {
+      a: "There’s a little steadiness here.",
+      b: "Use it for one kind step that makes tomorrow easier."
+    };
+  }
+
+  // Default by chosen pace.
+  switch(level){
+    case "rest":
+      return { a: "Rest is a valid plan.", b: "Nothing to prove today. Comfort counts." };
+    case "gentle":
+      return { a: "Small is enough.", b: "Pick the easiest next step. Stop when it’s done." };
+    case "light":
+      return { a: "Light effort, steady footing.", b: "Choose one easy win, then leave room for rest." };
+    case "steady":
+      return { a: "A calm rhythm works.", b: "One or two doable things. No pushing." };
+    case "capable":
+      return { a: "You’ve got some capacity today.", b: "Use it carefully — and leave room for rest." };
+    case "brave":
+      return { a: "A small stretch can be kind.", b: "Choose a safe challenge, then recover." };
+    default:
+      return { a: "Meet yourself where you are.", b: "We’ll keep it kind and doable." };
+  }
 }
 
 // Weekly archetype logic (same as your HTML, just as pure function)
@@ -76,12 +158,12 @@ export function computeWeekArchetype(weekRecords){
   if(presentDays <= 1) return "Resting Week";
 
   const levelsChosen = weekRecords.filter(d=>d.checkedIn && d.level).map(d=>d.level);
-  const counts = {rest:0,gentle:0,steady:0,capable:0,brave:0};
+  const counts = {rest:0,gentle:0,light:0,steady:0,capable:0,brave:0};
   for(const l of levelsChosen) if(counts[l] !== undefined) counts[l]++;
 
   const total = levelsChosen.length || 1;
   const restGentleRatio = (counts.rest + counts.gentle) / total;
-  const steadyRatio = counts.steady / total;
+  const steadyRatio = (counts.light + counts.steady) / total;
   const capableRatio = counts.capable / total;
   const braveRatio = counts.brave / total;
 

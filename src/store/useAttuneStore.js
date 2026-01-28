@@ -1,24 +1,84 @@
 import { useEffect, useMemo, useState } from "react";
-import { loadState, saveState, todayKey } from "./storage";
-import { generateOptions, suggestLevelFromCheckin } from "./attuneEngine";
-import { MESSAGES, ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
+import { loadState, saveState, todayKey } from "../lib/storage";
+import { dailyMessageFromCheckin, generateOptions, suggestLevelFromCheckin } from "../lib/attuneEngine";
+import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
+
+const SCHEMA_VERSION = 5;
+
+const DEFAULT_CHECKIN = {
+  mood: "okay",
+  moodWords: ["Okay"],
+  energy: "okay",
+  body: "manageable",
+  note: "",
+};
 
 function defaultState(){
+  const checkin = { ...DEFAULT_CHECKIN };
+  const level = "gentle";
   return {
+    schemaVersion: SCHEMA_VERSION,
     screen: "checkin",
     today: todayKey(),
-    checkin: { mood:"okay", energy:"low", body:"achey" },
-    level: "gentle",
+    checkedInToday: false,
+    checkin,
+    level,
     options: [],
     myDay: [],
     history: [],
-    dailyMessage: MESSAGES[Math.floor(Math.random()*MESSAGES.length)],
+    dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good}
+    currentSpin: null,
   };
 }
 
+function normalizeLoadedState(loaded){
+  if(!loaded) return null;
+
+  const next = { ...loaded };
+
+  // If you tweak defaults/shape over time, bump SCHEMA_VERSION and migrate here.
+  if(next.schemaVersion !== SCHEMA_VERSION){
+    next.schemaVersion = SCHEMA_VERSION;
+
+    // Migrate earlier defaults (energy/body) to the newer, clearer defaults.
+    next.checkin = {
+      ...DEFAULT_CHECKIN,
+      ...(next.checkin || {}),
+    };
+
+    if(typeof next.checkin.note !== "string") next.checkin.note = "";
+    if(next.checkin.note.length > 100) next.checkin.note = next.checkin.note.slice(0, 100);
+
+    // Only override the old default if it looks like it was never changed.
+    // (Earlier versions defaulted to energy:"low" body:"achey".)
+    if(next.checkin.energy === "low") next.checkin.energy = "okay";
+    if(next.checkin.body === "achey") next.checkin.body = "manageable";
+
+    // If moodWords is missing but mood exists, keep mood and seed a chip.
+    if(!Array.isArray(next.checkin.moodWords) || next.checkin.moodWords.length === 0){
+      next.checkin.moodWords = next.checkin.mood === "okay" ? ["Okay"] : [];
+    }
+  }
+
+  // Treat the Check-in screen as a fresh form on app start.
+  // This avoids confusing "defaults" that persist from an old selection.
+  if(next.today === todayKey() && next.screen === "checkin"){
+    next.checkedInToday = false;
+    next.checkin = { ...DEFAULT_CHECKIN };
+    next.level = "gentle";
+    next.options = [];
+    next.currentSpin = null;
+  }
+
+  // Keep daily message consistent with current selections.
+  next.dailyMessage = dailyMessageFromCheckin(next.checkin, next.level);
+
+  return next;
+}
+
 export function useAttuneStore(){
-  const [state, setState] = useState(() => loadState() || defaultState());
+  const [state, setState] = useState(() => normalizeLoadedState(loadState()) || defaultState());
 
   // daily rollover
   useEffect(() => {
@@ -26,13 +86,19 @@ export function useAttuneStore(){
     if(state.today !== t){
       setState(prev => {
         const rolled = rollDayToHistory(prev);
+        const checkin = { ...DEFAULT_CHECKIN };
+        const level = "gentle";
         const next = {
           ...rolled,
           today: t,
+          checkedInToday: false,
+          checkin,
+          level,
           options: [],
           myDay: [],
+          currentSpin: null,
           toast: null,
-          dailyMessage: MESSAGES[Math.floor(Math.random()*MESSAGES.length)],
+          dailyMessage: dailyMessageFromCheckin(checkin, level),
         };
         return next;
       });
@@ -46,13 +112,30 @@ export function useAttuneStore(){
   }, [state]);
 
   const actions = useMemo(() => ({
-    go: (screen) => setState(s => ({...s, screen})),
+    go: (screen) =>
+      setState(s => {
+        if(screen === "wheel"){
+          const next = { ...s, screen: "wheel" };
+          if(!next.options?.length){
+            next.options = generateOptions(next.level);
+          }
+          // Treat entering the Wheel from Check-in as completing today’s check-in.
+          if(s.screen === "checkin"){
+            next.checkedInToday = true;
+          }
+          return next;
+        }
+        return { ...s, screen };
+      }),
 
     setCheckin: (patch) =>
-      setState(s => ({...s, checkin: {...s.checkin, ...patch}})),
+      setState(s => {
+        const checkin = { ...s.checkin, ...patch };
+        return { ...s, checkin, dailyMessage: dailyMessageFromCheckin(checkin, s.level) };
+      }),
 
     setLevel: (level) =>
-      setState(s => ({...s, level })),
+      setState(s => ({...s, level, dailyMessage: dailyMessageFromCheckin(s.checkin, level) })),
 
     suggestLevel: () =>
       setState(s => {
@@ -60,17 +143,27 @@ export function useAttuneStore(){
         return {
           ...s,
           level: suggested,
-          dailyMessage: {
-            a: `Based on today, this looks like a ${suggested} day.`,
-            b: "You can change it anytime — your pace is allowed."
-          }
+          dailyMessage: dailyMessageFromCheckin(s.checkin, suggested)
         };
       }),
+
+    completeCheckin: () =>
+      setState(s => ({ ...s, checkedInToday: true })),
+
+    startWheelFromCheckin: () =>
+      setState(s => ({
+        ...s,
+        checkedInToday: true,
+        options: generateOptions(s.level),
+        currentSpin: null,
+        screen: "wheel",
+      })),
 
     generateOptions: () =>
       setState(s => ({
         ...s,
         options: generateOptions(s.level),
+        currentSpin: null,
         screen: "wheel"
       })),
 
@@ -116,7 +209,7 @@ export function useAttuneStore(){
     newMessage: () =>
       setState(s => ({
         ...s,
-        dailyMessage: MESSAGES[Math.floor(Math.random()*MESSAGES.length)]
+        dailyMessage: dailyMessageFromCheckin(s.checkin, s.level)
       })),
 
     endDay: () =>
@@ -160,7 +253,7 @@ export function useAttuneStore(){
 function rollDayToHistory(s){
   const record = {
     date: s.today,
-    checkedIn: true,
+    checkedIn: !!s.checkedInToday,
     level: s.level,
     tasksAdded: s.myDay.length,
     tasksDone: s.myDay.filter(x=>x.done).length

@@ -1,0 +1,121 @@
+/* Phase 1 — Mobile Calm Pass
+   Keep visual styling (colors, cards, typography) in src/index.css.
+   This file focuses on layout + viewport safety + mobile navigation. */
+
+html,
+body {
+  height: 100%;
+}
+
+html {
+  background: var(--bg);
+}
+
+#root {
+  min-height: 100%;
+}
+
+/* Bottom nav (mobile only) */
+.bottomNav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: rgba(246, 247, 251, 0.92);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid #e7e9f2;
+  display: none;
+  gap: 8px;
+  justify-content: space-around;
+  z-index: 50;
+}
+
+.bottomNavBtn {
+  border: 1px solid #e7e9f2;
+  background: white;
+  border-radius: 999px;
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.bottomNavBtn.active {
+  border-color: transparent;
+  color: white;
+  background: linear-gradient(135deg, #4f6df5, #8b5cf6);
+}
+
+/* Mobile-first tightening */
+@media (max-width: 520px) {
+  .wrap {
+    padding: 12px;
+    /* Keep content clear of the fixed bottom nav without creating a huge blank band. */
+    /* Reserve just enough room for the fixed bottom nav (avoid a huge empty gap). */
+    padding-bottom: calc(12px + 64px + env(safe-area-inset-bottom));
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .top {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  /* Hide top nav pills; use bottom nav */
+  .nav {
+    display: none;
+  }
+
+  .tag {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  /* One primary card per screen */
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    flex: 1;
+  }
+
+  .grid > main {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .grid > main > .card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .side {
+    display: none;
+  }
+
+  .bottomNav {
+    display: flex;
+  }
+
+  .quickStatusCard {
+    display: none;
+  }
+
+  /* Bigger tap targets */
+  .btn {
+    padding: 12px 14px;
+    font-size: 14px;
+  }
+  .btn.small {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .sub {
+    font-size: 12px;
+    margin-bottom: 10px;
+  }
+}
