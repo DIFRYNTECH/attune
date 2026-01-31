@@ -41,327 +41,108 @@ function moodCategoryFromWords(words) {
   return "okay";
 }
 
-function CalmParticleField() {
-  const wrapRef = useRef(null);
+function CalmBallFillToAura() {
   const canvasRef = useRef(null);
+  const containerRef = useRef(null);
+  const [mode, setMode] = useState("balls");
+  const ballsRef = useRef([]);
+  const animationFrameId = useRef();
 
-  const pointerRef = useRef({ active: false, x: 0, y: 0, strength: 0 });
-  const stateRef = useRef({ w: 0, h: 0, dpr: 1, particles: [], sparks: [], t: 0 });
+  const MAX_BALLS_FACTOR = 0.25; // fill 25% of the area
+  const BALL_RADIUS = 5;
 
-  const spawnBurst = (x, y) => {
-    const { w, h } = stateRef.current;
-    if (!w || !h) return;
-
-    const sparks = stateRef.current.sparks;
-    const count = 80;
-    for (let i = 0; i < count; i++) {
-      const ang = Math.random() * Math.PI * 2;
-      const sp = 0.6 + Math.random() * 2.8;
-      const vx = Math.cos(ang) * sp;
-      const vy = Math.sin(ang) * sp * 0.65;
-
-      const hue = i % 4;
-      const rgb =
-        hue === 0
-          ? [56, 189, 248]
-          : hue === 1
-            ? [79, 109, 245]
-            : hue === 2
-              ? [139, 92, 246]
-              : [110, 231, 183];
-
-      sparks.push({
-        x,
-        y,
-        vx,
-        vy,
-        rgb,
-        size: 0.9 + Math.random() * 1.8,
-        life: 0,
-        maxLife: 40 + Math.floor(Math.random() * 30),
-      });
-    }
-
-    // cap to avoid runaway
-    if (sparks.length > 900) sparks.splice(0, sparks.length - 900);
-  };
-
-  const buildParticles = (w, h) => {
-    // Higher density (roughly 2x), but cap for performance.
-    const base = Math.floor((w * h) / 650);
-    const count = Math.max(440, Math.min(760, base));
-
-    // Even dispersion: jittered grid sized to the target count.
-    const cols = Math.max(10, Math.round(Math.sqrt((count * w) / Math.max(1, h))));
-    const rows = Math.max(10, Math.ceil(count / cols));
-    const cellW = w / cols;
-    const cellH = h / rows;
-
-    const particles = Array.from({ length: count }, (_, i) => {
-      // deterministic pseudo-random from i (stable renders)
-      const s1 = (i * 9301 + 49297) % 233280;
-      const r1 = s1 / 233280;
-      const s2 = (s1 * 9301 + 49297) % 233280;
-      const r2 = s2 / 233280;
-      const s3 = (s2 * 9301 + 49297) % 233280;
-      const r3 = s3 / 233280;
-
-      // place on a grid, with small jitter so it feels organic
-      const gx = i % cols;
-      const gy = Math.floor(i / cols) % rows;
-      const jitterX = (r1 - 0.5) * cellW * 0.55;
-      const jitterY = (r2 - 0.5) * cellH * 0.55;
-      const x = (gx + 0.5) * cellW + jitterX;
-      const y = (gy + 0.5) * cellH + jitterY;
-
-      const speed = 0.05 + r3 * 0.22;
-      const ang = ((i * 19) % 360) * (Math.PI / 180);
-      const vx = Math.cos(ang) * speed;
-      const vy = Math.sin(ang) * speed * 0.55;
-
-      const size = 0.55 + (i % 9) * 0.16;
-      const alpha = 0.18 + ((i % 13) / 13) * 0.70;
-
-      const hue = i % 4;
-      const rgb =
-        hue === 0
-          ? [56, 189, 248]
-          : hue === 1
-            ? [79, 109, 245]
-            : hue === 2
-              ? [139, 92, 246]
-              : [110, 231, 183];
-
-      return {
-        x,
-        y,
-        vx,
-        vy,
-        size,
-        alpha,
-        rgb,
-        phase: (i % 97) * 0.13,
-      };
-    });
-
-    stateRef.current.particles = particles;
-  };
-
-  const resize = () => {
-    const wrap = wrapRef.current;
-    const canvas = canvasRef.current;
-    if (!wrap || !canvas) return;
-
-    const rect = wrap.getBoundingClientRect();
-    const w = Math.max(1, Math.floor(rect.width));
-    const h = Math.max(1, Math.floor(rect.height));
-    const dpr = Math.min(2, window.devicePixelRatio || 1);
-
-    stateRef.current.w = w;
-    stateRef.current.h = h;
-    stateRef.current.dpr = dpr;
-
-    canvas.width = Math.floor(w * dpr);
-    canvas.height = Math.floor(h * dpr);
-    canvas.style.width = `${w}px`;
-    canvas.style.height = `${h}px`;
-
-    buildParticles(w, h);
+  const createBall = (canvas) => {
+    return {
+      x: Math.random() * (canvas.width - BALL_RADIUS * 2) + BALL_RADIUS,
+      y: Math.random() * (canvas.height - BALL_RADIUS * 2) + BALL_RADIUS,
+      dx: (Math.random() - 0.5) * 2, // speed
+      dy: (Math.random() - 0.5) * 2, // speed
+      radius: BALL_RADIUS,
+      color: `rgba(79, 109, 245, ${Math.random() * 0.5 + 0.3})`,
+    };
   };
 
   useEffect(() => {
-    resize();
-    const onResize = () => resize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const container = containerRef.current;
+    if (!canvas || !container || mode !== "balls") return;
+
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    let isRunning = true;
 
-    let raf = 0;
-    const step = () => {
-      const { w, h, dpr, particles, sparks } = stateRef.current;
-      stateRef.current.t += 1;
-      const t = stateRef.current.t;
-
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      // subtle trails: fade the previous frame instead of hard clearing
-      ctx.globalCompositeOperation = "source-over";
-      // Pure white fade to keep the block looking clean.
-      ctx.fillStyle = "rgba(255,255,255,0.22)";
-      ctx.fillRect(0, 0, w, h);
-
-      const pointer = pointerRef.current;
-      const targetStrength = pointer.active ? 1 : 0;
-      pointer.strength += (targetStrength - pointer.strength) * 0.10;
-
-      // Immediate “higher concentration” near the press point
-      if (pointer.active && (t % 4 === 0)) {
-        const n = Math.min(80, particles.length);
-        for (let i = 0; i < n; i++) {
-          const p = particles[(t * 3 + i * 17) % particles.length];
-          p.x = p.x + (pointer.x - p.x) * 0.42;
-          p.y = p.y + (pointer.y - p.y) * 0.42;
-          p.vx *= 0.55;
-          p.vy *= 0.55;
-        }
+    const resizeCanvas = () => {
+      const { width, height } = container.getBoundingClientRect();
+      canvas.width = width;
+      canvas.height = height;
+      if (ballsRef.current.length === 0) {
+        ballsRef.current = [createBall(canvas), createBall(canvas)];
       }
-
-      ctx.shadowBlur = 0;
-
-      // spark burst particles (short-lived)
-      ctx.globalCompositeOperation = "lighter";
-      for (let i = sparks.length - 1; i >= 0; i--) {
-        const s = sparks[i];
-        s.life += 1;
-        const k = 1 - s.life / s.maxLife;
-        if (k <= 0) {
-          sparks.splice(i, 1);
-          continue;
-        }
-
-        s.vx *= 0.985;
-        s.vy *= 0.985;
-        s.x += s.vx;
-        s.y += s.vy;
-
-        // slight upward lift so it feels airy
-        s.vy -= 0.002;
-
-        const a = 0.95 * k;
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${a * 0.35})`;
-        ctx.shadowColor = `rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${a})`;
-        ctx.shadowBlur = 22;
-        ctx.arc(s.x, s.y, s.size * 2.1, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${s.rgb[0]},${s.rgb[1]},${s.rgb[2]},${a})`;
-        ctx.shadowColor = `rgba(255,255,255,${Math.min(0.9, a + 0.2)})`;
-        ctx.shadowBlur = 14;
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Main particles: use normal blending so they stay visible on light backgrounds.
-      ctx.globalCompositeOperation = "source-over";
-
-      for (const p of particles) {
-        const nx = (p.x / w) * 2 - 1;
-        const ny = (p.y / h) * 2 - 1;
-
-        // gentle curl field
-        const curl =
-          Math.sin(t * 0.010 + p.phase + nx * 1.7) *
-          Math.cos(t * 0.008 + p.phase + ny * 1.4);
-
-        p.vx += curl * 0.006;
-        p.vy += curl * 0.004;
-
-        // attraction on press
-        if (pointer.strength > 0.001) {
-          const dx = pointer.x - p.x;
-          const dy = pointer.y - p.y;
-          const dist = Math.sqrt(dx * dx + dy * dy) + 0.001;
-          const pull = (pointer.strength * 0.75) / Math.max(10, dist);
-          p.vx += (dx / dist) * pull;
-          p.vy += (dy / dist) * pull;
-        }
-
-        // friction
-        p.vx *= 0.985;
-        p.vy *= 0.985;
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-        // wrap around
-        if (p.x < -10) p.x = w + 10;
-        if (p.x > w + 10) p.x = -10;
-        if (p.y < -10) p.y = h + 10;
-        if (p.y > h + 10) p.y = -10;
-
-        // twinkle
-        const tw = 0.65 + 0.35 * Math.sin(t * 0.02 + p.phase);
-        const a = p.alpha * tw;
-
-        // Outer glow
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]},${a * 0.22})`;
-        ctx.shadowColor = `rgba(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]},${Math.min(1, a)})`;
-        ctx.shadowBlur = 22;
-        ctx.arc(p.x, p.y, p.size * 1.9, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Bright core
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]},${Math.min(1, a * 1.05)})`;
-        ctx.shadowColor = `rgba(${p.rgb[0]},${p.rgb[1]},${p.rgb[2]},${Math.min(1, a)})`;
-        ctx.shadowBlur = 14;
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Tiny white specular (helps readability on white bg)
-        ctx.beginPath();
-        ctx.fillStyle = `rgba(255,255,255,${Math.min(0.75, a * 0.55)})`;
-        ctx.shadowColor = `rgba(255,255,255,${Math.min(0.55, a * 0.35)})`;
-        ctx.shadowBlur = 6;
-        ctx.arc(p.x + 0.4, p.y - 0.4, Math.max(0.4, p.size * 0.35), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.globalCompositeOperation = "source-over";
-
-      raf = window.requestAnimationFrame(step);
     };
 
-    raf = window.requestAnimationFrame(step);
-    return () => window.cancelAnimationFrame(raf);
-  }, []);
+    const animate = () => {
+      if (!isRunning) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  const updatePointerFromEvent = (e) => {
-    const wrap = wrapRef.current;
-    if (!wrap) return;
-    const rect = wrap.getBoundingClientRect();
-    pointerRef.current.x = e.clientX - rect.left;
-    pointerRef.current.y = e.clientY - rect.top;
+      ballsRef.current.forEach((ball) => {
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+          ball.dx = -ball.dx;
+        }
+        if (ball.y + ball.radius > canvas.height || ball.y - ball.radius < 0) {
+          ball.dy = -ball.dy;
+        }
+
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+        ctx.fillStyle = ball.color;
+        ctx.fill();
+        ctx.closePath();
+      });
+
+      animationFrameId.current = requestAnimationFrame(animate);
+    };
+
+    const resizeObserver = new ResizeObserver(resizeCanvas);
+    resizeObserver.observe(container);
+    resizeCanvas();
+    animate();
+
+    return () => {
+      isRunning = false;
+      resizeObserver.disconnect();
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+      }
+    };
+  }, [mode]);
+
+  const handleClick = () => {
+    if (mode !== "balls") return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const maxBalls = (canvas.width * canvas.height) / (Math.PI * BALL_RADIUS * BALL_RADIUS) * MAX_BALLS_FACTOR;
+
+    if (ballsRef.current.length < maxBalls) {
+      ballsRef.current.push(createBall(canvas), createBall(canvas));
+    } else {
+      setMode("aura");
+    }
   };
 
   return (
     <div
-      ref={wrapRef}
+      ref={containerRef}
       className="calmVisual"
-      aria-hidden="true"
-      onPointerDown={(e) => {
-        updatePointerFromEvent(e);
-        pointerRef.current.active = true;
-        spawnBurst(pointerRef.current.x, pointerRef.current.y);
-        try {
-          e.currentTarget.setPointerCapture(e.pointerId);
-        } catch {
-          // ignore
-        }
-      }}
-      onPointerMove={(e) => {
-        if (!pointerRef.current.active) return;
-        updatePointerFromEvent(e);
-      }}
-      onPointerUp={() => {
-        pointerRef.current.active = false;
-      }}
-      onPointerCancel={() => {
-        pointerRef.current.active = false;
-      }}
-      onPointerLeave={() => {
-        pointerRef.current.active = false;
-      }}
+      onClick={handleClick}
+      style={{ cursor: mode === "balls" ? "pointer" : "default", pointerEvents: 'auto' }}
     >
-      <canvas ref={canvasRef} className="calmCanvas" />
+      {mode === "balls" && (
+        <canvas ref={canvasRef} className="calmCanvas" aria-hidden="true" />
+      )}
+      {mode === "aura" && <div className="calmAura" aria-hidden="true" />}
     </div>
   );
 }
@@ -399,9 +180,10 @@ export default function CheckIn({ state, actions }) {
       next = selectedMoodWords.filter((w) => w !== word);
     } else {
       // keep it gentle: max 2 words
-      next = selectedMoodWords.length >= 2
-        ? [selectedMoodWords[0], word]
-        : [...selectedMoodWords, word];
+      next =
+        selectedMoodWords.length >= 2
+          ? [selectedMoodWords[0], word]
+          : [...selectedMoodWords, word];
     }
 
     const mood = moodCategoryFromWords(next) || checkin.mood || "okay";
@@ -409,7 +191,7 @@ export default function CheckIn({ state, actions }) {
   };
 
   return (
-    <div className="card checkinCard">
+    <div className="card checkinCard" style={{ display: 'flex', flexDirection: 'column', flex: '1' }}>
       <h2>🌤 How are you today?</h2>
       <div className="sub">Optional, skip-friendly, and changeable anytime.</div>
 
@@ -516,7 +298,7 @@ export default function CheckIn({ state, actions }) {
         Used to personalize your options and keep suggestions relevant. You can change this anytime.
       </div>
 
-      {!noteOpen && <CalmParticleField />}
+      {!noteOpen && <CalmBallFillToAura />}
 
       <div className="checkinBottom">
         <div className="footerNote" style={{ marginTop: 12 }}>
