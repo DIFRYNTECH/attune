@@ -294,6 +294,11 @@
     .boardWrap{margin-top:12px;}
     .boardTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
     .boardTitle{font-weight:900; letter-spacing:-.2px;}
+    .boardRight{display:flex; align-items:center; gap:10px; margin-left:auto;}
+    .boardMeta{font-size:12px; color:var(--muted); font-weight:800;}
+    @media (max-width: 520px){
+      .boardMeta{display:none;}
+    }
     .boardGrid{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -356,6 +361,36 @@
       border-color: rgba(110,231,183,.45);
       background: rgba(110,231,183,.10);
     }
+
+    .boardTile.disabled{
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .boardTile.disabled:active{transform:none}
+
+    /* Minimal modal */
+    .modalOverlay{
+      position:fixed;
+      inset:0;
+      background: rgba(15,18,28,.36);
+      backdrop-filter: blur(8px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px 12px;
+      z-index: 80;
+    }
+    .modalCard{
+      width: min(520px, 100%);
+      background: rgba(255,255,255,.98);
+      border: 1px solid #e7e9f2;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(20,30,60,.18);
+      padding: 14px;
+    }
+    .modalTitle{font-weight: 950; letter-spacing: -.2px; font-size: 14px; color: var(--ink)}
+    .modalBody{margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.35;}
+    .modalActions{margin-top: 12px; display:flex; gap: 10px; justify-content:flex-end; flex-wrap: wrap;}
 
     /* Wheel */
     .wheelWrap{
@@ -493,7 +528,12 @@
       font-size:13px;
       display:none;
     }
+    .toast .toastCount{
+      font-weight: 950;
+      color: inherit;
+    }
     .toast.show{display:block}
+
     .footerNote{
       margin-top:10px;
       color:var(--muted);

@@ -5,6 +5,25 @@ import Today from "../screens/Today.jsx";
 import Weekly from "../screens/Weekly.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
 
+function renderToastText(text) {
+  if (typeof text !== "string" || !text) return text;
+
+  const match = text.match(/\b\d+\/10\b/);
+  if (!match || match.index == null) return text;
+
+  const start = match.index;
+  const token = match[0];
+  const end = start + token.length;
+
+  return (
+    <>
+      {text.slice(0, start)}
+      <strong className="toastCount">{token}</strong>
+      {text.slice(end)}
+    </>
+  );
+}
+
 function TopNav({ screen, go }) {
   return (
     <div className="top">
@@ -144,7 +163,7 @@ export default function App() {
             color: state.toast.good ? "#14532d" : "#7c4a00",
           }}
         >
-          {state.toast.text}
+          {renderToastText(state.toast.text)}
         </div>
       )}
 

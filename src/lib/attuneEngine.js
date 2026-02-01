@@ -35,7 +35,7 @@ export function suggestLevelFromCheckin({ mood, energy, body }){
 
 export function generateOptions(level){
   const pool = TASKS[level] || TASKS.gentle;
-  return shuffle(pool).slice(0,10).map(t => ({ text: t, level }));
+  return shuffle(pool).slice(0,30).map(t => ({ text: t, level }));
 }
 
 /**
@@ -43,7 +43,7 @@ export function generateOptions(level){
  * It creates a blended pool of tasks to ensure relevant and safe options.
  * @param {object} checkin - The user's checkin data { mood, energy, body }.
  * @param {string} level - The user's chosen pace for the day.
- * @returns {Array<{text: string, level: string}>} A list of 10 suggested activities.
+ * @returns {Array<{text: string, level: string}>} A list of suggested activities.
  */
 export function suggestActivities(checkin, level) {
   const { energy, mood } = checkin;
@@ -71,8 +71,9 @@ export function suggestActivities(checkin, level) {
   // 3. Create a unique set of tasks, then convert back to an array.
   const uniquePool = [...new Set(pool)];
 
-  // 4. Shuffle the unique pool and take the first 10.
-  return shuffle(uniquePool).slice(0, 10).map(text => {
+  // 4. Shuffle the unique pool and take the first batch.
+  // Expanded pool helps the 15-tile board avoid repeats.
+  return shuffle(uniquePool).slice(0, 30).map(text => {
     // Find the original level of the task for context, defaulting to the chosen level.
     const taskLevel = Object.keys(TASKS).find(l => TASKS[l].includes(text)) || level;
     return { text, level: taskLevel };

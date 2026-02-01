@@ -3,7 +3,7 @@ import { loadState, saveState, todayKey } from "../lib/storage";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 const DEFAULT_CHECKIN = {
   mood: "okay",
@@ -24,7 +24,9 @@ function defaultState(){
     checkin,
     level,
     options: [],
+    boardAssigned: [],
     myDay: [],
+    myDayCap: 5,
     history: [],
     dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good}
@@ -59,7 +61,14 @@ function normalizeLoadedState(loaded){
     if(!Array.isArray(next.checkin.moodWords) || next.checkin.moodWords.length === 0){
       next.checkin.moodWords = next.checkin.mood === "okay" ? ["Okay"] : [];
     }
+
+    // New in v6: soft cap for My Day task picks.
+    if(typeof next.myDayCap !== "number") next.myDayCap = 5;
+    if(next.myDayCap !== 5 && next.myDayCap !== 10) next.myDayCap = 5;
+    if(Array.isArray(next.myDay) && next.myDay.length > 5) next.myDayCap = 10;
   }
+
+  if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
 
   // Treat the Check-in screen as a fresh form on app start.
   // This avoids confusing "defaults" that persist from an old selection.
@@ -68,6 +77,7 @@ function normalizeLoadedState(loaded){
     next.checkin = { ...DEFAULT_CHECKIN };
     next.level = "gentle";
     next.options = [];
+    next.myDayCap = 5;
     next.currentSpin = null;
   }
 
@@ -96,6 +106,7 @@ export function useAttuneStore(){
           level,
           options: [],
           myDay: [],
+          myDayCap: 5,
           currentSpin: null,
           toast: null,
           dailyMessage: dailyMessageFromCheckin(checkin, level),
@@ -162,6 +173,7 @@ export function useAttuneStore(){
       setState(s => ({
         ...s,
         options: suggestActivities(s.checkin, s.level),
+        boardAssigned: [],
         currentSpin: null,
       })),
 
@@ -179,12 +191,21 @@ export function useAttuneStore(){
         if(!s.currentSpin){
           return { ...s, toast: { text: "Spin first — or just take a breath. No rush.", good: false } };
         }
+
+        if((s.myDay?.length || 0) >= 10){
+          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false } };
+        }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        const nextCount = (s.myDay?.length || 0) + 1;
+        const label = nextCount === 1 ? "activity" : "activities";
         return {
           ...s,
           myDay: [...s.myDay, { id, text: s.currentSpin.text, done:false }],
           currentSpin: null,
-          toast: { text: "Added to your day. Small is enough.", good: true }
+          toast: {
+            text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
+            good: true
+          }
         };
       }),
 
@@ -193,13 +214,34 @@ export function useAttuneStore(){
         if(!opt?.text){
           return { ...s, toast: { text: "That one didn't load—try another tile.", good: false } };
         }
+
+        if((s.myDay?.length || 0) >= 10){
+          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false } };
+        }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        const nextCount = (s.myDay?.length || 0) + 1;
+        const label = nextCount === 1 ? "activity" : "activities";
         return {
           ...s,
           myDay: [...s.myDay, { id, text: opt.text, done:false }],
-          toast: { text: "Added to your day. Small is enough.", good: true }
+          toast: {
+            text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
+            good: true
+          }
         };
       }),
+
+    setMyDayCap: (cap) =>
+      setState(s => {
+        const nextCap = cap === 10 ? 10 : 5;
+        return { ...s, myDayCap: nextCap };
+      }),
+
+    setToast: (text, good = false) =>
+      setState(s => ({ ...s, toast: { text, good } })),
+
+    setBoardAssigned: (boardAssigned) =>
+      setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
 
     toggleDone: (id, done) =>
       setState(s => {
@@ -240,6 +282,7 @@ export function useAttuneStore(){
         return {
           ...rolled,
           options: [],
+          boardAssigned: [],
           myDay: [],
           currentSpin: null,
           toast
@@ -252,8 +295,10 @@ export function useAttuneStore(){
       setState(s => ({
         ...s,
         options: [],
+        boardAssigned: [],
         myDay: [],
         currentSpin: null,
+        myDayCap: 5,
         toast: { text: "Reset done. Fresh start, gently.", good: false }
       })),
   }), []);

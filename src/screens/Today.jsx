@@ -4,7 +4,7 @@ export default function Today({ state, actions }) {
 	return (
 		<div className="card">
 			<h2>🧭 My Day</h2>
-			<div className="sub">2–5 tiny things is plenty. Zero is allowed.</div>
+			<div className="sub">2–5 tiny things is plenty. If you want, you can go up to 10.</div>
 
 			<div className="result" style={{ marginBottom: 12 }}>
 				<div className="resultTitle">Today’s note</div>
