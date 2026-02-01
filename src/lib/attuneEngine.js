@@ -38,6 +38,47 @@ export function generateOptions(level){
   return shuffle(pool).slice(0,10).map(t => ({ text: t, level }));
 }
 
+/**
+ * Suggests a pool of activities based on the user's checkin state and chosen level.
+ * It creates a blended pool of tasks to ensure relevant and safe options.
+ * @param {object} checkin - The user's checkin data { mood, energy, body }.
+ * @param {string} level - The user's chosen pace for the day.
+ * @returns {Array<{text: string, level: string}>} A list of 10 suggested activities.
+ */
+export function suggestActivities(checkin, level) {
+  const { energy, mood } = checkin;
+
+  // 1. Start with a base pool from the selected level.
+  let pool = [...(TASKS[level] || TASKS.gentle)];
+
+  // 2. Add tasks from other levels based on check-in data for variety and safety.
+  // If energy is very low, always include rest options.
+  if (energy === 'verylow') {
+    pool.push(...TASKS.rest);
+  }
+  // If energy is low or mood is low, include gentle options.
+  if (energy === 'low' || mood === 'low') {
+    pool.push(...TASKS.gentle);
+  }
+  // If things are generally good, maybe add some from the next level up.
+  if (energy === 'okay' && mood === 'good' && level === 'steady') {
+    pool.push(...TASKS.capable);
+  }
+  if (energy === 'high' && mood === 'good' && level === 'capable') {
+    pool.push(...TASKS.brave);
+  }
+
+  // 3. Create a unique set of tasks, then convert back to an array.
+  const uniquePool = [...new Set(pool)];
+
+  // 4. Shuffle the unique pool and take the first 10.
+  return shuffle(uniquePool).slice(0, 10).map(text => {
+    // Find the original level of the task for context, defaulting to the chosen level.
+    const taskLevel = Object.keys(TASKS).find(l => TASKS[l].includes(text)) || level;
+    return { text, level: taskLevel };
+  });
+}
+
 export function dailyMessageFromCheckin(checkin, level){
   const moodWords = checkin?.moodWords || [];
   const energy = checkin?.energy;

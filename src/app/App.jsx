@@ -1,4 +1,5 @@
 import BottomNav from "../components/BottomNav.jsx";
+import ActivityPicker from "../screens/ActivityPicker.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
 import Today from "../screens/Today.jsx";
 import Weekly from "../screens/Weekly.jsx";
@@ -87,10 +88,7 @@ export default function App() {
           )}
 
           {screen === "wheel" && (
-            <ScreenShell
-              title="Pick an activity"
-              subtitle="A small, doable option — based on today."
-            />
+            <ActivityPicker state={state} actions={actions} />
           )}
 
           {screen === "today" && (

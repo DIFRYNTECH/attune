@@ -290,6 +290,73 @@
       background: linear-gradient(180deg, rgba(79,109,245,.06), transparent);
     }
 
+    /* Activity Picker: tile board */
+    .boardWrap{margin-top:12px;}
+    .boardTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+    .boardTitle{font-weight:900; letter-spacing:-.2px;}
+    .boardGrid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:10px;
+    }
+    @media (max-width: 520px){
+      .boardGrid{grid-template-columns: repeat(3, minmax(0, 1fr));}
+    }
+
+    .boardTile{
+      appearance:none;
+      border:1px solid var(--line);
+      background:#fff;
+      border-radius:14px;
+      padding:10px;
+      min-height:74px;
+      cursor:pointer;
+      position:relative;
+      overflow:hidden;
+      text-align:left;
+      transition: transform .08s ease, border-color .2s ease, box-shadow .2s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .boardTile:hover{border-color:#dfe2ee}
+    .boardTile:active{transform: translateY(1px)}
+    .boardTile:focus-visible{outline:none; box-shadow: 0 0 0 4px rgba(79,109,245,.12)}
+
+    .boardTile .tileFace{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .boardTile .tileMark{
+      width:18px; height:18px;
+      border-radius:6px;
+      background:
+        radial-gradient(circle at 30% 30%, rgba(255,255,255,.7), rgba(255,255,255,0) 60%),
+        linear-gradient(135deg, rgba(79,109,245,.30), rgba(139,92,246,.26));
+      box-shadow: 0 10px 18px rgba(79,109,245,.12);
+    }
+    .boardTile::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background:
+        radial-gradient(circle at 35% 40%, rgba(79,109,245,.10), transparent 55%),
+        radial-gradient(circle at 70% 60%, rgba(110,231,183,.08), transparent 58%);
+      transform: rotate(18deg);
+      opacity:.85;
+      pointer-events:none;
+    }
+    .boardTile.revealed::before{opacity:.55}
+
+    .tileBack{position:relative; z-index:1}
+    .tileText{font-size:12px; font-weight:900; color:#1f2230; line-height:1.15;}
+    .tileHint{margin-top:6px; font-size:11px; color:var(--muted);}
+
+    .boardTile.taken{
+      border-color: rgba(110,231,183,.45);
+      background: rgba(110,231,183,.10);
+    }
+
     /* Wheel */
     .wheelWrap{
       display:grid;

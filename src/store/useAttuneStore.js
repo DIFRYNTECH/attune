@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
-import { dailyMessageFromCheckin, generateOptions, suggestLevelFromCheckin } from "../lib/attuneEngine";
+import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 
 const SCHEMA_VERSION = 5;
@@ -115,27 +115,35 @@ export function useAttuneStore(){
     go: (screen) =>
       setState(s => {
         if(screen === "wheel"){
-          const next = { ...s, screen: "wheel" };
-          if(!next.options?.length){
-            next.options = generateOptions(next.level);
-          }
-          // Treat entering the Wheel from Check-in as completing today’s check-in.
-          if(s.screen === "checkin"){
-            next.checkedInToday = true;
-          }
-          return next;
+          const options = s.options?.length
+            ? s.options
+            : suggestActivities(s.checkin, s.level);
+
+          return {
+            ...s,
+            screen: "wheel",
+            options,
+            // Treat entering the Wheel from Check-in as completing today’s check-in.
+            checkedInToday: s.screen === "checkin" ? true : s.checkedInToday,
+          };
         }
+
         return { ...s, screen };
       }),
 
     setCheckin: (patch) =>
       setState(s => {
         const checkin = { ...s.checkin, ...patch };
-        return { ...s, checkin, dailyMessage: dailyMessageFromCheckin(checkin, s.level) };
+        const level = suggestLevelFromCheckin(checkin);
+        const options = suggestActivities(checkin, level);
+        return { ...s, checkin, level, options, dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
-      setState(s => ({...s, level, dailyMessage: dailyMessageFromCheckin(s.checkin, level) })),
+      setState(s => {
+        const options = suggestActivities(s.checkin, level);
+        return {...s, level, options, dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
+      }),
 
     suggestLevel: () =>
       setState(s => {
@@ -150,30 +158,20 @@ export function useAttuneStore(){
     completeCheckin: () =>
       setState(s => ({ ...s, checkedInToday: true })),
 
-    startWheelFromCheckin: () =>
+    refreshOptions: () =>
       setState(s => ({
         ...s,
-        checkedInToday: true,
-        options: generateOptions(s.level),
+        options: suggestActivities(s.checkin, s.level),
         currentSpin: null,
-        screen: "wheel",
-      })),
-
-    generateOptions: () =>
-      setState(s => ({
-        ...s,
-        options: generateOptions(s.level),
-        currentSpin: null,
-        screen: "wheel"
       })),
 
     spinPick: () =>
       setState(s => {
-        if(!s.options.length){
-          return { ...s, options: generateOptions(s.level) };
-        }
-        const picked = s.options[Math.floor(Math.random()*s.options.length)];
-        return { ...s, currentSpin: picked };
+        const options = s.options?.length
+          ? s.options
+          : suggestActivities(s.checkin, s.level);
+        const picked = options[Math.floor(Math.random() * options.length)];
+        return { ...s, options, currentSpin: picked };
       }),
 
     addCurrent: () =>
@@ -186,6 +184,19 @@ export function useAttuneStore(){
           ...s,
           myDay: [...s.myDay, { id, text: s.currentSpin.text, done:false }],
           currentSpin: null,
+          toast: { text: "Added to your day. Small is enough.", good: true }
+        };
+      }),
+
+    addOption: (opt) =>
+      setState(s => {
+        if(!opt?.text){
+          return { ...s, toast: { text: "That one didn't load—try another tile.", good: false } };
+        }
+        const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        return {
+          ...s,
+          myDay: [...s.myDay, { id, text: opt.text, done:false }],
           toast: { text: "Added to your day. Small is enough.", good: true }
         };
       }),
