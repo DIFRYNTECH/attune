@@ -28,8 +28,9 @@ function defaultState(){
     myDay: [],
     myDayCap: 5,
     history: [],
+    weeklyNotes: {},
     dailyMessage: dailyMessageFromCheckin(checkin, level),
-    toast: null, // {text, good}
+    toast: null, // {text, good, screen}
     currentSpin: null,
   };
 }
@@ -69,6 +70,10 @@ function normalizeLoadedState(loaded){
   }
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
+  if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
+
+  // Toasts are ephemeral; don't restore them across reloads.
+  next.toast = null;
 
   // Treat the Check-in screen as a fresh form on app start.
   // This avoids confusing "defaults" that persist from an old selection.
@@ -134,12 +139,13 @@ export function useAttuneStore(){
             ...s,
             screen: "wheel",
             options,
+            toast: null,
             // Treat entering the Wheel from Check-in as completing today’s check-in.
             checkedInToday: s.screen === "checkin" ? true : s.checkedInToday,
           };
         }
 
-        return { ...s, screen };
+        return { ...s, screen, toast: null };
       }),
 
     setCheckin: (patch) =>
@@ -189,11 +195,11 @@ export function useAttuneStore(){
     addCurrent: () =>
       setState(s => {
         if(!s.currentSpin){
-          return { ...s, toast: { text: "Spin first — or just take a breath. No rush.", good: false } };
+          return { ...s, toast: { text: "Spin first — or just take a breath. No rush.", good: false, screen: s.screen } };
         }
 
         if((s.myDay?.length || 0) >= 10){
-          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false } };
+          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
         const nextCount = (s.myDay?.length || 0) + 1;
@@ -204,7 +210,8 @@ export function useAttuneStore(){
           currentSpin: null,
           toast: {
             text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
-            good: true
+            good: true,
+            screen: s.screen,
           }
         };
       }),
@@ -212,11 +219,11 @@ export function useAttuneStore(){
     addOption: (opt) =>
       setState(s => {
         if(!opt?.text){
-          return { ...s, toast: { text: "That one didn't load—try another tile.", good: false } };
+          return { ...s, toast: { text: "That one didn't load—try another tile.", good: false, screen: s.screen } };
         }
 
         if((s.myDay?.length || 0) >= 10){
-          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false } };
+          return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
         const nextCount = (s.myDay?.length || 0) + 1;
@@ -226,7 +233,8 @@ export function useAttuneStore(){
           myDay: [...s.myDay, { id, text: opt.text, done:false }],
           toast: {
             text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
-            good: true
+            good: true,
+            screen: s.screen,
           }
         };
       }),
@@ -238,25 +246,42 @@ export function useAttuneStore(){
       }),
 
     setToast: (text, good = false) =>
-      setState(s => ({ ...s, toast: { text, good } })),
+      setState(s => ({ ...s, toast: { text, good, screen: s.screen } })),
 
     setBoardAssigned: (boardAssigned) =>
       setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
+
+    setWeeklyNote: (weekId, text) =>
+      setState(s => {
+        const id = typeof weekId === "string" ? weekId : "";
+        if(!id) return s;
+
+        const nextText = typeof text === "string" ? text : "";
+        const weeklyNotes = { ...(s.weeklyNotes || {}) };
+
+        if(nextText.trim().length === 0){
+          delete weeklyNotes[id];
+        }else{
+          weeklyNotes[id] = nextText;
+        }
+
+        return { ...s, weeklyNotes };
+      }),
 
     toggleDone: (id, done) =>
       setState(s => {
         const myDay = s.myDay.map(t => t.id === id ? {...t, done} : t);
         const msg = done
           ? ENCOURAGE_DONE[Math.floor(Math.random()*ENCOURAGE_DONE.length)]
-          : "No worries. You can come back to it later — or not.";
-        return { ...s, myDay, toast: { text: msg, good: !!done } };
+          : "No worries.There is no rush, you can come back to it later.";
+        return { ...s, myDay, toast: { text: msg, good: !!done, screen: s.screen } };
       }),
 
     removeTask: (id) =>
       setState(s => ({
         ...s,
         myDay: s.myDay.filter(t => t.id !== id),
-        toast: { text: "Removed. Keep it light.", good: false }
+        toast: { text: "Removed. Keep it light.", good: false, screen: s.screen }
       })),
 
     newMessage: () =>
@@ -271,11 +296,11 @@ export function useAttuneStore(){
 
         let toast;
         if(s.myDay.length === 0){
-          toast = { text: ENCOURAGE_EMPTY[Math.floor(Math.random()*ENCOURAGE_EMPTY.length)], good: false };
+          toast = { text: ENCOURAGE_EMPTY[Math.floor(Math.random()*ENCOURAGE_EMPTY.length)], good: false, screen: s.screen };
         }else if(doneCount === 0){
-          toast = { text: "That’s okay. Choosing was still care. Tomorrow we go gently again.", good: false };
+          toast = { text: "That’s okay. Choosing was still care. Tomorrow we go gently again.", good: false, screen: s.screen };
         }else{
-          toast = { text: "You did what you could today. That matters.", good: true };
+          toast = { text: "You did what you could today. That matters.", good: true, screen: s.screen };
         }
 
         const rolled = rollDayToHistory(s);
@@ -299,7 +324,7 @@ export function useAttuneStore(){
         myDay: [],
         currentSpin: null,
         myDayCap: 5,
-        toast: { text: "Reset done. Fresh start, gently.", good: false }
+        toast: { text: "Reset done. Fresh start, gently.", good: false, screen: s.screen }
       })),
   }), []);
 

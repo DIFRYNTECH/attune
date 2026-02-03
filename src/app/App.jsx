@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import BottomNav from "../components/BottomNav.jsx";
 import ActivityPicker from "../screens/ActivityPicker.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
@@ -35,7 +37,7 @@ function TopNav({ screen, go }) {
             <span className="versionTag">v0</span>
           </h1>
           <div className="tag">
-            Meet yourself where you are — then take one small step toward better.
+            Meet yourself where you are, then take one small step toward better.
           </div>
         </div>
       </div>
@@ -94,9 +96,12 @@ function ScreenShell({ title, subtitle }) {
 export default function App() {
   const { state, actions } = useAttuneStore();
   const screen = state.screen;
+  const showToast = !!(state.toast && state.toast.screen === screen);
+  const wrapClassName = "wrap" + (showToast ? " toastOn" : "");
+  useEffect(() => {}, []);
 
   return (
-    <div className="wrap">
+    <div className={wrapClassName}>
       <TopNav screen={screen} go={actions.go} />
 
       <div className="grid">
@@ -147,7 +152,7 @@ export default function App() {
         </aside>
       </div>
 
-      {state.toast && (
+      {showToast && (
         <div
           className={"toast show"}
           role="status"

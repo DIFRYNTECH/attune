@@ -134,7 +134,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
       if (changed) actions.setBoardAssigned?.(next);
       return changed ? next : prev;
     });
-  }, [myDay]);
+  }, [myDay, actions]);
 
   useEffect(() => {
     // Keep already-picked tasks visible.
@@ -147,19 +147,6 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
       return next;
     });
   }, [boardAssigned, takenTexts]);
-
-  const onReveal = (idx) => {
-    if (atHardCap) {
-      actions.setToast?.("That’s plenty for today. Let’s stop at 10.", false);
-      return;
-    }
-    setRevealed((prev) => {
-      if (prev[idx]) return prev;
-      const next = [...prev];
-      next[idx] = true;
-      return next;
-    });
-  };
 
   const onAdd = (idx) => {
     const opt = boardAssigned[idx];

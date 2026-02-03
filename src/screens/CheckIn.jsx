@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LEVELS } from "../data/levels";
 
 const MOOD_WORDS = [
@@ -153,17 +153,16 @@ export default function CheckIn({ state, actions }) {
   const noteRef = useRef(null);
   const [noteOpen, setNoteOpen] = useState(false);
 
-  const autosizeNote = () => {
+  const autosizeNote = useCallback(() => {
     const el = noteRef.current;
     if (!el) return;
     el.style.height = "0px";
     el.style.height = `${el.scrollHeight}px`;
-  };
+  }, []);
 
   useEffect(() => {
     autosizeNote();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [note]);
+  }, [note, autosizeNote]);
 
   const selectedMoodWords =
     checkin.moodWords?.length

@@ -154,6 +154,20 @@
       min-height:56px;
       line-height:1.35;
     }
+
+    .weeklyNoteInput{
+      width:100%;
+      line-height:1.35;
+      resize: none;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+      min-height: 120px;
+      max-height: 220px;
+    }
+
+    @media (max-width: 520px){
+      .weeklyNoteInput{max-height: 180px;}
+    }
     .charCount{
       margin-top:6px;
       font-size:12px;
@@ -518,6 +532,63 @@
     .item .small{font-size:12px; color:var(--muted); margin-top:2px}
     .item.done{opacity:.65}
     .item.done .txt{text-decoration: line-through}
+
+    /* My Day color accents (calm, not loud) */
+    .myDayCard{
+      position: relative;
+      overflow: hidden;
+    }
+    .myDayCard::before{
+      content:"";
+      position:absolute;
+      left:-20%;
+      right:-20%;
+      top:-140px;
+      height:220px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(79,109,245,.22), transparent 55%),
+        radial-gradient(circle at 70% 10%, rgba(139,92,246,.16), transparent 60%),
+        radial-gradient(circle at 55% 60%, rgba(110,231,183,.14), transparent 55%);
+      pointer-events:none;
+      filter: blur(2px);
+    }
+    .myDayCard > *{position:relative; z-index:1;}
+
+    .myDayCard .result{
+      border-color: rgba(79,109,245,.18);
+      background:
+        linear-gradient(180deg, rgba(79,109,245,.10), rgba(255,255,255,.0));
+    }
+    .myDayCard .resultTitle{
+      color: rgba(43,47,58,.72);
+      font-weight: 900;
+      letter-spacing: .2px;
+    }
+
+    .myDayCard .item{
+      background: rgba(255,255,255,.92);
+      border-color: rgba(231,233,242,.95);
+    }
+    .myDayCard .item:hover{border-color: rgba(79,109,245,.22)}
+    .myDayCard .item:focus-within{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
+
+    .myDayCard .item.done{
+      opacity: 1;
+      border-color: rgba(110,231,183,.30);
+      background: rgba(110,231,183,.08);
+    }
+    .myDayCard .item.done .txt{color: rgba(20,83,45,.88)}
+
+    /* My Day: scroll only the task list area */
+    .myDayScroll{
+      overflow-y:auto;
+      overscroll-behavior: contain;
+      max-height: 48vh;
+      padding-right: 4px;
+    }
+    @media (max-width: 520px){
+      .myDayScroll{max-height: 56vh;}
+    }
     .toast{
       margin-top:10px;
       padding:10px 12px;

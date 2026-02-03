@@ -219,3 +219,50 @@ export function computeWeekArchetype(weekRecords){
 
   return "Gentle Week";
 }
+
+export function explainWeekArchetype(weekRecords){
+  const archetype = computeWeekArchetype(weekRecords);
+
+  let gap = 0;
+  let maxGap = 0;
+  let hadReturnAfterGap = false;
+  for(const d of weekRecords){
+    if(!d.checkedIn){
+      gap++;
+      if(gap > maxGap) maxGap = gap;
+    }else{
+      if(gap >= 2) hadReturnAfterGap = true;
+      gap = 0;
+    }
+  }
+
+  const presentDays = weekRecords.filter(d=>d.checkedIn).length;
+  const taskDays = weekRecords.filter(d=>d.tasksAdded > 0).length;
+
+  const levelsChosen = weekRecords.filter(d=>d.checkedIn && d.level).map(d=>d.level);
+  const counts = {rest:0,gentle:0,light:0,steady:0,capable:0,brave:0};
+  for(const l of levelsChosen) if(counts[l] !== undefined) counts[l]++;
+
+  const total = levelsChosen.length || 1;
+  const steadyRatio = (counts.light + counts.steady) / total;
+
+  switch(archetype){
+    case "Recovering Week":
+      return `You checked in again after a ${Math.max(2, maxGap)}-day gap.`;
+    case "Resting Week":
+      if(presentDays <= 1) return `Only ${presentDays}/7 check-ins this week.`;
+      return `A lot of your check-ins were Rest or Gentle (${counts.rest + counts.gentle} of ${levelsChosen.length || 0}).`;
+    case "Gentle Week":
+      return `Most check-ins leaned Rest or Gentle (${counts.rest + counts.gentle} of ${levelsChosen.length || 0}).`;
+    case "Steady Week":
+      if(steadyRatio >= 0.35) return `You showed up ${presentDays}/7 days with a steadier pace mix (${counts.light + counts.steady} Light/Steady).`;
+      return `You showed up ${presentDays}/7 days and added activities on ${taskDays} days.`;
+    case "Capable Week":
+      return `You showed up ${presentDays}/7 days, chose Capable ${counts.capable} time(s), and added activities on ${taskDays} days.`;
+    case "Brave Week":
+      return `You chose Brave ${counts.brave} time(s) and showed up ${presentDays}/7 days.`;
+    default:
+      if(hadReturnAfterGap) return `You checked in again after some time away.`;
+      return `Based on your check-ins and chosen paces this week.`;
+  }
+}
