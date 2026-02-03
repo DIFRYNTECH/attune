@@ -3,18 +3,50 @@ import { useEffect, useRef, useState } from "react";
 import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeCopy } from "../lib/attuneEngine";
 
-function dateKeyDaysAgo(daysAgo) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return todayKey(d);
+function startOfWeekMonday(d = new Date()) {
+  const dt = new Date(d);
+  const day = dt.getDay(); // 0=Sun..6=Sat
+  const daysSinceMonday = (day + 6) % 7; // Mon=0, Tue=1, ... Sun=6
+  dt.setHours(0, 0, 0, 0);
+  dt.setDate(dt.getDate() - daysSinceMonday);
+  return dt;
+}
+
+function buildWeekKeysMondayToSunday(baseDate = new Date()) {
+  const start = startOfWeekMonday(baseDate);
+  const keys = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(d.getDate() + i);
+    return todayKey(d);
+  });
+  return { keys, startKey: keys[0], endKey: keys[keys.length - 1] };
+}
+
+function dateFromKey(key) {
+  if (typeof key !== "string") return null;
+  const m = key.match(/^([0-9]{4})-([0-9]{2})-([0-9]{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]);
+  const d = Number(m[3]);
+  if (!Number.isFinite(y) || !Number.isFinite(mo) || !Number.isFinite(d)) return null;
+  return new Date(y, mo - 1, d);
+}
+
+function formatDateLong(key) {
+  const dt = dateFromKey(key);
+  if (!dt) return "";
+  return dt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
 
 function buildWeekRecords(state) {
   const history = state.history || [];
   const today = todayKey();
-
-  // Oldest → newest
-  const keys = Array.from({ length: 7 }, (_, i) => dateKeyDaysAgo(6 - i));
+  const { keys } = buildWeekKeysMondayToSunday(new Date());
 
   return keys.map((date) => {
     const fromHistory = history.find((r) => r.date === date);
@@ -104,8 +136,10 @@ function limitChars(text, maxChars) {
 export default function Weekly({ state, actions }) {
   const [showMomentumInfo, setShowMomentumInfo] = useState(false);
   const [showWeekTypeInfo, setShowWeekTypeInfo] = useState(false);
+  const [showWeekRangeInfo, setShowWeekRangeInfo] = useState(false);
   const momentumCloseBtnRef = useRef(null);
   const weekTypeCloseBtnRef = useRef(null);
+  const weekRangeCloseBtnRef = useRef(null);
   const noteRef = useRef(null);
 
   const weekRecords = buildWeekRecords(state);
@@ -115,27 +149,30 @@ export default function Weekly({ state, actions }) {
 
   const { score, label, daysPresent, tasksDone } = computeMomentum(weekRecords);
 
-  const weekId = `${weekRecords[0]?.date || ""}_${weekRecords[weekRecords.length - 1]?.date || ""}`;
+  const weekRange = buildWeekKeysMondayToSunday(new Date());
+  const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
   const note = state.weeklyNotes?.[weekId] || "";
   const NOTE_CHAR_LIMIT = 500;
   const noteChars = countChars(note);
 
   useEffect(() => {
-    if (!showMomentumInfo && !showWeekTypeInfo) return;
+    if (!showMomentumInfo && !showWeekTypeInfo && !showWeekRangeInfo) return;
 
-    if (showWeekTypeInfo) weekTypeCloseBtnRef.current?.focus?.();
+    if (showWeekRangeInfo) weekRangeCloseBtnRef.current?.focus?.();
+    else if (showWeekTypeInfo) weekTypeCloseBtnRef.current?.focus?.();
     else momentumCloseBtnRef.current?.focus?.();
 
     function onKeyDown(e) {
       if (e.key === "Escape") {
         setShowMomentumInfo(false);
         setShowWeekTypeInfo(false);
+        setShowWeekRangeInfo(false);
       }
     }
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showMomentumInfo, showWeekTypeInfo]);
+  }, [showMomentumInfo, showWeekTypeInfo, showWeekRangeInfo]);
 
   const levelCounts = weekRecords.reduce(
     (acc, d) => {
@@ -147,8 +184,69 @@ export default function Weekly({ state, actions }) {
 
   return (
     <div className="card weeklyCard">
-      <h2>📅 Weekly</h2>
-      <div className="sub">A gentle look back, let's check your progress without pressure.</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <button
+          type="button"
+          onClick={() => setShowWeekRangeInfo(true)}
+          aria-label="Which dates are included in this week?"
+          title="Which dates are included in this week?"
+          style={{
+            border: "1px solid transparent",
+            background: "transparent",
+            color: "var(--ink)",
+            width: 26,
+            height: 26,
+            borderRadius: 999,
+            fontWeight: 900,
+            fontSize: 18,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            padding: 0,
+            lineHeight: 1,
+            flex: "0 0 auto",
+          }}
+        >
+          📅
+        </button>
+        <h2 style={{ margin: 0 }}>Weekly</h2>
+      </div>
+
+      <div className="sub">A gentle look back, without pressure.</div>
+
+      {showWeekRangeInfo && (
+        <div
+          className="modalOverlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Week date range"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setShowWeekRangeInfo(false);
+          }}
+        >
+          <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalTitle">This week</div>
+            <div className="modalBody">
+              This week runs Monday to Sunday.
+              <div style={{ marginTop: 8, fontWeight: 800, color: "var(--ink)" }}>
+                {formatDateLong(weekRange.startKey)} to {formatDateLong(weekRange.endKey)}
+              </div>
+            </div>
+
+            <div className="modalActions">
+              <button
+                ref={weekRangeCloseBtnRef}
+                type="button"
+                className="btn"
+                onClick={() => setShowWeekRangeInfo(false)}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="result" style={{ marginBottom: 12 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
