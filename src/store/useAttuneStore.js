@@ -195,7 +195,7 @@ export function useAttuneStore(){
     addCurrent: () =>
       setState(s => {
         if(!s.currentSpin){
-          return { ...s, toast: { text: "Spin first — or just take a breath. No rush.", good: false, screen: s.screen } };
+          return { ...s, toast: { text: "Spin first - or just take a breath. No rush.", good: false, screen: s.screen } };
         }
 
         if((s.myDay?.length || 0) >= 10){

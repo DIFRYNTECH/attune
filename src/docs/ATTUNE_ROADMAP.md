@@ -1,11 +1,11 @@
-# Attune — Roadmap
+# Attune - Roadmap
 
 This roadmap prioritises emotional safety, speed, and clarity.
 Each phase should leave the app usable, even if we stop there.
 
 ---
 
-## Phase 0 — Foundations (DONE / IN PROGRESS)
+## Phase 0 - Foundations (DONE / IN PROGRESS)
 
 Goal: A working skeleton that proves the concept.
 
@@ -22,7 +22,7 @@ Outcome:
 
 ---
 
-## Phase 1 — Mobile Calm Pass (NEXT)
+## Phase 1 - Mobile Calm Pass (NEXT)
 
 Goal: Make Attune feel **calm and usable on a phone**.
 
@@ -46,7 +46,7 @@ Goal: Make Attune feel **calm and usable on a phone**.
 
 ---
 
-## Phase 2 — Check-in Screen (Core Loop Start)
+## Phase 2 - Check-in Screen (Core Loop Start)
 
 Goal: Make the first interaction emotionally safe and simple.
 
@@ -63,7 +63,7 @@ Goal: Make the first interaction emotionally safe and simple.
 
 ---
 
-## Phase 3 — Wheel Experience (Playful, Not Addictive)
+## Phase 3 - Wheel Experience (Playful, Not Addictive)
 
 Goal: Reduce decision fatigue through gentle play.
 
@@ -79,7 +79,7 @@ Goal: Reduce decision fatigue through gentle play.
 
 ---
 
-## Phase 4 — My Day (Gentle Follow-through)
+## Phase 4 - My Day (Gentle Follow-through)
 
 Goal: Make action feel achievable.
 
@@ -100,7 +100,7 @@ Goal: Make action feel achievable.
 
 ---
 
-## Phase 5 — Weekly Reflection (Meaning Without Metrics)
+## Phase 5 - Weekly Reflection (Meaning Without Metrics)
 
 Goal: Reflection without judgment.
 
@@ -116,7 +116,7 @@ Goal: Reflection without judgment.
 
 ---
 
-## Phase 6 — Polish & Trust
+## Phase 6 - Polish & Trust
 
 Goal: Make Attune feel safe enough to keep.
 
@@ -136,7 +136,7 @@ Goal: Make Attune feel safe enough to keep.
 
 ---
 
-## Phase 7 — Deployment & Sharing
+## Phase 7 - Deployment & Sharing
 
 Goal: Put Attune in someone’s hands.
 
@@ -156,7 +156,7 @@ Goal: Put Attune in someone’s hands.
 
 ---
 
-## Phase 8 — Decide the Future
+## Phase 8 - Decide the Future
 
 Only after real use.
 
@@ -169,5 +169,5 @@ Possible paths:
 Decision driver:
 **Does Attune genuinely help people come back to themselves?**
 
-If yes — we continue.
-If no — we adjust gently.
+If yes - we continue.
+If no - we adjust gently.

@@ -1,4 +1,4 @@
-# Attune — Design Rules (Non-Negotiables)
+# Attune - Design Rules (Non-Negotiables)
 
 These rules exist to preserve Attune’s emotional safety, clarity, and calm.
 
@@ -9,7 +9,7 @@ Attune is a gentle daily companion.
 It does not fix, push, optimise, or judge.
 
 Core line:
-“Meet yourself where you are — then take one small step toward better.”
+“Meet yourself where you are - then take one small step toward better.”
 
 ---
 

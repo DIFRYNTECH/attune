@@ -151,7 +151,7 @@ export function dailyMessageFromCheckin(checkin, level){
     case "steady":
       return { a: "A calm rhythm works.", b: "One or two doable things. No pushing." };
     case "capable":
-      return { a: "You’ve got some capacity today.", b: "Use it carefully — and leave room for rest." };
+      return { a: "You’ve got some capacity today.", b: "Use it carefully - and leave room for rest." };
     case "brave":
       return { a: "A small stretch can be kind.", b: "Choose a safe challenge, then recover." };
     default:
@@ -165,7 +165,7 @@ export function weekArchetypeCopy(type){
     case "Recovering Week":
       return "This week had stops and starts. What mattered most is that you returned. Coming back is a form of strength.";
     case "Resting Week":
-      return "This week asked for rest. That’s not a step back — it’s care. Nothing needed fixing here.";
+      return "This week asked for rest. That’s not a step back - it’s care. Nothing needed fixing here.";
     case "Gentle Week":
       return "You chose small, supportive moments. Those choices matter more than they look. This was a kind way to move through the week.";
     case "Steady Week":

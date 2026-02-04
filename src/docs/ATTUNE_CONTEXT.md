@@ -1,4 +1,4 @@
-# Attune — Context & Direction
+# Attune - Context & Direction
 
 ## What Attune is
 Attune is a gentle daily companion.
@@ -21,7 +21,7 @@ Attune is designed for emotionally fragile days.
 - never judgmental
 
 ## Core principle
-“Meet yourself where you are — then take one small step toward better.”
+“Meet yourself where you are - then take one small step toward better.”
 
 ## Non-negotiables
 Attune must never:

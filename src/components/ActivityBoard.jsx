@@ -311,7 +311,6 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
               {isRevealed && (
                 <div className="tileBack">
                   <div className="tileText">{opt?.text || "…"}</div>
-                  <div className="tileHint">{isTaken ? "Added" : ""}</div>
                 </div>
               )}
             </button>
@@ -319,9 +318,6 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
         })}
       </div>
 
-      <div className="footerNote" style={{ textAlign: "center", marginTop: 10 }}>
-        Reveal a few, then add what feels doable.
-      </div>
     </div>
   );
 }

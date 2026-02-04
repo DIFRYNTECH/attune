@@ -223,7 +223,7 @@ export default function CheckIn({ state, actions }) {
                     return found ? `${found.emoji} ${label}` : label;
                   })
                   .join(" · ")
-              : "—"}
+              : "-"}
           </div>
         </div>
 

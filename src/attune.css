@@ -1,4 +1,4 @@
-/* Phase 1 — Mobile Calm Pass
+/* Phase 1 - Mobile Calm Pass
    Keep visual styling (colors, cards, typography) in src/index.css.
    This file focuses on layout + viewport safety + mobile navigation. */
 
@@ -65,6 +65,17 @@ html {
     flex-direction: column;
   }
 
+  /* When a toast is visible, reserve extra space so it can't cover card content. */
+  .wrap.toastOn {
+    padding-bottom: calc(
+      12px +
+      4px +
+      var(--bottomNavSpace) +
+      var(--toastSpace) +
+      env(safe-area-inset-bottom)
+    );
+  }
+
   .top {
     flex-direction: column;
     align-items: flex-start;
@@ -108,9 +119,23 @@ html {
     padding-bottom: 16px;
   }
 
-  /* When a toast is visible, prevent it from covering the bottom of the card. */
-  .wrap.toastOn .grid > main > .card {
-    padding-bottom: calc(16px + var(--toastSpace));
+  /* Activity Picker board: allow tiles to scroll within the card.
+     Prevents the bottom row from being clipped on shorter viewports
+     (especially when toast space is reserved). */
+  .boardWrap {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .boardGrid {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: 8px;
   }
 
   /* Weekly note: fill available space; textarea can scroll */
