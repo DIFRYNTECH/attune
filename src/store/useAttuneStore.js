@@ -29,6 +29,10 @@ function defaultState(){
     myDayCap: 5,
     history: [],
     weeklyNotes: {},
+    profile: {
+      name: "",
+      email: "",
+    },
     dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good, screen}
     currentSpin: null,
@@ -71,6 +75,10 @@ function normalizeLoadedState(loaded){
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
   if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
+
+  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "" };
+  if(typeof next.profile.name !== "string") next.profile.name = "";
+  if(typeof next.profile.email !== "string") next.profile.email = "";
 
   // Toasts are ephemeral; don't restore them across reloads.
   next.toast = null;
@@ -250,6 +258,27 @@ export function useAttuneStore(){
 
     setBoardAssigned: (boardAssigned) =>
       setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
+
+    setProfile: (patch) =>
+      setState(s => {
+        const nextPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+        const profile = { ...(s.profile || { name: "", email: "" }), ...nextPatch };
+        if(typeof profile.name !== "string") profile.name = "";
+        if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
+
+        if(typeof profile.email !== "string") profile.email = "";
+        profile.email = profile.email.trim();
+        if(profile.email.length > 120) profile.email = profile.email.slice(0, 120);
+        if(profile.email) profile.email = profile.email.toLowerCase();
+
+        return { ...s, profile };
+      }),
+
+    clearDeviceData: () =>
+      setState(() => ({
+        ...defaultState(),
+        toast: { text: "Signed out. This device is cleared.", good: false, screen: "checkin" },
+      })),
 
     setWeeklyNote: (weekId, text) =>
       setState(s => {

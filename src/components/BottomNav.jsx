@@ -1,9 +1,10 @@
 export default function BottomNav({ screen, setScreen }) {
   const items = [
     ["checkin", "Check-in"],
-    ["wheel", "Activity Picker"],
+    ["wheel", "Pick"],
     ["today", "My Day"],
     ["week", "Weekly"],
+    ["profile", "Profile"],
   ];
 
   return (

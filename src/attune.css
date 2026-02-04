@@ -39,6 +39,7 @@ html {
   padding: 10px 12px;
   font-weight: 700;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .bottomNavBtn.active {
@@ -182,6 +183,11 @@ html {
 
   .bottomNav {
     display: flex;
+  }
+
+  .bottomNavBtn {
+    padding: 9px 10px;
+    font-size: 12px;
   }
 
   /* Toast: keep it from stealing layout height (which clips cards). */

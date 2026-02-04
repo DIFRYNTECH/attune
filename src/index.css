@@ -125,12 +125,12 @@
     @media (max-width:560px){ .row{grid-template-columns:1fr} }
 
     label{display:block; font-size:12px; color:var(--muted); margin:6px 0 6px}
-    select, input[type="text"], textarea{
+    select, input[type="text"], input[type="email"], textarea{
       width:100%; border:1px solid var(--line); border-radius:14px;
       padding:10px 12px; font-size:14px; background:#fff;
       outline:none;
     }
-    select:focus, input[type="text"]:focus, textarea:focus{border-color:#cfd6ff; box-shadow:0 0 0 4px rgba(79,109,245,.12)}
+    select:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus{border-color:#cfd6ff; box-shadow:0 0 0 4px rgba(79,109,245,.12)}
 
     .noteDetails{
       border:1px solid var(--line);

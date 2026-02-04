@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import BottomNav from "../components/BottomNav.jsx";
 import ActivityPicker from "../screens/ActivityPicker.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
+import Profile from "../screens/Profile.jsx";
 import Today from "../screens/Today.jsx";
 import Weekly from "../screens/Weekly.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
@@ -75,6 +76,14 @@ function TopNav({ screen, go }) {
         >
           Weekly
         </button>
+        <button
+          type="button"
+          className={"btn small" + (screen === "profile" ? " primary" : "")}
+          onClick={() => go("profile")}
+          aria-current={screen === "profile" ? "page" : undefined}
+        >
+          Profile
+        </button>
       </div>
     </div>
   );
@@ -121,6 +130,10 @@ export default function App() {
 
           {screen === "week" && (
             <Weekly state={state} actions={actions} />
+          )}
+
+          {screen === "profile" && (
+            <Profile state={state} actions={actions} />
           )}
         </main>
 
