@@ -294,7 +294,7 @@ export default function CheckIn({ state, actions }) {
       </div>
 
       <div className="hint" style={{ marginTop: 12 }}>
-        Used to personalize your options and keep suggestions relevant. You can change this anytime.
+        Used to personalize your options and keep suggestions relevant. If AI is enabled, your optional note may be used to help build today’s board. You can change this anytime.
       </div>
 
       {!noteOpen && <CalmBallFillToAura />}

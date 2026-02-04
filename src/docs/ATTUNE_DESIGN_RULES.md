@@ -66,11 +66,12 @@ Each screen should have:
 - 1 primary action (max 2)
 - optional secondary actions tucked away
 
-The four screens:
+Core screens:
 1. Check-in: “Where are you today?”
-2. Wheel: “Here are gentle options”
+2. Activity Picker: “Here are gentle options”
 3. My Day: “2–5 small tasks, no pressure”
 4. Weekly: “A kind reflection, no scoring”
+5. Profile: “Local-only identity + preferences”
 
 ---
 
@@ -79,7 +80,11 @@ The four screens:
 - Returning after a gap is praised gently (not hyped).
 - Rest is always a valid option.
 - “Done” is celebrated softly, not explosively.
-- The wheel must feel playful, not addictive.
+- Any playful interaction (wheel/tiles) must feel playful, not addictive.
+
+Activity Picker caps (non-negotiable):
+- Soft cap of 5 tasks for My Day (ask before increasing)
+- Hard cap of 10 tasks (no more reveals/adds beyond 10)
 
 ---
 
@@ -96,6 +101,12 @@ Tasks must not be:
 - shamey chores
 - moralized (“be better”)
 - long or complex sequences
+
+If tasks are AI-generated, they must also:
+- never suggest anything harmful or risky
+- never suggest medications, supplements, diagnoses, or treatment plans
+- avoid punitive framing (“push through”, “no excuses”, etc.)
+- default to the gentlest plausible version of an activity
 
 Pace levels:
 Rest → Gentle → Steady → Capable → Brave
@@ -132,6 +143,10 @@ On mobile:
 - Highlight current screen
 - Avoid top “pill button clusters” that wrap awkwardly
 
+Overlays (toast/modals):
+- Must not hide content behind the bottom nav
+- Toasts must be screen-scoped (no cross-screen bleed)
+
 ---
 
 ## 9) Status / meta information rules
@@ -164,6 +179,10 @@ Weekly reflection must:
 Archetypes are descriptive, not evaluative.
 Returning after absence counts strongly.
 
+Weekly note rules:
+- Note should be stable for the entire calendar week (Mon → Sun)
+- Any week-range detail should be shown only on demand (info modal), not as constant UI noise
+
 ---
 
 ## 11) Accessibility + comfort
@@ -182,3 +201,17 @@ If there’s ever a conflict between:
 
 Choose calm.
 Always.
+
+---
+
+## 13) AI privacy rule
+If AI personalization is enabled:
+- keep the OpenAI API key server-side (never in the browser)
+- be explicit when optional user text may be sent to the AI
+- provide a clear toggle to not send optional notes
+
+---
+
+## 14) Profile trust rule
+- Profile is local-only until authentication exists
+- “Sign out” should clearly mean “clear this device’s data”

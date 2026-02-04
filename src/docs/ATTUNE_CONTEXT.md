@@ -47,14 +47,106 @@ The user can always choose rest.
 - Web app first (mobile-first)
 - React + Vite
 - Local state (localStorage)
-- No backend yet
+- Optional backend for AI board generation (Node/Express)
 - No accounts yet
+
+AI board generation (optional):
+- On entering the Activity Picker, Attune can generate a fresh 15-tile board from the user’s Check-in (mood/energy/body/pace + optional note)
+- The browser calls a local/prod `/api/generate-board` endpoint (Vite proxies `/api/*` in dev)
+- The backend calls OpenAI using the app’s API key (kept server-side)
+- If AI is unavailable, Attune falls back to the built-in task list
+- Users do not need OpenAI accounts
+
+Privacy control:
+- A Profile preference controls whether the optional note is sent to the AI (signals still work without the note)
+
+Local dev:
+- `npm run dev` runs the app only (no AI)
+- `npm run dev:all` runs app + local AI API server
+
+---
+
+## Current architecture snapshot
+
+### Frontend (React + Vite)
+- App shell + routing: `src/app/App.jsx`
+	- `state.screen` decides which screen renders
+	- Toast is only shown when `toast.screen === screen`
+- Screens:
+	- Check-in: `src/screens/CheckIn.jsx`
+	- Activity Picker: `src/screens/ActivityPicker.jsx` + board UI `src/components/ActivityBoard.jsx`
+	- My Day: `src/screens/Today.jsx`
+	- Weekly: `src/screens/Weekly.jsx`
+	- Profile: `src/screens/Profile.jsx`
+- Navigation:
+	- Mobile bottom nav: `src/components/BottomNav.jsx`
+	- Top nav exists for desktop/structure
+
+### State + persistence
+- Store: `src/store/useAttuneStore.js`
+	- Local-first state persisted to localStorage
+	- Schema migration via `schemaVersion`
+	- Toast is ephemeral (not persisted)
+- Storage helpers: `src/lib/storage.js`
+- Built-in suggestions (fallback): `src/lib/attuneEngine.js` + `src/data/tasks.js`
+
+### AI board generation (optional)
+- Local API server: `server/index.js`
+	- `POST /api/generate-board` returns strict JSON `{ tasks: [...] }` (exactly 15)
+	- Output is validated + safety-filtered (no harm, no meds/treatment plans)
+- Frontend trigger:
+	- `src/screens/ActivityPicker.jsx` calls `actions.ensureAiBoard(...)` on mount
+- Note privacy toggle:
+	- Stored in `state.profile.useNoteForAi`
+	- When off, the optional note is omitted from the AI request
+- Dev proxy:
+	- `vite.config.js` proxies `/api/*` → `http://localhost:8787`
+
+### Scripts + environment
+- `npm run dev`: frontend only
+- `npm run api`: API server only
+- `npm run dev:all`: runs both (via concurrently)
+- Env vars (server):
+	- `OPENAI_API_KEY` (required to enable AI)
+	- `OPENAI_MODEL` (default: `gpt-4o-mini`)
+	- `PORT` (default: 8787)
+
+### UX invariants worth protecting
+- Activity Picker: 15 tiles, stable assignment, no repeats
+- Caps: soft cap 5 (confirm), hard cap 10 (stop reveals/adds)
+- Toast: above bottom nav, screen-scoped, non-persistent
+- Weekly: calendar week (Mon → Sun), weekly note keyed to week
+- Profile: local-only; “Sign out” clears device data
 
 Screens:
 1. Check-in
-2. Wheel
+2. Activity Picker (15-tile board)
 3. My Day
-4. Weekly reflection
+4. Weekly
+5. Profile
+
+Current behavior highlights:
+- Activity Picker board
+	- 15 tiles per board
+	- Single tap adds to My Day
+	- No repeats; stable assignment (tiles shouldn’t “jump” when revealing)
+	- Soft cap: 5 tasks (confirm to continue)
+	- Hard cap: 10 tasks (prevents revealing/adding beyond 10)
+	- “Clear board” clears My Day and refreshes options
+- Toasts
+	- Fixed above bottom nav on mobile
+	- Scoped to the screen that created them (no cross-screen bleed)
+	- Ephemeral (not persisted across reload)
+- Weekly
+	- Calendar week (Mon → Sun)
+	- “Signal n/100” (non-graded tone)
+	- Week range shown via a calendar-triggered info modal
+	- Weekly note persists per calendar week
+- Profile
+	- Local-only name + email
+	- Export data (JSON)
+	- “Sign out” clears device data
+	- Toggle for whether the optional Check-in note is sent to AI
 
 ## Mobile-first rules
 - Phone is primary (≈ 390–420px width)
@@ -65,17 +157,17 @@ Screens:
 - Reduce cognitive load
 
 ## Current status
-- HTML prototype exists
-- React app running
-- UI partially recreated
-- Mobile view still feels too busy
-- Quick Status should be hidden or collapsed on mobile
-- Today’s message should be lightweight (not a full card)
+- React app running as a mobile-first SPA
+- Bottom nav + safe-area handling in place
+- Activity Picker board behavior + persistence in place
+- Weekly reflection is calendar-week based and non-graded
+- Profile is local-only (no auth) with export + device-clear sign out
+- Optional AI board generation with strict JSON + safety guardrails + fallback
 
 ## Current goal
-Refactor UI so that on mobile:
-- only one main card is visible
-- navigation is bottom-based
-- the app feels calm and non-overwhelming
+Keep shipping features without breaking calm:
+- preserve emotional safety and non-judgmental tone
+- preserve mobile layout constraints (fixed bottom nav, no hidden content)
+- keep the app usable offline / without AI
 
-We are prioritising clarity and emotional safety over features.
+We prioritise clarity and emotional safety over features.

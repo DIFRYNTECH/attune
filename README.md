@@ -1,5 +1,19 @@
 # React + Vite
 
+## Optional: AI-generated Activity Picker board
+
+Attune can optionally generate a fresh 15-tile Activity Picker board on each check-in, using your check-in signals (mood, energy, body, pace, note).
+
+This is implemented as a small local API server (so your OpenAI key is never shipped to the browser) with Vite proxying `/api/*` to it.
+
+### Setup
+
+- Copy [.env.example](.env.example) to `.env` and set `OPENAI_API_KEY`.
+- Install deps: `npm install`
+- Run both servers: `npm run dev:all`
+
+If the AI endpoint is unavailable, the app automatically falls back to the built-in task list.
+
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 
 Currently, two official plugins are available:

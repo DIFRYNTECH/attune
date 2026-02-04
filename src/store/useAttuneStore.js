@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 const DEFAULT_CHECKIN = {
   mood: "okay",
@@ -24,6 +24,7 @@ function defaultState(){
     checkin,
     level,
     options: [],
+    optionsSource: "default", // 'default' | 'ai'
     boardAssigned: [],
     myDay: [],
     myDayCap: 5,
@@ -32,11 +33,30 @@ function defaultState(){
     profile: {
       name: "",
       email: "",
+      useNoteForAi: true,
+    },
+    ai: {
+      status: "idle", // idle | loading | ready | error
+      today: "",
+      sig: "",
+      tasks: [],
+      error: "",
     },
     dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good, screen}
     currentSpin: null,
   };
+}
+
+function checkinSignature(checkin, level, useNoteForAi){
+  const mood = typeof checkin?.mood === "string" ? checkin.mood : "";
+  const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords.slice(0,2) : [];
+  const energy = typeof checkin?.energy === "string" ? checkin.energy : "";
+  const body = typeof checkin?.body === "string" ? checkin.body : "";
+  const includeNote = useNoteForAi !== false;
+  const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,100) : "";
+  const lvl = typeof level === "string" ? level : "";
+  return JSON.stringify({ mood, moodWords, energy, body, note, lvl });
 }
 
 function normalizeLoadedState(loaded){
@@ -76,9 +96,23 @@ function normalizeLoadedState(loaded){
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
   if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
 
-  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "" };
+  if(typeof next.optionsSource !== "string") next.optionsSource = "default";
+  if(next.optionsSource !== "default" && next.optionsSource !== "ai") next.optionsSource = "default";
+
+  if(!next.ai || typeof next.ai !== "object" || Array.isArray(next.ai)){
+    next.ai = { status: "idle", today: "", sig: "", tasks: [], error: "" };
+  }
+  if(typeof next.ai.status !== "string") next.ai.status = "idle";
+  if(!["idle","loading","ready","error"].includes(next.ai.status)) next.ai.status = "idle";
+  if(typeof next.ai.today !== "string") next.ai.today = "";
+  if(typeof next.ai.sig !== "string") next.ai.sig = "";
+  if(!Array.isArray(next.ai.tasks)) next.ai.tasks = [];
+  if(typeof next.ai.error !== "string") next.ai.error = "";
+
+  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true };
   if(typeof next.profile.name !== "string") next.profile.name = "";
   if(typeof next.profile.email !== "string") next.profile.email = "";
+  if(typeof next.profile.useNoteForAi !== "boolean") next.profile.useNoteForAi = true;
 
   // Toasts are ephemeral; don't restore them across reloads.
   next.toast = null;
@@ -102,6 +136,12 @@ function normalizeLoadedState(loaded){
 
 export function useAttuneStore(){
   const [state, setState] = useState(() => normalizeLoadedState(loadState()) || defaultState());
+  const stateRef = useRef(state);
+  const aiReqRef = useRef({ controller: null, requestId: 0 });
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // daily rollover
   useEffect(() => {
@@ -161,13 +201,13 @@ export function useAttuneStore(){
         const checkin = { ...s.checkin, ...patch };
         const level = suggestLevelFromCheckin(checkin);
         const options = suggestActivities(checkin, level);
-        return { ...s, checkin, level, options, dailyMessage: dailyMessageFromCheckin(checkin, level) };
+        return { ...s, checkin, level, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
       setState(s => {
         const options = suggestActivities(s.checkin, level);
-        return {...s, level, options, dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
+        return {...s, level, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
       }),
 
     suggestLevel: () =>
@@ -186,10 +226,108 @@ export function useAttuneStore(){
     refreshOptions: () =>
       setState(s => ({
         ...s,
-        options: suggestActivities(s.checkin, s.level),
+        options: (s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
+          ? s.ai.tasks.map(t => ({ text: t.text, level: s.level }))
+          : suggestActivities(s.checkin, s.level),
+        optionsSource: (s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
+          ? "ai"
+          : "default",
         boardAssigned: [],
         currentSpin: null,
       })),
+
+    ensureAiBoard: async (checkin, level, today) => {
+      const t = typeof today === "string" ? today : todayKey();
+      const includeNote = stateRef.current?.profile?.useNoteForAi !== false;
+      const sig = checkinSignature(checkin, level, includeNote);
+      const current = stateRef.current;
+
+      const alreadyReady =
+        current?.ai?.status === "ready" &&
+        current.ai.today === t &&
+        current.ai.sig === sig &&
+        Array.isArray(current.ai.tasks) &&
+        current.ai.tasks.length === 15;
+
+      if(alreadyReady) return;
+      if(current?.ai?.status === "loading" && current.ai?.today === t && current.ai?.sig === sig) return;
+
+      // Abort any in-flight request.
+      if(aiReqRef.current.controller){
+        try { aiReqRef.current.controller.abort(); } catch { /* noop */ }
+      }
+      const controller = new AbortController();
+      aiReqRef.current.controller = controller;
+      aiReqRef.current.requestId += 1;
+      const requestId = aiReqRef.current.requestId;
+
+      setState(s => ({
+        ...s,
+        ai: { ...s.ai, status: "loading", today: t, sig, error: "" },
+      }));
+
+      const timeoutMs = 12_000;
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
+        const resp = await fetch("/api/generate-board", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({ checkin: checkinForAi, level }),
+        });
+
+        if(!resp.ok){
+          throw new Error(`http_${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const tasks = Array.isArray(data?.tasks) ? data.tasks : null;
+        if(!tasks || tasks.length !== 15) throw new Error("invalid_tasks");
+
+        const nextOptions = tasks
+          .map((x) => (typeof x?.text === "string" ? x.text.trim() : ""))
+          .filter(Boolean)
+          .slice(0, 15)
+          .map((text) => ({ text, level }));
+
+        if(nextOptions.length !== 15) throw new Error("invalid_texts");
+
+        // Ignore stale responses.
+        if(requestId !== aiReqRef.current.requestId) return;
+
+        setState(s => {
+          const liveSig = checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi);
+          if(s.today !== t || liveSig !== sig) return s;
+
+          return {
+            ...s,
+            options: nextOptions,
+            optionsSource: "ai",
+            boardAssigned: [],
+            currentSpin: null,
+            ai: { status: "ready", today: t, sig, tasks, error: "" },
+          };
+        });
+      } catch {
+        if(requestId !== aiReqRef.current.requestId) return;
+
+        setState(s => {
+          const liveSig = checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi);
+          if(s.today !== t || liveSig !== sig) return s;
+
+          // Keep current options (default suggestions) as fallback.
+          return {
+            ...s,
+            optionsSource: "default",
+            ai: { ...s.ai, status: "error", today: t, sig, tasks: [], error: "Using built-in suggestions." },
+          };
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    },
 
     spinPick: () =>
       setState(s => {
@@ -262,7 +400,7 @@ export function useAttuneStore(){
     setProfile: (patch) =>
       setState(s => {
         const nextPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
-        const profile = { ...(s.profile || { name: "", email: "" }), ...nextPatch };
+        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
 
@@ -270,6 +408,8 @@ export function useAttuneStore(){
         profile.email = profile.email.trim();
         if(profile.email.length > 120) profile.email = profile.email.slice(0, 120);
         if(profile.email) profile.email = profile.email.toLowerCase();
+
+        if(typeof profile.useNoteForAi !== "boolean") profile.useNoteForAi = true;
 
         return { ...s, profile };
       }),
@@ -349,6 +489,7 @@ export function useAttuneStore(){
       setState(s => ({
         ...s,
         options: [],
+        optionsSource: "default",
         boardAssigned: [],
         myDay: [],
         currentSpin: null,

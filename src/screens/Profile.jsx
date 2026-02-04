@@ -18,6 +18,7 @@ export default function Profile({ state, actions }) {
 
   const profileName = state.profile?.name || "";
   const profileEmail = state.profile?.email || "";
+  const useNoteForAi = state.profile?.useNoteForAi !== false;
 
   const exportPayload = useMemo(() => {
     // Keep export calm + explicit: local-only data snapshot.
@@ -74,6 +75,25 @@ export default function Profile({ state, actions }) {
         <div className="miniPills" aria-label="Preferences">
           <span className="miniPill">📅 Week starts on Monday</span>
         </div>
+
+        <div style={{ marginTop: 12 }}>
+          <label
+            htmlFor="useNoteForAi"
+            style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}
+          >
+            <input
+              id="useNoteForAi"
+              type="checkbox"
+              checked={useNoteForAi}
+              onChange={(e) => actions?.setProfile?.({ useNoteForAi: !!e.target.checked })}
+            />
+            <span>Use my optional check-in note to personalize AI suggestions</span>
+          </label>
+          <div className="footerNote" style={{ marginTop: 6 }}>
+            If turned off, Attune will still use mood, energy, body, and pace — but won’t send your note.
+          </div>
+        </div>
+
         <div className="footerNote" style={{ marginTop: 8 }}>
           More preferences can live here later (notifications, theme, etc.).
         </div>

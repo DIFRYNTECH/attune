@@ -5,15 +5,16 @@ Each phase should leave the app usable, even if we stop there.
 
 ---
 
-## Phase 0 - Foundations (DONE / IN PROGRESS)
+## Phase 0 - Foundations (DONE)
 
 Goal: A working skeleton that proves the concept.
 
 ✔ Web app first (React + Vite)  
 ✔ Mobile-first mindset  
-✔ Four core screens defined  
+✔ Core screens defined (+ Profile)  
 ✔ Heart & soul articulated  
 ✔ Local-only persistence (no backend)  
+✔ Optional AI board generation via a small backend (fallback to built-in tasks)  
 
 Outcome:
 - Attune runs in the browser
@@ -22,7 +23,7 @@ Outcome:
 
 ---
 
-## Phase 1 - Mobile Calm Pass (NEXT)
+## Phase 1 - Mobile Calm Pass (DONE)
 
 Goal: Make Attune feel **calm and usable on a phone**.
 
@@ -35,7 +36,7 @@ Goal: Make Attune feel **calm and usable on a phone**.
 - Increase breathing room (padding, spacing)
 
 ### Navigation
-- Bottom navigation: Check-in / Wheel / My Day / Weekly
+- Bottom navigation: Check-in / Pick / My Day / Weekly / Profile
 - Remove top pill navigation on mobile
 - Keep current screen visually obvious
 
@@ -47,6 +48,7 @@ Goal: Make Attune feel **calm and usable on a phone**.
 ---
 
 ## Phase 2 - Check-in Screen (Core Loop Start)
+Status: DONE
 
 Goal: Make the first interaction emotionally safe and simple.
 
@@ -64,6 +66,7 @@ Goal: Make the first interaction emotionally safe and simple.
 ---
 
 ## Phase 3 - Wheel Experience (Playful, Not Addictive)
+Status: DONE (Activity Picker supports board + wheel-style suggestions)
 
 Goal: Reduce decision fatigue through gentle play.
 
@@ -80,6 +83,7 @@ Goal: Reduce decision fatigue through gentle play.
 ---
 
 ## Phase 4 - My Day (Gentle Follow-through)
+Status: DONE
 
 Goal: Make action feel achievable.
 
@@ -101,6 +105,7 @@ Goal: Make action feel achievable.
 ---
 
 ## Phase 5 - Weekly Reflection (Meaning Without Metrics)
+Status: DONE (calendar-week based, weekly note persists per week)
 
 Goal: Reflection without judgment.
 
@@ -130,6 +135,10 @@ Goal: Make Attune feel safe enough to keep.
 - Gentle explanation of data storage
 - No dark patterns
 
+Additions completed:
+- Profile screen (local-only) with export and device-clear sign out
+- Toasts are screen-scoped and not persisted
+
 ### Outcome
 - User trusts Attune
 - App feels calm, consistent, and intentional
@@ -144,6 +153,19 @@ Goal: Put Attune in someone’s hands.
 - Vercel or Netlify
 - Enable PWA “Add to Home Screen”
 - Test on real phones
+
+If AI personalization is enabled in production:
+- Deploy the API server (Node/Express) with `OPENAI_API_KEY` set server-side
+- Add abuse protection (rate limiting / quotas) before public sharing
+- Decide data policy (what you log, if anything) and keep it minimal
+- Consider turning off sending the optional note by default, or make the toggle very visible
+
+Recommended “AI hardening” checklist:
+- Rate limit per IP/device
+- Daily quota per device
+- Timeout + fallback (already in place)
+- Strict schema validation (already in place)
+- Basic monitoring (success/error counts only)
 
 ### Share
 - Private link
