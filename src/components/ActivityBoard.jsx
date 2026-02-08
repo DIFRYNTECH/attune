@@ -299,7 +299,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
                     ? "No more options"
                     : isDisabled
                       ? "You’ve reached today’s cap"
-                      : "Tap to add"
+                      : (isRevealed && opt?.text ? opt.text : "Tap to add")
               }
             >
               {!isRevealed && (

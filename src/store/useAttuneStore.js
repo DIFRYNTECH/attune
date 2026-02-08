@@ -5,6 +5,9 @@ import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 
 const SCHEMA_VERSION = 7;
 
+// Bump this when the AI prompt/validation changes and you want fresh boards.
+const AI_BOARD_VERSION = 2;
+
 const DEFAULT_CHECKIN = {
   mood: "okay",
   moodWords: ["Okay"],
@@ -54,9 +57,9 @@ function checkinSignature(checkin, level, useNoteForAi){
   const energy = typeof checkin?.energy === "string" ? checkin.energy : "";
   const body = typeof checkin?.body === "string" ? checkin.body : "";
   const includeNote = useNoteForAi !== false;
-  const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,100) : "";
+  const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,200) : "";
   const lvl = typeof level === "string" ? level : "";
-  return JSON.stringify({ mood, moodWords, energy, body, note, lvl });
+  return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, note, lvl });
 }
 
 function normalizeLoadedState(loaded){
@@ -75,7 +78,7 @@ function normalizeLoadedState(loaded){
     };
 
     if(typeof next.checkin.note !== "string") next.checkin.note = "";
-    if(next.checkin.note.length > 100) next.checkin.note = next.checkin.note.slice(0, 100);
+    if(next.checkin.note.length > 200) next.checkin.note = next.checkin.note.slice(0, 200);
 
     // Only override the old default if it looks like it was never changed.
     // (Earlier versions defaulted to energy:"low" body:"achey".)
@@ -266,7 +269,7 @@ export function useAttuneStore(){
         ai: { ...s.ai, status: "loading", today: t, sig, error: "" },
       }));
 
-      const timeoutMs = 12_000;
+      const timeoutMs = 35_000;
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
       try {
@@ -310,8 +313,13 @@ export function useAttuneStore(){
             ai: { status: "ready", today: t, sig, tasks, error: "" },
           };
         });
-      } catch {
+      } catch (err) {
         if(requestId !== aiReqRef.current.requestId) return;
+
+        const message =
+          err && typeof err === "object" && (err.name === "AbortError" || String(err.message || "").includes("aborted"))
+            ? "AI took too long. Using built-in suggestions."
+            : "Using built-in suggestions.";
 
         setState(s => {
           const liveSig = checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi);
@@ -321,7 +329,7 @@ export function useAttuneStore(){
           return {
             ...s,
             optionsSource: "default",
-            ai: { ...s.ai, status: "error", today: t, sig, tasks: [], error: "Using built-in suggestions." },
+            ai: { ...s.ai, status: "error", today: t, sig, tasks: [], error: message },
           };
         });
       } finally {

@@ -149,7 +149,7 @@ function CalmBallFillToAura() {
 
 export default function CheckIn({ state, actions }) {
   const { checkin, level, checkedInToday } = state;
-  const note = (checkin.note || "").slice(0, 100);
+  const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const [noteOpen, setNoteOpen] = useState(false);
 
@@ -192,7 +192,7 @@ export default function CheckIn({ state, actions }) {
   return (
     <div className="card checkinCard" style={{ display: 'flex', flexDirection: 'column', flex: '1' }}>
       <h2>🌤 How are you today?</h2>
-      <div className="sub">Optional, skip-friendly, and changeable anytime.</div>
+      <div className="sub">Changeable anytime.</div>
 
       <div className="row">
         <div>
@@ -260,20 +260,20 @@ export default function CheckIn({ state, actions }) {
         style={{ marginTop: 12 }}
         onToggle={(e) => setNoteOpen(e.currentTarget.open)}
       >
-        <summary className="noteSummary">Optional note (100 characters)</summary>
+        <summary className="noteSummary">Optional note (200 characters)</summary>
         <div style={{ marginTop: 8 }}>
           <textarea
             className="noteInput"
             ref={noteRef}
             value={note}
-            maxLength={100}
+            maxLength={200}
             rows={3}
             placeholder="Anything else to know (e.g., slept great, excited, busy day, bad sleep, headache)…"
-            onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 100) })}
+            onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
             onInput={autosizeNote}
             aria-label="Optional note"
           />
-          <div className="charCount">{note.length}/100</div>
+          <div className="charCount">{note.length}/200</div>
         </div>
       </details>
 
