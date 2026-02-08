@@ -8,6 +8,9 @@ const SCHEMA_VERSION = 7;
 // Bump this when the AI prompt/validation changes and you want fresh boards.
 const AI_BOARD_VERSION = 2;
 
+// Bump this when the AI daily note prompt changes.
+const AI_DAILY_NOTE_VERSION = 1;
+
 const DEFAULT_CHECKIN = {
   mood: "okay",
   moodWords: ["Okay"],
@@ -45,6 +48,15 @@ function defaultState(){
       tasks: [],
       error: "",
     },
+    aiDailyNote: {
+      status: "idle", // idle | loading | ready | error
+      today: "",
+      sig: "",
+      title: "",
+      body: "",
+      focus: "",
+      error: "",
+    },
     dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good, screen}
     currentSpin: null,
@@ -60,6 +72,11 @@ function checkinSignature(checkin, level, useNoteForAi){
   const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,200) : "";
   const lvl = typeof level === "string" ? level : "";
   return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, note, lvl });
+}
+
+function dailyNoteSignature(checkin, level, useNoteForAi, today){
+  const t = typeof today === "string" ? today : todayKey();
+  return `${AI_DAILY_NOTE_VERSION}|${t}|${checkinSignature(checkin, level, useNoteForAi)}`;
 }
 
 function normalizeLoadedState(loaded){
@@ -112,6 +129,18 @@ function normalizeLoadedState(loaded){
   if(!Array.isArray(next.ai.tasks)) next.ai.tasks = [];
   if(typeof next.ai.error !== "string") next.ai.error = "";
 
+  if(!next.aiDailyNote || typeof next.aiDailyNote !== "object" || Array.isArray(next.aiDailyNote)){
+    next.aiDailyNote = { status: "idle", today: "", sig: "", title: "", body: "", focus: "", error: "" };
+  }
+  if(typeof next.aiDailyNote.status !== "string") next.aiDailyNote.status = "idle";
+  if(!["idle","loading","ready","error"].includes(next.aiDailyNote.status)) next.aiDailyNote.status = "idle";
+  if(typeof next.aiDailyNote.today !== "string") next.aiDailyNote.today = "";
+  if(typeof next.aiDailyNote.sig !== "string") next.aiDailyNote.sig = "";
+  if(typeof next.aiDailyNote.title !== "string") next.aiDailyNote.title = "";
+  if(typeof next.aiDailyNote.body !== "string") next.aiDailyNote.body = "";
+  if(typeof next.aiDailyNote.focus !== "string") next.aiDailyNote.focus = "";
+  if(typeof next.aiDailyNote.error !== "string") next.aiDailyNote.error = "";
+
   if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true };
   if(typeof next.profile.name !== "string") next.profile.name = "";
   if(typeof next.profile.email !== "string") next.profile.email = "";
@@ -141,6 +170,7 @@ export function useAttuneStore(){
   const [state, setState] = useState(() => normalizeLoadedState(loadState()) || defaultState());
   const stateRef = useRef(state);
   const aiReqRef = useRef({ controller: null, requestId: 0 });
+  const aiNoteReqRef = useRef({ controller: null, requestId: 0 });
 
   useEffect(() => {
     stateRef.current = state;
@@ -330,6 +360,92 @@ export function useAttuneStore(){
             ...s,
             optionsSource: "default",
             ai: { ...s.ai, status: "error", today: t, sig, tasks: [], error: message },
+          };
+        });
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    },
+
+    ensureAiDailyNote: async (checkin, level, today, opts) => {
+      const t = typeof today === "string" ? today : todayKey();
+      const includeNote = stateRef.current?.profile?.useNoteForAi !== false;
+      const sig = dailyNoteSignature(checkin, level, includeNote, t);
+      const current = stateRef.current;
+      const force = !!opts?.force;
+
+      const alreadyReady =
+        !force &&
+        current?.aiDailyNote?.status === "ready" &&
+        current.aiDailyNote.today === t &&
+        current.aiDailyNote.sig === sig &&
+        typeof current.aiDailyNote.title === "string" &&
+        current.aiDailyNote.title.length > 0 &&
+        typeof current.aiDailyNote.body === "string" &&
+        current.aiDailyNote.body.length > 0;
+
+      if(alreadyReady) return;
+      if(!force && current?.aiDailyNote?.status === "loading" && current.aiDailyNote?.today === t && current.aiDailyNote?.sig === sig) return;
+
+      if(aiNoteReqRef.current.controller){
+        try { aiNoteReqRef.current.controller.abort(); } catch { /* noop */ }
+      }
+      const controller = new AbortController();
+      aiNoteReqRef.current.controller = controller;
+      aiNoteReqRef.current.requestId += 1;
+      const requestId = aiNoteReqRef.current.requestId;
+
+      setState(s => ({
+        ...s,
+        aiDailyNote: { ...s.aiDailyNote, status: "loading", today: t, sig, error: "" },
+      }));
+
+      const timeoutMs = 12_000;
+      const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
+        const resp = await fetch("/api/daily-note", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          signal: controller.signal,
+          body: JSON.stringify({ checkin: checkinForAi, level, today: t }),
+        });
+
+        if(!resp.ok){
+          throw new Error(`http_${resp.status}`);
+        }
+
+        const data = await resp.json();
+        const note = data?.note && typeof data.note === "object" ? data.note : null;
+        const title = typeof note?.title === "string" ? note.title.trim() : "";
+        const body = typeof note?.body === "string" ? note.body.trim() : "";
+        const focus = typeof note?.focus === "string" ? note.focus.trim() : "";
+
+        if(!title || !body) throw new Error("invalid_note");
+
+        if(requestId !== aiNoteReqRef.current.requestId) return;
+
+        setState(s => {
+          const liveSig = dailyNoteSignature(s.checkin, s.level, s.profile?.useNoteForAi, t);
+          if(s.today !== t || liveSig !== sig) return s;
+
+          return {
+            ...s,
+            aiDailyNote: { status: "ready", today: t, sig, title, body, focus, error: "" },
+          };
+        });
+      } catch {
+        if(requestId !== aiNoteReqRef.current.requestId) return;
+
+        setState(s => {
+          const liveSig = dailyNoteSignature(s.checkin, s.level, s.profile?.useNoteForAi, t);
+          if(s.today !== t || liveSig !== sig) return s;
+
+          // Silent fallback: keep local dailyMessage visible.
+          return {
+            ...s,
+            aiDailyNote: { ...s.aiDailyNote, status: "error", today: t, sig, title: "", body: "", focus: "", error: "" },
           };
         });
       } finally {

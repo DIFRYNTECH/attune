@@ -583,6 +583,34 @@
       letter-spacing: .2px;
     }
 
+    .personalNoteTop{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .personalNoteMeta{
+      font-size: 12px;
+      font-weight: 900;
+      color: rgba(43,47,58,.58);
+      white-space: nowrap;
+      margin-top: 1px;
+    }
+    .personalNoteTitle{
+      margin: 0;
+      font-weight: 950;
+      font-size: 15px;
+      letter-spacing: -.2px;
+      color: #1f2230;
+    }
+    .personalNoteBody{
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
     .myDayCard .item{
       background: rgba(255,255,255,.92);
       border-color: rgba(231,233,242,.95);

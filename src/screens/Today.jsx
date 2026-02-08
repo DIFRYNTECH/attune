@@ -1,19 +1,38 @@
+import { useEffect } from "react";
+
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
+	const aiNote = state.aiDailyNote;
+
+	useEffect(() => {
+		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
+
+	const noteTitle = aiNote?.status === "ready" ? aiNote.title : dailyMessage?.a;
+	const noteBody = aiNote?.status === "ready" ? aiNote.body : dailyMessage?.b;
+	const noteFocus = aiNote?.status === "ready" ? aiNote.focus : "";
+	const noteSource = aiNote?.status === "ready" ? "AI" : "Local";
 
 	return (
 		<div className="card myDayCard">
 			<h2>🧭 My Day</h2>
 			<div className="sub">2-5 tasks is plenty. If you want, you can go up to 10.</div>
 
-			<div className="result" style={{ marginBottom: 12 }}>
-				<div className="resultTitle">Your personal note for today</div>
-				<p style={{ margin: 0, fontWeight: 800, fontSize: 15 }}>
-					{dailyMessage?.a}
-				</p>
-				<p style={{ margin: "10px 0 0", color: "var(--muted)", fontSize: 13 }}>
-					{dailyMessage?.b}
-				</p>
+			<div className="result personalNote" style={{ marginBottom: 12 }}>
+				<div className="personalNoteTop">
+					<div className="resultTitle">Your personal note for today</div>
+					<div className="personalNoteMeta" aria-label="Note source">
+						{aiNote?.status === "loading" ? "Personalizing…" : noteSource}
+					</div>
+				</div>
+				<p className="personalNoteTitle">{noteTitle}</p>
+				<p className="personalNoteBody">{noteBody}</p>
+				{!!noteFocus && (
+					<div className="miniPills" aria-label="Today focus">
+						<div className="miniPill">🎯 {noteFocus}</div>
+					</div>
+				)}
 			</div>
 
 			{myDay.length === 0 ? (

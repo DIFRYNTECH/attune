@@ -107,6 +107,38 @@ const avoidAssumptionsUnlessUserSaid = [
   "eating disorder",
 ];
 
+const dailyThemes = [
+  "Make it simple",
+  "Start gently",
+  "One thing at a time",
+  "A kind pace",
+  "Clear one small space",
+  "Do the next right tiny step",
+  "Steady, not fast",
+  "Soft focus",
+  "Lower the bar on purpose",
+  "Care first, then effort",
+  "Make tomorrow easier",
+  "Small brave",
+  "Warmth over perfection",
+  "Finish one loop",
+];
+
+function stableHash(str) {
+  const s = String(str || "");
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+function pickDailyTheme(today) {
+  const idx = stableHash(today) % dailyThemes.length;
+  return dailyThemes[idx];
+}
+
 function looksUnsafe(text) {
   const t = String(text || "").toLowerCase();
   if (!t) return true;
@@ -147,6 +179,88 @@ function looksAssumptive(text, allowedContextLower) {
     if (t.includes(frag) && !allowedContextLower.includes(frag)) return true;
   }
   return false;
+}
+
+function validateDailyNotePayload(payload, allowedContextLower) {
+  if (!payload || typeof payload !== "object") return { ok: false, error: "Invalid JSON" };
+  const note = payload.note;
+  if (!note || typeof note !== "object") return { ok: false, error: "Missing note" };
+
+  const title = clampString(note?.title, 64);
+  const body = clampString(note?.body, 220);
+  const focus = clampString(note?.focus, 80);
+
+  if (!title || !body) return { ok: false, error: "Note must include title and body" };
+  if (looksUnsafe(title) || looksUnsafe(body) || (focus && looksUnsafe(focus))) return { ok: false, error: "Unsafe note detected" };
+  if (looksAssumptive(title, allowedContextLower) || looksAssumptive(body, allowedContextLower) || (focus && looksAssumptive(focus, allowedContextLower))) {
+    return { ok: false, error: "Note makes assumptions not in user input" };
+  }
+
+  return { ok: true, note: { title, body, focus } };
+}
+
+async function generateDailyNoteWithRetries(client, { system, userPayload, model }) {
+  const maxAttempts = 2;
+  let lastError = "";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const prompt =
+      attempt === 1
+        ? userPayload
+        : {
+            ...userPayload,
+            correction:
+              "Your previous output had issues: " +
+              lastError +
+              ". Return a corrected JSON object that follows the schema exactly. Keep it calm, specific to the check-in, and avoid generic advice.",
+          };
+
+    const completion = await client.chat.completions.create({
+      model,
+      temperature: attempt === 1 ? 0.7 : 0.4,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: JSON.stringify(prompt) },
+      ],
+      response_format: { type: "json_object" },
+    });
+
+    const content = completion.choices?.[0]?.message?.content;
+    if (typeof content !== "string" || !content.trim()) {
+      lastError = "Empty model response";
+      continue;
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(content);
+    } catch {
+      lastError = "Model did not return valid JSON";
+      continue;
+    }
+
+    const checkin = userPayload?.checkin && typeof userPayload.checkin === "object" ? userPayload.checkin : {};
+    const allowedContextLower = String(
+      [
+        ...(Array.isArray(checkin?.moodWords) ? checkin.moodWords : []),
+        checkin?.mood || "",
+        checkin?.energy || "",
+        checkin?.body || "",
+        checkin?.pace || "",
+        checkin?.note || "",
+      ].join(" ")
+    ).toLowerCase();
+
+    const validated = validateDailyNotePayload(parsed, allowedContextLower);
+    if (!validated.ok) {
+      lastError = validated.error || "Invalid note";
+      continue;
+    }
+
+    return { ok: true, note: validated.note };
+  }
+
+  return { ok: false, error: lastError || "Invalid note" };
 }
 
 function clampString(value, maxLen) {
@@ -485,6 +599,88 @@ app.post("/api/generate-board", async (req, res) => {
     });
   } catch {
     res.status(500).json({ error: "Failed to generate board" });
+  }
+});
+
+app.post("/api/daily-note", async (req, res) => {
+  try {
+    if (!OPENAI_API_KEY) {
+      res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
+      return;
+    }
+
+    const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
+    const level = clampString(req.body?.level, 24) || "gentle";
+    const today = clampString(req.body?.today, 20) || "";
+
+    const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
+    const mood = clampString(checkin.mood, 12) || "okay";
+    const energy = clampString(checkin.energy, 12) || "okay";
+    const body = clampString(checkin.body, 16) || "manageable";
+    const note = clampString(checkin.note, 200);
+
+    const theme = pickDailyTheme(today || new Date().toISOString().slice(0, 10));
+
+    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
+
+    const system =
+      "You write a very short, gentle daily note for a wellbeing app. " +
+      "Return ONLY valid JSON. No markdown. No extra keys. " +
+      "Do NOT suggest anything harmful, illegal, or risky. " +
+      "Do NOT mention self-harm. " +
+      "Do NOT suggest medications, supplements, diagnoses, or treatment plans. " +
+      "Do NOT infer emotions or problems the user did not state. " +
+      "Do NOT shame, scold, or pressure. Avoid absolute language (never/always). " +
+      "Make it feel fresh daily, but still grounded in the check-in. " +
+      "Keep it practical and kind; not inspirational fluff.";
+
+    const user = {
+      today,
+      theme,
+      checkin: {
+        moodWords,
+        mood,
+        energy,
+        body,
+        pace: level,
+        note,
+      },
+      writingRules: {
+        titleMaxChars: 60,
+        bodyMaxChars: 200,
+        focusMaxChars: 80,
+        voice: "calm, supportive, specific",
+        avoid: [
+          "medical advice",
+          "therapy language",
+          "diagnoses",
+          "weight loss or dieting",
+          "extreme exercise",
+          "assumed loneliness/anxiety unless stated",
+        ],
+      },
+      outputSchema: "{\"note\":{\"title\":string,\"body\":string,\"focus\":string}}",
+      guidance:
+        "Write 1 title + 1 body sentence (or 2 short sentences). Include a tiny focus phrase. Tie back to pace/energy/body/moodWords/note without copying the note verbatim.",
+    };
+
+    const generated = await generateDailyNoteWithRetries(client, {
+      system,
+      userPayload: user,
+      model: MODEL,
+    });
+
+    if (!generated.ok) {
+      res.status(502).json({ error: generated.error || "Invalid note" });
+      return;
+    }
+
+    res.json({
+      note: generated.note,
+      meta: { model: MODEL, createdAt: new Date().toISOString() },
+    });
+  } catch {
+    res.status(500).json({ error: "Failed to generate daily note" });
   }
 });
 
