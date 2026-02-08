@@ -124,6 +124,99 @@ const dailyThemes = [
   "Finish one loop",
 ];
 
+// The Weekly screen already supports week-level reflection.
+// Keep the Activity Picker board focused on today.
+const weeklyReflectionFragments = [
+  "reflect on the week",
+  "reflect on your week",
+  "weekly reflection",
+  "weekly review",
+  "review your week",
+  "journal about the week",
+  "journal about your week",
+  "week journal",
+];
+
+function looksWeeklyReflectionTask(text) {
+  const t = String(text || "").toLowerCase();
+  if (!t) return false;
+  if (weeklyReflectionFragments.some((f) => t.includes(f))) return true;
+  // Catch common variants without banning all journaling.
+  if (t.includes("journal") && t.includes("week")) return true;
+  if (t.includes("journaling") && t.includes("week")) return true;
+  if (t.includes("reflect") && t.includes("week")) return true;
+  return false;
+}
+
+function makeFallbackTask(text, { pace, energy, body }) {
+  const lvl = String(pace || "").toLowerCase();
+  const e = String(energy || "").toLowerCase();
+  const b = String(body || "").toLowerCase();
+  const why =
+    lvl && e && b
+      ? `Given your pace is ${lvl} with ${e} energy and ${b} body, this is a doable step for today.`
+      : "A doable step for today, with no pressure.";
+
+  return {
+    text,
+    minutes: 10,
+    intensity: "low",
+    category: "mind",
+    why,
+  };
+}
+
+function fillAndSanitizeTasks(tasks, { pace, energy, body }) {
+  const safePool = [
+    { text: "Take 5 slow breaths and drop your shoulders.", minutes: 2, intensity: "low", category: "rest" },
+    { text: "Tidy one small surface for 8 minutes.", minutes: 8, intensity: "medium", category: "home" },
+    { text: "Step outside (or to a window) for 3 minutes of fresh air.", minutes: 3, intensity: "low", category: "rest" },
+    { text: "Do a gentle stretch for your neck and shoulders.", minutes: 5, intensity: "low", category: "body" },
+    { text: "Put on one song and move lightly for its length.", minutes: 4, intensity: "medium", category: "body" },
+    { text: "Write a tiny list: 2 priorities + 1 treat.", minutes: 5, intensity: "low", category: "admin" },
+    { text: "Make a simple snack and sit to eat it.", minutes: 10, intensity: "low", category: "home" },
+    { text: "Send one kind message (optional).", minutes: 3, intensity: "low", category: "connection" },
+    { text: "Set a 10-minute timer and do one calm task.", minutes: 10, intensity: "medium", category: "admin" },
+    { text: "Do a short walk in place or around the room.", minutes: 6, intensity: "medium", category: "body" },
+    { text: "Put a glass of water somewhere you'll see it.", minutes: 2, intensity: "low", category: "home" },
+    { text: "Do a quick reset: clear one small pile.", minutes: 10, intensity: "medium", category: "home" },
+    { text: "Read 2 pages of something you like.", minutes: 6, intensity: "low", category: "mind" },
+    { text: "Do a 60-second body scan: forehead, jaw, shoulders.", minutes: 2, intensity: "low", category: "rest" },
+    { text: "Pick a tiny 'future-you' setup (charger, clothes, keys).", minutes: 8, intensity: "medium", category: "admin" },
+  ];
+
+  const out = [];
+  const seen = new Set();
+
+  for (const t of Array.isArray(tasks) ? tasks : []) {
+    const text = clampString(t?.text, 120);
+    if (!text) continue;
+    if (looksWeeklyReflectionTask(text)) continue;
+    const k = text.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(t);
+  }
+
+  for (const s of safePool) {
+    if (out.length >= 15) break;
+    const text = s.text;
+    if (!text) continue;
+    if (looksWeeklyReflectionTask(text)) continue;
+    const k = text.toLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push({
+      ...makeFallbackTask(text, { pace, energy, body }),
+      minutes: s.minutes,
+      intensity: s.intensity,
+      category: s.category,
+    });
+  }
+
+  return out.slice(0, 15);
+}
+
 function stableHash(str) {
   const s = String(str || "");
   let h = 2166136261;
@@ -483,14 +576,27 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
       ? userPayload.grounding.fragments
       : [];
 
-    const validated = validateBoardPayload(parsed, allowedContextLower, preferences, groundingFragments);
+    // Filter out week-level journaling/reflection tasks (Weekly screen covers that)
+    // and fill any gaps with safe, today-focused fallbacks.
+    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, {
+      pace: checkin?.pace,
+      energy: checkin?.energy,
+      body: checkin?.body,
+    });
+
+    const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
+
+    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, preferences, groundingFragments);
     if (!validated.ok) {
       lastError = validated.error || "Invalid board";
       continue;
     }
 
     lastWarnings = Array.isArray(validated.warnings) ? validated.warnings : [];
-    return { ok: true, tasks: parsed.tasks, warnings: lastWarnings };
+    const removed = Array.isArray(parsed?.tasks) ? parsed.tasks.length - sanitizedTasks.length : 0;
+    if (removed > 0) lastWarnings = [...lastWarnings, "Removed week-level reflection tasks from today's board."];
+    if (sanitizedTasks.length < 15) lastWarnings = [...lastWarnings, "Filled missing tasks with today-focused fallbacks."];
+    return { ok: true, tasks: sanitizedTasks, warnings: lastWarnings };
   }
 
   return { ok: false, error: lastError || "Invalid board", warnings: lastWarnings };
@@ -540,6 +646,7 @@ app.post("/api/generate-board", async (req, res) => {
       "Keep tasks small, doable, and non-punitive. " +
       "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. " +
       "Avoid near-duplicate tasks. Prefer variety across categories. " +
+      "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
       "Every task 'why' should explicitly reference at least one check-in signal (pace/energy/body/moodWords/note) using plain language (e.g., 'Given your pace is capable...' or 'With manageable body...'). " +
       "Follow intensityMixHint as closely as possible: meet or exceed minMedium and minHigh, and do not exceed maxHigh. " +
       "Align minutes to intensity: low ~1-10, medium ~8-20, high ~15-45. " +

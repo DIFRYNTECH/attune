@@ -566,7 +566,7 @@ export function useAttuneStore(){
         const myDay = s.myDay.map(t => t.id === id ? {...t, done} : t);
         const msg = done
           ? ENCOURAGE_DONE[Math.floor(Math.random()*ENCOURAGE_DONE.length)]
-          : "No worries.There is no rush, you can come back to it later.";
+          : "No rush, you can come back to it later.";
         return { ...s, myDay, toast: { text: msg, good: !!done, screen: s.screen } };
       }),
 

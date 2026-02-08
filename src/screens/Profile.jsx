@@ -90,7 +90,7 @@ export default function Profile({ state, actions }) {
             <span>Use my optional check-in note to personalize AI suggestions</span>
           </label>
           <div className="footerNote" style={{ marginTop: 6 }}>
-            If turned off, Attune will still use mood, energy, body, and pace — but won’t send your note.
+            If turned off, Attune will still use mood, energy, body, and pace, but won’t send your note.
           </div>
         </div>
 

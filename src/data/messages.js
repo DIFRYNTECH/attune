@@ -9,7 +9,7 @@ export const MESSAGES = [
 
 export const ENCOURAGE_DONE = [
   "Nice job. That mattered.",
-  "That was a kind choice.",
+  "Marked as done.",
   "You showed up for yourself.",
   "Small steps still count.",
   "That’s real progress.",
