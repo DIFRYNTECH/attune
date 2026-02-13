@@ -139,6 +139,9 @@
     /* Profile (Settings-style) */
     .settingsCard{
       padding: 14px;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
     .settingsHeader{
       margin-bottom: 10px;
@@ -161,7 +164,11 @@
       border: 1px solid rgba(231,233,242,.95);
       border-radius: 16px;
       background: rgba(255,255,255,.75);
-      overflow: hidden;
+      overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+      flex: 1;
+      min-height: 0;
     }
     .settingsSection{
       padding: 12px;

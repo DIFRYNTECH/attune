@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { summarizeRecentThemes } from "../lib/noteMemory";
 
 function SettingToggleRow({ title, description, checked, onChange, disabled = false, id }) {
   return (
@@ -50,10 +51,17 @@ function downloadJson(filename, data) {
 
 export default function Profile({ state, actions }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
 
   const profileName = state.profile?.name || "";
   const profileEmail = state.profile?.email || "";
   const useNoteForAi = state.profile?.useNoteForAi !== false;
+  const canUseMemory = !!state?.entitlements?.noteMemory;
+  const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
+  const recentThemes = summarizeRecentThemes(state?.noteMemory, 10);
+  const recentNotes = (Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes : [])
+    .slice(-10)
+    .reverse();
 
   const exportPayload = useMemo(() => {
     // Keep export calm + explicit: local-only data snapshot.
@@ -152,6 +160,60 @@ export default function Profile({ state, actions }) {
             </button>
           </div>
         </SettingsSection>
+
+        <SettingsSection
+          title="Note memory"
+          helper={canUseMemory
+            ? "Attune Plus remembers your check-in notes over time (locally on this device)."
+            : "Plus feature. Free plan doesn’t keep historical note memory."}
+        >
+          <div className="settingsActions">
+            <button
+              type="button"
+              className="btn ghost dangerGhost"
+              disabled={!canUseMemory || noteCount === 0}
+              onClick={() => setClearMemoryOpen(true)}
+              title={!canUseMemory ? "Enable Plus to use note memory" : noteCount === 0 ? "No note memory yet" : ""}
+            >
+              Clear note history
+            </button>
+            <div style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>
+              {canUseMemory ? `${noteCount} saved` : "0 saved"}
+            </div>
+          </div>
+
+          {canUseMemory && noteCount > 0 && recentThemes.length > 0 && (
+            <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
+              <strong style={{ color: "var(--text)" }}>Lately:</strong> {recentThemes.join(" · ")}
+            </div>
+          )}
+
+          {canUseMemory && noteCount > 0 && (
+            <div style={{ marginTop: 12 }}>
+              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
+                Recent notes
+              </div>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {recentNotes.map((n, idx) => (
+                  <li
+                    key={`${n?.date ?? "unknown"}-${idx}`}
+                    style={{
+                      marginBottom: 6,
+                      whiteSpace: "normal",
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    <span style={{ opacity: 0.8 }}>{n?.date ?? ""}</span>
+                    {": "}
+                    <span style={{ whiteSpace: "normal" }}>{String(n?.text ?? "").trim() || "(empty)"}</span>
+                    {Array.isArray(n?.themes) && n.themes.length > 0 ? ` — ${n.themes.join(", ")}` : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </SettingsSection>
       </div>
 
       {confirmOpen && (
@@ -181,6 +243,39 @@ export default function Profile({ state, actions }) {
                 style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
               >
                 Clear device
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {clearMemoryOpen && (
+        <div
+          className="modalOverlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setClearMemoryOpen(false);
+          }}
+        >
+          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear note memory confirmation">
+            <div className="modalTitle">Clear note history?</div>
+            <div className="modalBody">
+              This removes your saved check-in notes (Plus memory) stored locally on this device. You can’t undo this.
+            </div>
+            <div className="modalActions">
+              <button type="button" className="btn small ghost" onClick={() => setClearMemoryOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => {
+                  setClearMemoryOpen(false);
+                  actions?.clearNoteMemory?.();
+                }}
+                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
+              >
+                Clear notes
               </button>
             </div>
           </div>

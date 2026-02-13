@@ -25,7 +25,6 @@ export function trimEventDays(eventsByDay, maxDays = DEFAULT_MAX_DAYS) {
   if (keys.length <= limit) return base;
 
   const keepKeys = keys.slice(-limit);
-  const keep = new Set(keepKeys);
 
   const next = {};
   for (const k of keepKeys) {

@@ -283,13 +283,22 @@ function validateDailyNotePayload(payload, allowedContextLower) {
   const body = clampString(note?.body, 220);
   const focus = clampString(note?.focus, 80);
 
+  const allowedThemes = ["rest", "overwhelm", "social", "body", "focus"];
+  const rawThemes = Array.isArray(note?.themes) ? note.themes : [];
+  const themes = rawThemes
+    .filter((t) => typeof t === "string")
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean)
+    .filter((t) => allowedThemes.includes(t));
+  const dedupedThemes = [...new Set(themes)].slice(0, 2);
+
   if (!title || !body) return { ok: false, error: "Note must include title and body" };
   if (looksUnsafe(title) || looksUnsafe(body) || (focus && looksUnsafe(focus))) return { ok: false, error: "Unsafe note detected" };
   if (looksAssumptive(title, allowedContextLower) || looksAssumptive(body, allowedContextLower) || (focus && looksAssumptive(focus, allowedContextLower))) {
     return { ok: false, error: "Note makes assumptions not in user input" };
   }
 
-  return { ok: true, note: { title, body, focus } };
+  return { ok: true, note: { title, body, focus, themes: dedupedThemes } };
 }
 
 async function generateDailyNoteWithRetries(client, { system, userPayload, model }) {
@@ -766,9 +775,15 @@ app.post("/api/daily-note", async (req, res) => {
           "assumed loneliness/anxiety unless stated",
         ],
       },
-      outputSchema: "{\"note\":{\"title\":string,\"body\":string,\"focus\":string}}",
+      outputSchema:
+        "{\"note\":{\"title\":string,\"body\":string,\"focus\":string,\"themes\":string[]}}",
       guidance:
-        "Write 1 title + 1 body sentence (or 2 short sentences). Include a tiny focus phrase. Tie back to pace/energy/body/moodWords/note without copying the note verbatim.",
+        "Write 1 title + 1 body sentence (or 2 short sentences). Include a tiny focus phrase. Tie back to pace/energy/body/moodWords/note without copying the note verbatim. " +
+        "Also set note.themes to 0-2 items chosen ONLY from: [rest, overwhelm, social, body, focus]. " +
+        "Theme mapping hints: if the user expresses motivation, confidence, determination, excitement, or being ready to act, prefer 'focus'. " +
+        "If they describe stress/pressure/anxiety/too-much, prefer 'overwhelm'. If they describe tiredness/sleep/rest needs, prefer 'rest'. " +
+        "If they mention pain/sickness/symptoms, prefer 'body'. If they mention loneliness/relationships/people, prefer 'social'. " +
+        "Choose themes only if clearly supported by the user's check-in (especially their note); otherwise return []. If note is empty, return [].",
     };
 
     const generated = await generateDailyNoteWithRetries(client, {

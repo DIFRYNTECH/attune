@@ -1,8 +1,11 @@
 import { useEffect } from "react";
+import { summarizeRecentThemes } from "../lib/noteMemory";
 
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
 	const aiNote = state.aiDailyNote;
+	const canUseMemory = !!state?.entitlements?.noteMemory;
+	const recentThemes = canUseMemory ? summarizeRecentThemes(state.noteMemory, 10) : [];
 
 	useEffect(() => {
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
@@ -28,6 +31,11 @@ export default function Today({ state, actions }) {
 				</div>
 				<p className="personalNoteTitle">{noteTitle}</p>
 				<p className="personalNoteBody">{noteBody}</p>
+				{recentThemes.length > 0 && (
+					<div className="miniPills" aria-label="Recent themes">
+						<div className="miniPill">🧠 Lately: {recentThemes.join(" + ")}</div>
+					</div>
+				)}
 				{!!noteFocus && (
 					<div className="miniPills" aria-label="Today focus">
 						<div className="miniPill">🎯 {noteFocus}</div>

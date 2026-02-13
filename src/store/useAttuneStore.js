@@ -4,6 +4,7 @@ import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } f
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
+import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj } from "../lib/noteMemory";
 
 const SCHEMA_VERSION = 7;
 
@@ -11,9 +12,10 @@ const SCHEMA_VERSION = 7;
 const AI_BOARD_VERSION = 2;
 
 // Bump this when the AI daily note prompt changes.
-const AI_DAILY_NOTE_VERSION = 1;
+const AI_DAILY_NOTE_VERSION = 2;
 
 const EVENT_DAYS_TO_KEEP = 90;
+const NOTE_MEMORY_MAX = 30;
 
 const DEFAULT_CHECKIN = {
   mood: "okay",
@@ -41,6 +43,7 @@ function defaultState(){
     history: [],
     weeklyNotes: {},
     events: {},
+    noteMemory: { notes: [] },
     profile: {
       name: "",
       email: "",
@@ -61,6 +64,7 @@ function defaultState(){
       title: "",
       body: "",
       focus: "",
+      themes: [],
       error: "",
     },
     dailyMessage: dailyMessageFromCheckin(checkin, level),
@@ -136,7 +140,7 @@ function normalizeLoadedState(loaded){
   if(typeof next.ai.error !== "string") next.ai.error = "";
 
   if(!next.aiDailyNote || typeof next.aiDailyNote !== "object" || Array.isArray(next.aiDailyNote)){
-    next.aiDailyNote = { status: "idle", today: "", sig: "", title: "", body: "", focus: "", error: "" };
+    next.aiDailyNote = { status: "idle", today: "", sig: "", title: "", body: "", focus: "", themes: [], error: "" };
   }
   if(typeof next.aiDailyNote.status !== "string") next.aiDailyNote.status = "idle";
   if(!["idle","loading","ready","error"].includes(next.aiDailyNote.status)) next.aiDailyNote.status = "idle";
@@ -145,6 +149,12 @@ function normalizeLoadedState(loaded){
   if(typeof next.aiDailyNote.title !== "string") next.aiDailyNote.title = "";
   if(typeof next.aiDailyNote.body !== "string") next.aiDailyNote.body = "";
   if(typeof next.aiDailyNote.focus !== "string") next.aiDailyNote.focus = "";
+  if(!Array.isArray(next.aiDailyNote.themes)) next.aiDailyNote.themes = [];
+  next.aiDailyNote.themes = next.aiDailyNote.themes
+    .filter(t => typeof t === "string")
+    .map(t => t.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 2);
   if(typeof next.aiDailyNote.error !== "string") next.aiDailyNote.error = "";
 
   if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true, plan: "free" };
@@ -153,6 +163,15 @@ function normalizeLoadedState(loaded){
   if(typeof next.profile.useNoteForAi !== "boolean") next.profile.useNoteForAi = true;
   if(typeof next.profile.plan !== "string") next.profile.plan = "free";
   if(next.profile.plan !== "free" && next.profile.plan !== "plus") next.profile.plan = "free";
+
+  if(!next.noteMemory || typeof next.noteMemory !== "object" || Array.isArray(next.noteMemory)) next.noteMemory = { notes: [] };
+  if(!Array.isArray(next.noteMemory.notes)) next.noteMemory.notes = [];
+  // Free plan should not keep historical note memory.
+  if(next.profile.plan !== "plus") next.noteMemory = { notes: [] };
+  // Trim just in case older builds kept more.
+  if(next.noteMemory.notes.length > NOTE_MEMORY_MAX){
+    next.noteMemory.notes = next.noteMemory.notes.slice(next.noteMemory.notes.length - NOTE_MEMORY_MAX);
+  }
 
   if(!next.events || typeof next.events !== "object" || Array.isArray(next.events)) next.events = {};
   for(const k of Object.keys(next.events)){
@@ -248,7 +267,7 @@ export function useAttuneStore(){
 
           if(s.screen === "checkin"){
             const note = typeof s.checkin?.note === "string" ? s.checkin.note.trim().slice(0, 200) : "";
-            return recordEventOnState(
+            let withEvents = recordEventOnState(
               next,
               "checkinSaved",
               {
@@ -260,6 +279,17 @@ export function useAttuneStore(){
               },
               { maxDays: EVENT_DAYS_TO_KEEP }
             );
+
+            // Plus: store note memory historically.
+            const isPlus = s?.profile?.plan === "plus";
+            if(isPlus && note){
+              withEvents = {
+                ...withEvents,
+                noteMemory: addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX),
+              };
+            }
+
+            return withEvents;
           }
 
           return next;
@@ -460,6 +490,13 @@ export function useAttuneStore(){
         const title = typeof note?.title === "string" ? note.title.trim() : "";
         const body = typeof note?.body === "string" ? note.body.trim() : "";
         const focus = typeof note?.focus === "string" ? note.focus.trim() : "";
+        const themes = Array.isArray(note?.themes)
+          ? note.themes
+              .filter((x) => typeof x === "string")
+              .map((x) => x.trim().toLowerCase())
+              .filter(Boolean)
+              .slice(0, 2)
+          : [];
 
         if(!title || !body) throw new Error("invalid_note");
 
@@ -469,9 +506,18 @@ export function useAttuneStore(){
           const liveSig = dailyNoteSignature(s.checkin, s.level, s.profile?.useNoteForAi, t);
           if(s.today !== t || liveSig !== sig) return s;
 
+          // If Plus + note is stored, enrich remembered note themes using AI.
+          const isPlus = s?.profile?.plan === "plus";
+          const noteText = typeof s.checkin?.note === "string" ? s.checkin.note.trim().slice(0, 200) : "";
+          const shouldApplyThemes = isPlus && s.profile?.useNoteForAi !== false && noteText && themes.length > 0;
+          const nextNoteMemory = shouldApplyThemes
+            ? applyThemesToRememberedNote(s.noteMemory, { date: t, themes })
+            : s.noteMemory;
+
           return {
             ...s,
-            aiDailyNote: { status: "ready", today: t, sig, title, body, focus, error: "" },
+            noteMemory: nextNoteMemory,
+            aiDailyNote: { status: "ready", today: t, sig, title, body, focus, themes, error: "" },
           };
         });
       } catch {
@@ -484,7 +530,7 @@ export function useAttuneStore(){
           // Silent fallback: keep local dailyMessage visible.
           return {
             ...s,
-            aiDailyNote: { ...s.aiDailyNote, status: "error", today: t, sig, title: "", body: "", focus: "", error: "" },
+            aiDailyNote: { ...s.aiDailyNote, status: "error", today: t, sig, title: "", body: "", focus: "", themes: [], error: "" },
           };
         });
       } finally {
@@ -598,8 +644,17 @@ export function useAttuneStore(){
       setState(s => {
         const plan = nextPlan === "plus" ? "plus" : "free";
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), plan };
-        return { ...s, profile };
+        // Free plan should not keep historical note memory.
+        const noteMemory = plan === "plus" ? s.noteMemory : clearNoteMemoryObj(s.noteMemory);
+        return { ...s, profile, noteMemory };
       }),
+
+    clearNoteMemory: () =>
+      setState(s => ({
+        ...s,
+        noteMemory: clearNoteMemoryObj(s.noteMemory),
+        toast: { text: "Cleared note memory on this device.", good: true, screen: s.screen },
+      })),
 
     clearDeviceData: () =>
       setState(() => ({
@@ -709,6 +764,13 @@ export function useAttuneStore(){
         toast: { text: "Reset done. Fresh start, gently.", good: false, screen: s.screen }
       })),
   }), []);
+
+  // Dev-only: make it easy to inspect state/actions in the console.
+  useEffect(() => {
+    if(import.meta.env.DEV && typeof window !== "undefined"){
+      window.__ATTUNE__ = { state: exposedState, actions };
+    }
+  }, [exposedState, actions]);
 
   return { state: exposedState, actions };
 }
