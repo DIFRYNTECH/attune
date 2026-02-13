@@ -149,7 +149,7 @@ function CalmBallFillToAura() {
 
 export default function CheckIn({ state, actions }) {
   const { checkin, level, checkedInToday } = state;
-  const plan = state?.plan === "plus" ? "plus" : "free";
+  const isPlus = !!state?.entitlements?.isPlus;
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const [noteOpen, setNoteOpen] = useState(false);
@@ -301,13 +301,13 @@ export default function CheckIn({ state, actions }) {
       <div
         className="settingRow"
         style={{ marginTop: 10 }}
-        onClick={() => actions.setPlan?.(plan === "plus" ? "free" : "plus")}
+        onClick={() => actions.setPlan?.(isPlus ? "free" : "plus")}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
           if(e.key === "Enter" || e.key === " "){
             e.preventDefault();
-            actions.setPlan?.(plan === "plus" ? "free" : "plus");
+            actions.setPlan?.(isPlus ? "free" : "plus");
           }
         }}
         aria-label="Attune Plus (on this device)"
@@ -319,7 +319,7 @@ export default function CheckIn({ state, actions }) {
         <input
           type="checkbox"
           className="switchInput"
-          checked={plan === "plus"}
+          checked={isPlus}
           onChange={(e) => actions.setPlan?.(e.target.checked ? "plus" : "free")}
           onClick={(e) => e.stopPropagation()}
           aria-label="Attune Plus (on this device)"

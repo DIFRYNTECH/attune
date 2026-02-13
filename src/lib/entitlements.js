@@ -1,0 +1,14 @@
+export function getEntitlements(inputPlan) {
+  const plan = inputPlan === "plus" ? "plus" : "free";
+  const isPlus = plan === "plus";
+
+  return {
+    plan,
+    isPlus,
+    noteMemory: isPlus,
+    smartPick: isPlus,
+    momentumExact: isPlus,
+    multiWeekHistory: isPlus,
+    deepInsights: isPlus,
+  };
+}

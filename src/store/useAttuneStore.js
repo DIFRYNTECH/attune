@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
+import { getEntitlements } from "../lib/entitlements";
 
 const SCHEMA_VERSION = 7;
 
@@ -176,7 +177,8 @@ export function useAttuneStore(){
   const aiNoteReqRef = useRef({ controller: null, requestId: 0 });
 
   const plan = state?.profile?.plan === "plus" ? "plus" : "free";
-  const exposedState = useMemo(() => ({ ...state, plan }), [state, plan]);
+  const entitlements = useMemo(() => getEntitlements(plan), [plan]);
+  const exposedState = useMemo(() => ({ ...state, plan, entitlements }), [state, plan, entitlements]);
 
   useEffect(() => {
     stateRef.current = state;
