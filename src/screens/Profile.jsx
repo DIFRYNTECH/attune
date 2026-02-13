@@ -1,5 +1,40 @@
 import { useMemo, useState } from "react";
 
+function SettingToggleRow({ title, description, checked, onChange, disabled = false, id }) {
+  return (
+    <label className={"settingRow" + (disabled ? " disabled" : "")}
+      aria-disabled={disabled ? "true" : "false"}
+    >
+      <div className="settingRowText">
+        <div className="settingRowTitle">{title}</div>
+        <div className="settingRowDesc">{description}</div>
+      </div>
+      <input
+        id={id}
+        className="switchInput"
+        type="checkbox"
+        role="switch"
+        aria-checked={!!checked}
+        checked={!!checked}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    </label>
+  );
+}
+
+function SettingsSection({ title, helper, children }) {
+  return (
+    <section className="settingsSection">
+      <div className="settingsSectionHead">
+        <div className="settingsSectionTitle">{title}</div>
+        {helper ? <div className="settingsSectionHelper">{helper}</div> : null}
+      </div>
+      <div className="settingsSectionBody">{children}</div>
+    </section>
+  );
+}
+
 function downloadJson(filename, data) {
   const json = JSON.stringify(data, null, 2);
   const blob = new Blob([json], { type: "application/json" });
@@ -32,37 +67,6 @@ export default function Profile({ state, actions }) {
     downloadJson(`attune-${stamp}.json`, exportPayload);
     actions?.setToast?.("Exported a copy of your data.", true);
   };
-
-  const SettingToggleRow = ({ title, description, checked, onChange, disabled = false, id }) => (
-    <label className={"settingRow" + (disabled ? " disabled" : "")}
-      aria-disabled={disabled ? "true" : "false"}
-    >
-      <div className="settingRowText">
-        <div className="settingRowTitle">{title}</div>
-        <div className="settingRowDesc">{description}</div>
-      </div>
-      <input
-        id={id}
-        className="switchInput"
-        type="checkbox"
-        role="switch"
-        aria-checked={!!checked}
-        checked={!!checked}
-        disabled={disabled}
-        onChange={onChange}
-      />
-    </label>
-  );
-
-  const SettingsSection = ({ title, helper, children }) => (
-    <section className="settingsSection">
-      <div className="settingsSectionHead">
-        <div className="settingsSectionTitle">{title}</div>
-        {helper ? <div className="settingsSectionHelper">{helper}</div> : null}
-      </div>
-      <div className="settingsSectionBody">{children}</div>
-    </section>
-  );
 
   return (
     <div className="card settingsCard">

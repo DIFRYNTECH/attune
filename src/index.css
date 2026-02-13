@@ -64,14 +64,28 @@
     h1{font-size:20px;margin:0; letter-spacing:-.2px}
     .versionTag{
       margin-left:6px;
+      padding:2px 7px;
+      border-radius:999px;
+      font-size:10px;
+      font-weight:800;
+      letter-spacing:.2px;
+      color: rgba(43,47,58,.58);
+      background: rgba(255,255,255,.45);
+      border: 1px solid rgba(231,233,242,.65);
+      vertical-align: middle;
+    }
+    .planTag{
+      margin-left:6px;
       padding:2px 8px;
       border-radius:999px;
       font-size:11px;
-      font-weight:800;
+      font-weight:900;
       letter-spacing:.2px;
-      color: color-mix(in oklab, var(--muted) 92%, black);
-      background: rgba(255,255,255,.7);
-      border: 1px solid var(--line);
+      color: color-mix(in oklab, var(--brand) 70%, #1f2230);
+      background:
+        radial-gradient(14px 14px at 30% 25%, rgba(255,255,255,.70), transparent 60%),
+        linear-gradient(135deg, rgba(79,109,245,.18), rgba(139,92,246,.14));
+      border: 1px solid rgba(79,109,245,.22);
       vertical-align: middle;
     }
     .tag{margin:2px 0 0; color:var(--muted); font-size:13px}

@@ -27,7 +27,7 @@ function renderToastText(text) {
   );
 }
 
-function TopNav({ screen, go }) {
+function TopNav({ screen, go, plan }) {
   return (
     <div className="top">
       <div className="brand">
@@ -36,6 +36,7 @@ function TopNav({ screen, go }) {
           <h1>
             Attune{" "}
             <span className="versionTag">v0</span>
+            {plan === "plus" ? <span className="planTag">Plus</span> : null}
           </h1>
           <div className="tag">
             Meet yourself where you are, then take one small step toward better.
@@ -111,7 +112,7 @@ export default function App() {
 
   return (
     <div className={wrapClassName}>
-      <TopNav screen={screen} go={actions.go} />
+      <TopNav screen={screen} go={actions.go} plan={state.plan} />
 
       <div className="grid">
         {/* LEFT */}

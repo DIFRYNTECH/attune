@@ -40,6 +40,7 @@ function defaultState(){
       name: "",
       email: "",
       useNoteForAi: true,
+      plan: "free", // 'free' | 'plus'
     },
     ai: {
       status: "idle", // idle | loading | ready | error
@@ -141,10 +142,12 @@ function normalizeLoadedState(loaded){
   if(typeof next.aiDailyNote.focus !== "string") next.aiDailyNote.focus = "";
   if(typeof next.aiDailyNote.error !== "string") next.aiDailyNote.error = "";
 
-  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true };
+  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true, plan: "free" };
   if(typeof next.profile.name !== "string") next.profile.name = "";
   if(typeof next.profile.email !== "string") next.profile.email = "";
   if(typeof next.profile.useNoteForAi !== "boolean") next.profile.useNoteForAi = true;
+  if(typeof next.profile.plan !== "string") next.profile.plan = "free";
+  if(next.profile.plan !== "free" && next.profile.plan !== "plus") next.profile.plan = "free";
 
   // Toasts are ephemeral; don't restore them across reloads.
   next.toast = null;
@@ -171,6 +174,9 @@ export function useAttuneStore(){
   const stateRef = useRef(state);
   const aiReqRef = useRef({ controller: null, requestId: 0 });
   const aiNoteReqRef = useRef({ controller: null, requestId: 0 });
+
+  const plan = state?.profile?.plan === "plus" ? "plus" : "free";
+  const exposedState = useMemo(() => ({ ...state, plan }), [state, plan]);
 
   useEffect(() => {
     stateRef.current = state;
@@ -524,7 +530,7 @@ export function useAttuneStore(){
     setProfile: (patch) =>
       setState(s => {
         const nextPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
-        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true }), ...nextPatch };
+        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
 
@@ -535,6 +541,16 @@ export function useAttuneStore(){
 
         if(typeof profile.useNoteForAi !== "boolean") profile.useNoteForAi = true;
 
+        if(typeof profile.plan !== "string") profile.plan = "free";
+        if(profile.plan !== "free" && profile.plan !== "plus") profile.plan = "free";
+
+        return { ...s, profile };
+      }),
+
+    setPlan: (nextPlan) =>
+      setState(s => {
+        const plan = nextPlan === "plus" ? "plus" : "free";
+        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), plan };
         return { ...s, profile };
       }),
 
@@ -622,7 +638,7 @@ export function useAttuneStore(){
       })),
   }), []);
 
-  return { state, actions };
+  return { state: exposedState, actions };
 }
 
 function rollDayToHistory(s){
