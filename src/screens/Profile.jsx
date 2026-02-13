@@ -33,96 +33,121 @@ export default function Profile({ state, actions }) {
     actions?.setToast?.("Exported a copy of your data.", true);
   };
 
+  const SettingToggleRow = ({ title, description, checked, onChange, disabled = false, id }) => (
+    <label className={"settingRow" + (disabled ? " disabled" : "")}
+      aria-disabled={disabled ? "true" : "false"}
+    >
+      <div className="settingRowText">
+        <div className="settingRowTitle">{title}</div>
+        <div className="settingRowDesc">{description}</div>
+      </div>
+      <input
+        id={id}
+        className="switchInput"
+        type="checkbox"
+        role="switch"
+        aria-checked={!!checked}
+        checked={!!checked}
+        disabled={disabled}
+        onChange={onChange}
+      />
+    </label>
+  );
+
+  const SettingsSection = ({ title, helper, children }) => (
+    <section className="settingsSection">
+      <div className="settingsSectionHead">
+        <div className="settingsSectionTitle">{title}</div>
+        {helper ? <div className="settingsSectionHelper">{helper}</div> : null}
+      </div>
+      <div className="settingsSectionBody">{children}</div>
+    </section>
+  );
+
   return (
-    <div className="card">
-      <h2>👤 Profile</h2>
-      <div className="sub">On this device for now. Sign-in can come later.</div>
-
-      <div className="result" style={{ marginBottom: 12 }}>
-        <div className="resultTitle">About you</div>
-        <label htmlFor="profileName">Name (optional)</label>
-        <input
-          id="profileName"
-          type="text"
-          value={profileName}
-          placeholder="What should we call you?"
-          onChange={(e) => actions?.setProfile?.({ name: e.target.value })}
-          maxLength={40}
-          aria-label="Name"
-        />
-
-        <label htmlFor="profileEmail" style={{ marginTop: 10 }}>
-          Email (optional)
-        </label>
-        <input
-          id="profileEmail"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          value={profileEmail}
-          placeholder="you@example.com"
-          onChange={(e) => actions?.setProfile?.({ email: e.target.value })}
-          maxLength={120}
-          aria-label="Email"
-        />
-        <div className="footerNote" style={{ marginTop: 8 }}>
-          This is only saved on this device.
-        </div>
+    <div className="card settingsCard">
+      <div className="settingsHeader">
+        <h2 className="settingsTitle">Profile</h2>
+        <div className="settingsSubtitle">Local settings for this device.</div>
       </div>
 
-      <div className="result" style={{ marginBottom: 12 }}>
-        <div className="resultTitle">Preferences</div>
-        <div className="miniPills" aria-label="Preferences">
-          <span className="miniPill">📅 Week starts on Monday</span>
-        </div>
+      <div className="settingsMain">
+        <SettingsSection title="About you" helper="Optional. Saved locally on this device.">
+          <div className="settingsFields">
+            <div>
+              <div className="fieldLabelRow">
+                <label htmlFor="profileName">Name</label>
+                <span className="fieldPill" aria-hidden="true">Optional</span>
+              </div>
+              <input
+                id="profileName"
+                className="inputCompact"
+                type="text"
+                value={profileName}
+                placeholder="What should we call you?"
+                onChange={(e) => actions?.setProfile?.({ name: e.target.value })}
+                maxLength={40}
+                aria-label="Name"
+              />
+            </div>
 
-        <div style={{ marginTop: 12 }}>
-          <label
-            htmlFor="useNoteForAi"
-            style={{ display: "flex", gap: 10, alignItems: "center", cursor: "pointer" }}
-          >
-            <input
-              id="useNoteForAi"
-              type="checkbox"
-              checked={useNoteForAi}
-              onChange={(e) => actions?.setProfile?.({ useNoteForAi: !!e.target.checked })}
-            />
-            <span>Use my optional check-in note to personalize AI suggestions</span>
-          </label>
-          <div className="footerNote" style={{ marginTop: 6 }}>
-            If turned off, Attune will still use mood, energy, body, and pace, but won’t send your note.
+            <div>
+              <div className="fieldLabelRow">
+                <label htmlFor="profileEmail">Email</label>
+                <span className="fieldPill" aria-hidden="true">Optional</span>
+              </div>
+              <input
+                id="profileEmail"
+                className="inputCompact"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={profileEmail}
+                placeholder="you@example.com"
+                onChange={(e) => actions?.setProfile?.({ email: e.target.value })}
+                maxLength={120}
+                aria-label="Email"
+              />
+            </div>
           </div>
-        </div>
+        </SettingsSection>
 
-        <div className="footerNote" style={{ marginTop: 8 }}>
-          More preferences can live here later (notifications, theme, etc.).
-        </div>
-      </div>
+        <SettingsSection title="Preferences" helper="These apply only on this device.">
+          <SettingToggleRow
+            id="weekStartsMonday"
+            title="Week starts on Monday"
+            description="Weekly view runs Monday → Sunday."
+            checked={true}
+            disabled={true}
+            onChange={() => {}}
+          />
 
-      <div className="result" style={{ marginBottom: 0 }}>
-        <div className="resultTitle">Data</div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
-          <button type="button" className="btn" onClick={doExport}>
-            Export data
-          </button>
-          <button
-            type="button"
-            className="btn"
-            onClick={() => setConfirmOpen(true)}
-            style={{
-              borderColor: "rgba(239,68,68,.30)",
-              background: "rgba(239,68,68,.10)",
-              color: "#7f1d1d",
-              fontWeight: 800,
-            }}
-          >
-            Sign out
-          </button>
-        </div>
+          <SettingToggleRow
+            id="useNoteForAi"
+            title="Use my optional check-in note for AI"
+            description="If off, Attune won’t send your note — just mood, energy, body, and pace."
+            checked={useNoteForAi}
+            onChange={(e) => actions?.setProfile?.({ useNoteForAi: !!e.target.checked })}
+          />
+        </SettingsSection>
 
-        <div className="footerNote" style={{ marginTop: 10 }}>
-          Since there’s no account yet, “Sign out” clears this device’s data.
-        </div>
+        <SettingsSection
+          title="Data"
+          helper="Export a copy, or clear everything stored locally on this device."
+        >
+          <div className="settingsActions">
+            <button type="button" className="btn" onClick={doExport}>
+              Export data
+            </button>
+            <button
+              type="button"
+              className="btn ghost dangerGhost"
+              onClick={() => setConfirmOpen(true)}
+            >
+              Clear this device
+            </button>
+          </div>
+        </SettingsSection>
       </div>
 
       {confirmOpen && (
@@ -133,10 +158,10 @@ export default function Profile({ state, actions }) {
             if (e.target === e.currentTarget) setConfirmOpen(false);
           }}
         >
-          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Sign out confirmation">
-            <div className="modalTitle">Sign out?</div>
+          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear device confirmation">
+            <div className="modalTitle">Clear this device?</div>
             <div className="modalBody">
-              This will clear your Attune data on this device. You can’t undo this.
+              This removes your Attune data stored locally on this device (including history and preferences). You can’t undo this.
             </div>
             <div className="modalActions">
               <button type="button" className="btn small ghost" onClick={() => setConfirmOpen(false)}>
@@ -149,14 +174,9 @@ export default function Profile({ state, actions }) {
                   setConfirmOpen(false);
                   actions?.clearDeviceData?.();
                 }}
-                style={{
-                  borderColor: "rgba(239,68,68,.30)",
-                  background: "rgba(239,68,68,.12)",
-                  color: "#7f1d1d",
-                  fontWeight: 900,
-                }}
+                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
               >
-                Sign out
+                Clear device
               </button>
             </div>
           </div>
