@@ -3,6 +3,7 @@ import { loadState, saveState, todayKey } from "../lib/storage";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
+import { recordEventOnState, trimEventDays } from "../lib/events";
 
 const SCHEMA_VERSION = 7;
 
@@ -11,6 +12,8 @@ const AI_BOARD_VERSION = 2;
 
 // Bump this when the AI daily note prompt changes.
 const AI_DAILY_NOTE_VERSION = 1;
+
+const EVENT_DAYS_TO_KEEP = 90;
 
 const DEFAULT_CHECKIN = {
   mood: "okay",
@@ -37,6 +40,7 @@ function defaultState(){
     myDayCap: 5,
     history: [],
     weeklyNotes: {},
+    events: {},
     profile: {
       name: "",
       email: "",
@@ -150,6 +154,12 @@ function normalizeLoadedState(loaded){
   if(typeof next.profile.plan !== "string") next.profile.plan = "free";
   if(next.profile.plan !== "free" && next.profile.plan !== "plus") next.profile.plan = "free";
 
+  if(!next.events || typeof next.events !== "object" || Array.isArray(next.events)) next.events = {};
+  for(const k of Object.keys(next.events)){
+    if(!Array.isArray(next.events[k])) next.events[k] = [];
+  }
+  next.events = trimEventDays(next.events, EVENT_DAYS_TO_KEEP);
+
   // Toasts are ephemeral; don't restore them across reloads.
   next.toast = null;
 
@@ -217,6 +227,9 @@ export function useAttuneStore(){
   }, [state]);
 
   const actions = useMemo(() => ({
+    trackEvent: (type, payload) =>
+      setState(s => recordEventOnState(s, type, payload, { maxDays: EVENT_DAYS_TO_KEEP })),
+
     go: (screen) =>
       setState(s => {
         if(screen === "wheel"){
@@ -224,7 +237,7 @@ export function useAttuneStore(){
             ? s.options
             : suggestActivities(s.checkin, s.level);
 
-          return {
+          const next = {
             ...s,
             screen: "wheel",
             options,
@@ -232,6 +245,24 @@ export function useAttuneStore(){
             // Treat entering the Wheel from Check-in as completing today’s check-in.
             checkedInToday: s.screen === "checkin" ? true : s.checkedInToday,
           };
+
+          if(s.screen === "checkin"){
+            const note = typeof s.checkin?.note === "string" ? s.checkin.note.trim().slice(0, 200) : "";
+            return recordEventOnState(
+              next,
+              "checkinSaved",
+              {
+                mood: s.checkin?.mood,
+                energy: s.checkin?.energy,
+                body: s.checkin?.body,
+                pace: s.level,
+                ...(note ? { note } : {}),
+              },
+              { maxDays: EVENT_DAYS_TO_KEEP }
+            );
+          }
+
+          return next;
         }
 
         return { ...s, screen, toast: null };
@@ -482,7 +513,7 @@ export function useAttuneStore(){
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
         const nextCount = (s.myDay?.length || 0) + 1;
         const label = nextCount === 1 ? "activity" : "activities";
-        return {
+        const next = {
           ...s,
           myDay: [...s.myDay, { id, text: s.currentSpin.text, done:false }],
           currentSpin: null,
@@ -492,6 +523,13 @@ export function useAttuneStore(){
             screen: s.screen,
           }
         };
+
+        return recordEventOnState(
+          next,
+          "activityPicked",
+          { text: s.currentSpin?.text, pace: s.currentSpin?.level || s.level, source: "spin" },
+          { maxDays: EVENT_DAYS_TO_KEEP }
+        );
       }),
 
     addOption: (opt) =>
@@ -506,7 +544,7 @@ export function useAttuneStore(){
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
         const nextCount = (s.myDay?.length || 0) + 1;
         const label = nextCount === 1 ? "activity" : "activities";
-        return {
+        const next = {
           ...s,
           myDay: [...s.myDay, { id, text: opt.text, done:false }],
           toast: {
@@ -515,6 +553,13 @@ export function useAttuneStore(){
             screen: s.screen,
           }
         };
+
+        return recordEventOnState(
+          next,
+          "activityPicked",
+          { text: opt.text, pace: opt.level || s.level, source: "board" },
+          { maxDays: EVENT_DAYS_TO_KEEP }
+        );
       }),
 
     setMyDayCap: (cap) =>
@@ -581,19 +626,44 @@ export function useAttuneStore(){
 
     toggleDone: (id, done) =>
       setState(s => {
+        const prevTask = (s.myDay || []).find(t => t.id === id);
+        const wasDone = !!prevTask?.done;
         const myDay = s.myDay.map(t => t.id === id ? {...t, done} : t);
         const msg = done
           ? ENCOURAGE_DONE[Math.floor(Math.random()*ENCOURAGE_DONE.length)]
           : "No rush, you can come back to it later.";
-        return { ...s, myDay, toast: { text: msg, good: !!done, screen: s.screen } };
+
+        const next = { ...s, myDay, toast: { text: msg, good: !!done, screen: s.screen } };
+
+        if(done && !wasDone){
+          return recordEventOnState(
+            next,
+            "activityCompleted",
+            { id, text: prevTask?.text, pace: s.level },
+            { maxDays: EVENT_DAYS_TO_KEEP }
+          );
+        }
+
+        return next;
       }),
 
     removeTask: (id) =>
-      setState(s => ({
-        ...s,
-        myDay: s.myDay.filter(t => t.id !== id),
-        toast: { text: "Removed. Keep it light.", good: false, screen: s.screen }
-      })),
+      setState(s => {
+        const prevTask = (s.myDay || []).find(t => t.id === id);
+        const next = {
+          ...s,
+          myDay: s.myDay.filter(t => t.id !== id),
+          toast: { text: "Removed. Keep it light.", good: false, screen: s.screen }
+        };
+
+        if(!prevTask) return next;
+        return recordEventOnState(
+          next,
+          "activityRemoved",
+          { id, text: prevTask?.text, done: !!prevTask?.done, pace: s.level },
+          { maxDays: EVENT_DAYS_TO_KEEP }
+        );
+      }),
 
     newMessage: () =>
       setState(s => ({

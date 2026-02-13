@@ -79,6 +79,11 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
     setRevealed(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
+    actions.trackEvent?.("boardCleared", {
+      pickedCount: myDay?.length || 0,
+      pace: state.level,
+      source: state.optionsSource,
+    });
     actions.resetToday?.();
     actions.refreshOptions?.();
   };
@@ -100,12 +105,23 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
       .filter(Boolean)
       .filter((t, i, a) => a.indexOf(t) === i);
 
+    let shown = null;
     if (Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT) {
+      shown = storedBoardAssigned;
       setBoardAssigned(storedBoardAssigned);
     } else {
       const next = buildBoardAssigned({ options, pinnedTexts, tileCount: TILE_COUNT });
+      shown = next;
       persistBoard(next);
     }
+
+    const activities = (shown || []).map((x) => (typeof x?.text === "string" ? x.text : "")).filter(Boolean);
+    actions.trackEvent?.("activityShown", {
+      count: TILE_COUNT,
+      activities,
+      pace: state.level,
+      source: state.optionsSource,
+    });
     setRevealed(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
