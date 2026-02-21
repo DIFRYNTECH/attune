@@ -9,6 +9,7 @@ export function getEntitlements(inputPlan) {
     smartPick: isPlus,
     momentumExact: isPlus,
     multiWeekHistory: isPlus,
+    patternCallouts: isPlus,
     deepInsights: isPlus,
   };
 }

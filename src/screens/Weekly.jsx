@@ -4,6 +4,7 @@ import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeCopy } from "../lib/attuneEngine";
 import { computeMomentum, momentumLabelToMeterPercent } from "../lib/momentum";
 import { findSimilarWeeks, upsertWeeklySummary } from "../lib/weeklyHistory";
+import { generatePatternCallouts } from "../lib/patternCallouts";
 
 function startOfWeekMonday(d = new Date()) {
   const dt = new Date(d);
@@ -137,6 +138,11 @@ export default function Weekly({ state, actions }) {
 
   const canMultiWeek = !!state?.entitlements?.multiWeekHistory;
   const [weeksToShow, setWeeksToShow] = useState(4);
+
+  const canPatternCallouts = !!state?.entitlements?.patternCallouts;
+  const patternCallouts = canPatternCallouts
+    ? generatePatternCallouts({ weeklySummaries: state.weeklySummaries, eventsByDay: state.events, nowMs: Date.now(), max: 3 })
+    : [];
 
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
@@ -336,6 +342,33 @@ export default function Weekly({ state, actions }) {
           {!canExactMomentum ? " (Exact signal is a Plus feature.)" : ""}
         </div>
       </div>
+
+      {canPatternCallouts && patternCallouts.length > 0 && (
+        <div className="result" style={{ marginBottom: 12 }} aria-label="Patterns">
+          <div className="resultTitle">Patterns</div>
+          <div className="footerNote" style={{ marginTop: 6 }}>
+            A few gentle observations from your recent history.
+          </div>
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {patternCallouts.map((c) => (
+              <div
+                key={c.id}
+                style={{
+                  padding: "10px 10px",
+                  border: "1px solid rgba(231,233,242,.95)",
+                  background: "rgba(255,255,255,.85)",
+                  borderRadius: 14,
+                  fontSize: 13,
+                  color: "var(--ink)",
+                  lineHeight: 1.35,
+                }}
+              >
+                {c.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {canMultiWeek && (
         <div className="result" style={{ marginBottom: 12 }}>
