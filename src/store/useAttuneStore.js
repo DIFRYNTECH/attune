@@ -5,6 +5,7 @@ import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
 import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj } from "../lib/noteMemory";
+import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
 
 const SCHEMA_VERSION = 7;
 
@@ -42,6 +43,7 @@ function defaultState(){
     myDayCap: 5,
     history: [],
     weeklyNotes: {},
+    weeklySummaries: [],
     events: {},
     noteMemory: { notes: [] },
     profile: {
@@ -125,6 +127,22 @@ function normalizeLoadedState(loaded){
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
   if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
+
+  if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
+  next.weeklySummaries = next.weeklySummaries
+    .filter(x => x && typeof x === "object" && !Array.isArray(x))
+    .filter(x => typeof x.weekStart === "string" && x.weekStart)
+    .map(x => ({
+      weekStart: x.weekStart,
+      presence: typeof x.presence === "number" ? x.presence : Number(x.presence) || 0,
+      completions: typeof x.completions === "number" ? x.completions : Number(x.completions) || 0,
+      avgPace: typeof x.avgPace === "string" ? x.avgPace : null,
+      avgPaceIndex: typeof x.avgPaceIndex === "number" && Number.isFinite(x.avgPaceIndex) ? x.avgPaceIndex : null,
+      weekType: typeof x.weekType === "string" ? x.weekType : "Gentle Week",
+      momentum: typeof x.momentum === "number" ? x.momentum : Number(x.momentum) || 0,
+    }))
+    .sort((a,b) => String(a.weekStart).localeCompare(String(b.weekStart)))
+    .slice(-52);
 
   if(typeof next.optionsSource !== "string") next.optionsSource = "default";
   if(next.optionsSource !== "default" && next.optionsSource !== "ai") next.optionsSource = "default";
@@ -219,6 +237,14 @@ export function useAttuneStore(){
     if(state.today !== t){
       setState(prev => {
         const rolled = rollDayToHistory(prev);
+        // Snapshot/update the week summary for the day we just rolled.
+        const weekStart = weekStartMondayKey(prev.today);
+        let weeklySummaries = rolled.weeklySummaries;
+        if(weekStart){
+          const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
+          const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
+          if(summary) weeklySummaries = upsertWeeklySummary(weeklySummaries, summary, 52);
+        }
         const checkin = { ...DEFAULT_CHECKIN };
         const level = "gentle";
         const next = {
@@ -230,6 +256,7 @@ export function useAttuneStore(){
           options: [],
           myDay: [],
           myDayCap: 5,
+          weeklySummaries,
           boardAssigned: [],
           currentSpin: null,
           toast: null,
@@ -741,8 +768,19 @@ export function useAttuneStore(){
         }
 
         const rolled = rollDayToHistory(s);
+
+        // Snapshot/update weekly summary for this week.
+        const weekStart = weekStartMondayKey(rolled.today);
+        let weeklySummaries = rolled.weeklySummaries;
+        if(weekStart){
+          const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
+          const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
+          if(summary) weeklySummaries = upsertWeeklySummary(weeklySummaries, summary, 52);
+        }
+
         return {
           ...rolled,
+          weeklySummaries,
           options: [],
           boardAssigned: [],
           myDay: [],
@@ -752,6 +790,31 @@ export function useAttuneStore(){
       }),
 
     clearToast: () => setState(s => ({...s, toast: null})),
+
+    upsertCurrentWeekSummary: () =>
+      setState(s => {
+        const weekStart = weekStartMondayKey(s.today);
+        if(!weekStart) return s;
+
+        // Prefer live state for today so the current week stays fresh.
+        const weekRecords = buildWeekRecordsFromHistory(s.history, weekStart).map((d) => {
+          if(d.date !== s.today) return d;
+          return {
+            ...d,
+            checkedIn: !!s.checkedInToday,
+            level: s.level,
+            tasksAdded: s.myDay?.length || 0,
+            tasksDone: s.myDay?.filter((t) => t.done).length || 0,
+          };
+        });
+
+        const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
+        if(!summary) return s;
+
+        const weeklySummaries = upsertWeeklySummary(s.weeklySummaries, summary, 52);
+        if(weeklySummaries === s.weeklySummaries) return s;
+        return { ...s, weeklySummaries };
+      }),
 
     resetToday: () =>
       setState(s => ({

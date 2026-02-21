@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeCopy } from "../lib/attuneEngine";
 import { computeMomentum, momentumLabelToMeterPercent } from "../lib/momentum";
+import { findSimilarWeeks, upsertWeeklySummary } from "../lib/weeklyHistory";
 
 function startOfWeekMonday(d = new Date()) {
   const dt = new Date(d);
@@ -134,6 +135,9 @@ export default function Weekly({ state, actions }) {
   const canExactMomentum = !!state?.entitlements?.momentumExact;
   const meterPercent = canExactMomentum ? score : momentumLabelToMeterPercent(label);
 
+  const canMultiWeek = !!state?.entitlements?.multiWeekHistory;
+  const [weeksToShow, setWeeksToShow] = useState(4);
+
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
   const note = state.weeklyNotes?.[weekId] || "";
@@ -166,6 +170,52 @@ export default function Weekly({ state, actions }) {
     },
     { rest: 0, gentle: 0, light: 0, steady: 0, capable: 0, brave: 0 },
   );
+
+  const currentWeekSummary = {
+    weekStart: weekRange.startKey,
+    presence: daysPresent,
+    completions: tasksDone,
+    avgPace: (() => {
+      const checked = weekRecords.filter((d) => d.checkedIn && typeof d.level === "string");
+      if (!checked.length) return null;
+      const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
+      const indices = checked.map((d) => order.indexOf(d.level)).filter((i) => i >= 0);
+      if (!indices.length) return null;
+      const avg = indices.reduce((a, b) => a + b, 0) / indices.length;
+      const rounded = Math.max(0, Math.min(order.length - 1, Math.round(avg)));
+      return order[rounded];
+    })(),
+    avgPaceIndex: (() => {
+      const checked = weekRecords.filter((d) => d.checkedIn && typeof d.level === "string");
+      if (!checked.length) return null;
+      const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
+      const indices = checked.map((d) => order.indexOf(d.level)).filter((i) => i >= 0);
+      if (!indices.length) return null;
+      const avg = indices.reduce((a, b) => a + b, 0) / indices.length;
+      const rounded = Math.max(0, Math.min(order.length - 1, Math.round(avg)));
+      return rounded;
+    })(),
+    weekType: archetype,
+    momentum: score,
+  };
+
+  // Keep stored snapshots fresh (Plus only). This is safe: upsert is no-op when unchanged.
+  useEffect(() => {
+    if (!canMultiWeek) return;
+    actions?.upsertCurrentWeekSummary?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canMultiWeek, weekId, daysPresent, tasksDone, score, archetype]);
+
+  const mergedSummaries = (() => {
+    const stored = Array.isArray(state.weeklySummaries) ? state.weeklySummaries : [];
+    // Include current week summary even if not yet stored.
+    return upsertWeeklySummary(stored, currentWeekSummary, 52);
+  })();
+
+  const summariesDesc = [...mergedSummaries].sort((a, b) => String(b.weekStart).localeCompare(String(a.weekStart)));
+  const shownSummaries = canMultiWeek ? summariesDesc.slice(0, Math.max(4, Math.min(12, weeksToShow))) : [];
+  const priorSummaries = summariesDesc.filter((s) => s.weekStart !== weekRange.startKey);
+  const similar = canMultiWeek ? findSimilarWeeks(currentWeekSummary, priorSummaries, { max: 2 }) : [];
 
   return (
     <div className="card weeklyCard">
@@ -286,6 +336,75 @@ export default function Weekly({ state, actions }) {
           {!canExactMomentum ? " (Exact signal is a Plus feature.)" : ""}
         </div>
       </div>
+
+      {canMultiWeek && (
+        <div className="result" style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <div className="resultTitle">Past weeks</div>
+            <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
+              Show
+              <select
+                value={weeksToShow}
+                onChange={(e) => setWeeksToShow(Number(e.target.value) || 4)}
+                style={{ borderRadius: 10, border: "1px solid var(--line)", padding: "6px 8px", background: "white" }}
+                aria-label="How many weeks to show"
+              >
+                {[4, 6, 8, 12].map((n) => (
+                  <option key={n} value={n}>
+                    {n}
+                  </option>
+                ))}
+              </select>
+              weeks
+            </label>
+          </div>
+
+          {similar.length > 0 ? (
+            <div className="footerNote" style={{ marginTop: 8 }}>
+              {similar.slice(0, 2).map((s, idx) => (
+                <div key={s.weekStart} style={{ marginTop: idx === 0 ? 0 : 6 }}>
+                  This looks similar to the week of <b style={{ color: "var(--ink)" }}>{formatDateLong(s.weekStart)}</b>.
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="footerNote" style={{ marginTop: 8 }}>
+              Add a little more history and we’ll start making gentle comparisons.
+            </div>
+          )}
+
+          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            {shownSummaries.map((w) => (
+              <div
+                key={w.weekStart}
+                style={{
+                  padding: "10px 10px",
+                  border: "1px solid rgba(231,233,242,.95)",
+                  background: "rgba(255,255,255,.85)",
+                  borderRadius: 14,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ fontWeight: 900, color: "var(--ink)" }}>{formatDateLong(w.weekStart)}</div>
+                  <div className="footerNote" style={{ marginTop: 0 }}>
+                    Signal {w.momentum}/100
+                  </div>
+                </div>
+                <div className="miniPills" style={{ marginTop: 8 }}>
+                  <span className="miniPill">📅 {w.presence}/7 present</span>
+                  <span className="miniPill">✅ {w.completions} completed</span>
+                  <span className="miniPill">🏷️ {w.weekType}</span>
+                  {w.avgPace ? <span className="miniPill">🏁 avg pace: {prettyLevel(w.avgPace)}</span> : null}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="footerNote" style={{ marginTop: 10 }}>
+            This list is saved locally on this device.
+          </div>
+        </div>
+      )}
 
       {showMomentumInfo && (
         <div
