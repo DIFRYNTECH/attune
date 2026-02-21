@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeCopy } from "../lib/attuneEngine";
+import { computeMomentum, momentumLabelToMeterPercent } from "../lib/momentum";
 
 function startOfWeekMonday(d = new Date()) {
   const dt = new Date(d);
@@ -75,24 +76,6 @@ function buildWeekRecords(state) {
   });
 }
 
-function computeMomentum(weekRecords) {
-  const daysPresent = weekRecords.filter((d) => d.checkedIn).length;
-  const tasksDone = weekRecords.reduce((sum, d) => sum + (d.tasksDone || 0), 0);
-
-  // Gentle: showing up matters most; tasks add extra motivation.
-  const presenceScore = daysPresent * 12; // max 84
-  const taskScore = Math.min(tasksDone * 6, 36); // cap so it can't feel punitive
-  const score = Math.min(100, presenceScore + taskScore);
-
-  let label = "Quiet";
-  if (score >= 80) label = "Strong";
-  else if (score >= 55) label = "Steady";
-  else if (score >= 30) label = "Building";
-  else if (score >= 10) label = "Starting";
-
-  return { score, label, daysPresent, tasksDone };
-}
-
 const MOMENTUM_LEVELS = [
   {
     label: "Quiet",
@@ -148,6 +131,8 @@ export default function Weekly({ state, actions }) {
   const why = explainWeekArchetype(weekRecords);
 
   const { score, label, daysPresent, tasksDone } = computeMomentum(weekRecords);
+  const canExactMomentum = !!state?.entitlements?.momentumExact;
+  const meterPercent = canExactMomentum ? score : momentumLabelToMeterPercent(label);
 
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
@@ -278,9 +263,11 @@ export default function Weekly({ state, actions }) {
 
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
           <div style={{ fontWeight: 900, fontSize: 20, color: "var(--ink)" }}>{label}</div>
-          <div className="footerNote" style={{ marginTop: 0 }}>
-            Signal {score}/100
-          </div>
+          {canExactMomentum ? (
+            <div className="footerNote" style={{ marginTop: 0 }}>
+              Signal {score}/100
+            </div>
+          ) : null}
         </div>
 
         <div className="miniPills" aria-label="Momentum details">
@@ -291,11 +278,12 @@ export default function Weekly({ state, actions }) {
         </div>
 
         <div className="meter" aria-label="Weekly momentum">
-          <div className="meterFill" style={{ width: `${score}%` }} />
+          <div className="meterFill" style={{ width: `${meterPercent}%` }} />
         </div>
 
         <div className="footerNote">
-          This isn’t a grade, it’s a consistency signal: showing up matters most, plus a small boost for finishing activities.
+          This isn’t a grade, it’s a gentle signal: showing up matters most, plus a small boost for finishing activities.
+          {!canExactMomentum ? " (Exact signal is a Plus feature.)" : ""}
         </div>
       </div>
 
