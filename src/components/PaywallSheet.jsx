@@ -55,15 +55,14 @@ export default function PaywallSheet({ state, actions }) {
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
-      style={{ alignItems: "flex-end" }}
     >
       <div
         className="modalCard"
         onMouseDown={(e) => e.stopPropagation()}
         style={{
-          borderBottomLeftRadius: 0,
-          borderBottomRightRadius: 0,
           width: "min(560px, 100%)",
+          maxHeight: "min(80vh, 680px)",
+          overflow: "auto",
         }}
       >
         <div className="modalTitle">Attune Plus</div>

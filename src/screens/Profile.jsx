@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
+import InfoTip from "../components/InfoTip";
 
 function SettingToggleRow({ title, description, checked, onChange, disabled = false, id }) {
   return (
@@ -24,12 +25,16 @@ function SettingToggleRow({ title, description, checked, onChange, disabled = fa
   );
 }
 
-function SettingsSection({ title, helper, children }) {
+function SettingsSection({ title, helper, helperLabel, children }) {
   return (
     <section className="settingsSection">
       <div className="settingsSectionHead">
         <div className="settingsSectionTitle">{title}</div>
-        {helper ? <div className="settingsSectionHelper">{helper}</div> : null}
+        {helper ? (
+          <InfoTip label={helperLabel || (typeof title === "string" ? `${title} info` : "Section info")}>
+            {helper}
+          </InfoTip>
+        ) : null}
       </div>
       <div className="settingsSectionBody">{children}</div>
     </section>
@@ -86,41 +91,65 @@ export default function Profile({ state, actions }) {
 
       <div className="settingsMain">
         <SettingsSection
-          title="Attune Plus"
-          helper={isPlus ? "Enabled on this device." : "Optional upgrade (local toggle for now)."}
+          title={
+            <div className="settingsSectionTitleRow">
+              <span>Attune Plus</span>
+              <span className={"badge" + (isPlus ? " plus" : "")}>{isPlus ? "Enabled" : "Optional"}</span>
+            </div>
+          }
+          helper={
+            "Plus unlocks note memory, smarter picking, and premium Weekly details. For now, this is a local toggle on this device."
+          }
+          helperLabel="About Attune Plus"
         >
-          <div style={{ display: "grid", gap: 8, fontSize: 13, color: "var(--muted)" }}>
-            <div><b style={{ color: "var(--ink)" }}>Note memory</b> from your check-in note (local).</div>
-            <div><b style={{ color: "var(--ink)" }}>Smarter picking</b> that adapts to what you complete/skip.</div>
-            <div><b style={{ color: "var(--ink)" }}>Premium Weekly</b>: exact signal, past weeks, comparisons, patterns.</div>
-          </div>
+          <ul className="settingsBullets" aria-label="Attune Plus features">
+            <li>
+              <b>Note memory</b> from your check-in note (saved locally).
+            </li>
+            <li>
+              <b>Smarter picking</b> that adapts to what you complete/skip.
+            </li>
+            <li>
+              <b>Premium Weekly</b>: exact signal, patterns, and past weeks.
+            </li>
+          </ul>
 
-          <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
-            Yearly price: <b style={{ color: "var(--ink)" }}>$—/year</b> (placeholder)
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
-            Restore purchases: coming later.
+          <div className="settingsMeta">
+            <div>
+              Yearly price: <b>$—/year</b> <span>(placeholder)</span>
+            </div>
+            <div>
+              Restore purchases: <span>coming later</span>
+            </div>
           </div>
 
           <div className="settingsActions" style={{ marginTop: 10 }}>
             {!isPlus ? (
-              <button type="button" className="btn" onClick={() => actions?.openPaywall?.("plus", "profile")}
-                aria-label="Try Attune Plus on this device">
-                Try Plus on this device
+              <button
+                type="button"
+                className="btn"
+                onClick={() => actions?.openPaywall?.("plus", "profile")}
+                aria-label="Try Attune Plus on this device"
+              >
+                Try Plus
               </button>
             ) : (
-              <button type="button" className="btn ghost" onClick={() => actions?.setPlan?.("free")}
-                aria-label="Turn off Attune Plus on this device">
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => actions?.setPlan?.("free")}
+                aria-label="Turn off Attune Plus on this device"
+              >
                 Turn off Plus
               </button>
             )}
             <button type="button" className="btn ghost" disabled={true} aria-disabled="true" title="Coming soon">
-              Restore (coming soon)
+              Restore
             </button>
           </div>
         </SettingsSection>
 
-        <SettingsSection title="About you" helper="Optional. Saved locally on this device.">
+        <SettingsSection title="About you" helper="Optional. Saved locally on this device." helperLabel="About you info">
           <div className="settingsFields">
             <div>
               <div className="fieldLabelRow">
@@ -160,7 +189,7 @@ export default function Profile({ state, actions }) {
           </div>
         </SettingsSection>
 
-        <SettingsSection title="Preferences" helper="These apply only on this device.">
+        <SettingsSection title="Preferences" helper="These apply only on this device." helperLabel="Preferences info">
           <SettingToggleRow
             id="weekStartsMonday"
             title="Week starts on Monday"
@@ -181,7 +210,8 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Data"
-          helper="Export a copy, or clear everything stored locally on this device."
+          helper="Export a copy of your local data, or clear everything stored on this device."
+          helperLabel="Data info"
         >
           <div className="settingsActions">
             <button type="button" className="btn" onClick={doExport}>
@@ -199,9 +229,12 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Note memory"
-          helper={canUseMemory
-            ? "Attune Plus remembers your check-in notes over time (locally on this device)."
-            : "Plus feature. Free plan doesn’t keep historical note memory."}
+          helper={
+            canUseMemory
+              ? "Attune Plus remembers your check-in notes over time (stored locally on this device)."
+              : "Free plan doesn’t keep historical note memory."
+          }
+          helperLabel="Note memory info"
         >
           <div className="settingsActions">
             <button
@@ -217,11 +250,11 @@ export default function Profile({ state, actions }) {
             {!canUseMemory ? (
               <button
                 type="button"
-                className="btn small"
+                className="btn small ghost"
                 onClick={() => actions?.openPaywall?.("noteMemory", "profile")}
                 aria-label="Try Attune Plus to enable note memory"
               >
-                Try Plus
+                🔒 Try Plus
               </button>
             ) : null}
             <div style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>
@@ -231,7 +264,7 @@ export default function Profile({ state, actions }) {
 
           {canUseMemory && noteCount > 0 && recentThemes.length > 0 && (
             <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
-              <strong style={{ color: "var(--text)" }}>Lately:</strong> {recentThemes.join(" · ")}
+              <strong style={{ color: "var(--ink)" }}>Lately:</strong> {recentThemes.join(" · ")}
             </div>
           )}
 

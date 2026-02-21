@@ -5,6 +5,7 @@ import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeC
 import { computeMomentum, momentumLabelToMeterPercent } from "../lib/momentum";
 import { findSimilarWeeks, upsertWeeklySummary } from "../lib/weeklyHistory";
 import { generatePatternCallouts } from "../lib/patternCallouts";
+import InfoTip from "../components/InfoTip";
 
 function startOfWeekMonday(d = new Date()) {
   const dt = new Date(d);
@@ -233,23 +234,8 @@ export default function Weekly({ state, actions }) {
           onClick={() => setShowWeekRangeInfo(true)}
           aria-label="Which dates are included in this week?"
           title="Which dates are included in this week?"
-          style={{
-            border: "1px solid transparent",
-            background: "transparent",
-            color: "var(--ink)",
-            width: 26,
-            height: 26,
-            borderRadius: 999,
-            fontWeight: 900,
-            fontSize: 18,
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: "pointer",
-            padding: 0,
-            lineHeight: 1,
-            flex: "0 0 auto",
-          }}
+          className="infoBtn"
+          style={{ fontSize: 16, color: "var(--ink)", flex: "0 0 auto" }}
         >
           📅
         </button>
@@ -291,7 +277,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      <div className="result" style={{ marginBottom: 12 }}>
+      <div className="result">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div className="resultTitle">Momentum</div>
           <button
@@ -299,21 +285,7 @@ export default function Weekly({ state, actions }) {
             onClick={() => setShowMomentumInfo(true)}
             aria-label="What does Momentum mean?"
             title="What does Momentum mean?"
-            style={{
-              border: "1px solid var(--line)",
-              background: "rgba(255,255,255,.7)",
-              color: "var(--muted)",
-              width: 26,
-              height: 26,
-              borderRadius: 999,
-              fontWeight: 900,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-            }}
+            className="infoBtn"
           >
             i
           </button>
@@ -357,29 +329,77 @@ export default function Weekly({ state, actions }) {
       </div>
 
       {!isPlus && (
-        <div className="result" style={{ marginBottom: 12 }} aria-label="Patterns (Plus)">
+        <div className="result" aria-label="Attune Plus (teaser)">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <div className="resultTitle">Patterns</div>
-            <button
-              type="button"
-              className="btn small ghost"
-              onClick={() => actions?.openPaywall?.("patternCallouts", "weekly")}
-              aria-label="Try Attune Plus to unlock pattern callouts"
-            >
-              🔒 Try Plus
-            </button>
+            <div className="resultTitle">Attune Plus</div>
+            <InfoTip label="What does Plus unlock?">
+              Unlock gentle patterns and a multi-week view. These stay local to this device.
+            </InfoTip>
           </div>
-          <div className="footerNote" style={{ marginTop: 8 }}>
-            Gentle callouts based on your history, only when there’s enough data.
+
+          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: "10px 10px",
+                border: "1px solid rgba(231,233,242,.95)",
+                background: "rgba(255,255,255,.85)",
+                borderRadius: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <div style={{ fontWeight: 900, color: "var(--ink)" }}>Patterns</div>
+                <InfoTip label="About Patterns">
+                  Gentle callouts based on your history, only when there’s enough data.
+                </InfoTip>
+              </div>
+              <button
+                type="button"
+                className="btn small ghost"
+                onClick={() => actions?.openPaywall?.("patternCallouts", "weekly")}
+                aria-label="Try Attune Plus to unlock pattern callouts"
+              >
+                🔒 Try Plus
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 10,
+                padding: "10px 10px",
+                border: "1px solid rgba(231,233,242,.95)",
+                background: "rgba(255,255,255,.85)",
+                borderRadius: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                <div style={{ fontWeight: 900, color: "var(--ink)" }}>Past weeks</div>
+                <InfoTip label="About Past weeks">See 4–12 weeks at a glance, with gentle comparisons.</InfoTip>
+              </div>
+              <button
+                type="button"
+                className="btn small ghost"
+                onClick={() => actions?.openPaywall?.("multiWeekHistory", "weekly")}
+                aria-label="Try Attune Plus to unlock past weeks"
+              >
+                🔒 Try Plus
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {canPatternCallouts && patternCallouts.length > 0 && (
-        <div className="result" style={{ marginBottom: 12 }} aria-label="Patterns">
-          <div className="resultTitle">Patterns</div>
-          <div className="footerNote" style={{ marginTop: 6 }}>
-            A few gentle observations from your recent history.
+        <div className="result" aria-label="Patterns">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <div className="resultTitle">Patterns</div>
+            <InfoTip label="About Patterns">A few gentle observations from your recent history.</InfoTip>
           </div>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             {patternCallouts.map((c) => (
@@ -403,9 +423,16 @@ export default function Weekly({ state, actions }) {
       )}
 
       {canMultiWeek && (
-        <div className="result" style={{ marginBottom: 12 }}>
+        <div className="result">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <div className="resultTitle">Past weeks</div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <div className="resultTitle" style={{ margin: 0 }}>
+                Past weeks
+              </div>
+              <InfoTip label="About Past weeks">
+                See 4–12 weeks at a glance, with gentle comparisons. This list is saved locally on this device.
+              </InfoTip>
+            </div>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
               Show
               <select
@@ -465,28 +492,6 @@ export default function Weekly({ state, actions }) {
             ))}
           </div>
 
-          <div className="footerNote" style={{ marginTop: 10 }}>
-            This list is saved locally on this device.
-          </div>
-        </div>
-      )}
-
-      {!canMultiWeek && !isPlus && (
-        <div className="result" style={{ marginBottom: 12 }} aria-label="Past weeks (Plus)">
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <div className="resultTitle">Past weeks</div>
-            <button
-              type="button"
-              className="btn small ghost"
-              onClick={() => actions?.openPaywall?.("multiWeekHistory", "weekly")}
-              aria-label="Try Attune Plus to unlock past weeks"
-            >
-              🔒 Try Plus
-            </button>
-          </div>
-          <div className="footerNote" style={{ marginTop: 8 }}>
-            See 4–12 weeks at a glance, with gentle comparisons.
-          </div>
         </div>
       )}
 
@@ -529,7 +534,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      <div className="result" style={{ marginBottom: 12 }}>
+      <div className="result">
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
           <div className="resultTitle">Week type</div>
           <button
@@ -537,21 +542,7 @@ export default function Weekly({ state, actions }) {
             onClick={() => setShowWeekTypeInfo(true)}
             aria-label="What does Week type mean?"
             title="What does Week type mean?"
-            style={{
-              border: "1px solid var(--line)",
-              background: "rgba(255,255,255,.7)",
-              color: "var(--muted)",
-              width: 26,
-              height: 26,
-              borderRadius: 999,
-              fontWeight: 900,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              cursor: "pointer",
-              padding: 0,
-              lineHeight: 1,
-            }}
+            className="infoBtn"
           >
             i
           </button>
@@ -602,7 +593,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      <div className="result" style={{ marginBottom: 12 }}>
+      <div className="result">
         <div className="resultTitle">Paces you chose</div>
         <div className="miniPills" aria-label="Pace counts">
           <span className="miniPill">🫧 Rest: {levelCounts.rest}</span>

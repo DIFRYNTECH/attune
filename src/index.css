@@ -4,12 +4,21 @@
       --ink:#17181c;
       --muted:#606574;
       --line:#e7e9f2;
+  --divider: rgba(231,233,242,.90);
       --brand:#4f6df5;
       --brand2:#6ee7b7;
       --warn:#f59e0b;
       --danger:#ef4444;
       --shadow: 0 10px 30px rgba(20,30,60,.08);
       --radius: 18px;
+
+  /* Spacing scale (4px baseline) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
     }
 
     *{box-sizing:border-box}
@@ -31,7 +40,7 @@
     .wrap{
       max-width:980px;
       margin:0 auto;
-      padding:18px;
+      padding: var(--s-5);
       height: 100%;
       display: flex;
       flex-direction: column;
@@ -111,7 +120,7 @@
     .grid{
       display:grid;
       grid-template-columns: 1.2fr .8fr;
-      gap:14px;
+      gap: var(--s-4);
       flex: 1; /* Allows this to grow and fill space */
       min-height: 0; /* Flexbox overflow fix */
       overflow-y: auto; /* Contains scrolling to this element */
@@ -124,7 +133,7 @@
       background: var(--card);
       border:1px solid var(--line);
       border-radius: var(--radius);
-      padding: 16px;
+      padding: var(--s-4);
       box-shadow: var(--shadow);
     }
     .card h2{
@@ -138,13 +147,13 @@
 
     /* Profile (Settings-style) */
     .settingsCard{
-      padding: 14px;
+      padding: var(--s-4);
       display: flex;
       flex-direction: column;
       min-height: 0;
     }
     .settingsHeader{
-      margin-bottom: 10px;
+      margin-bottom: var(--s-3);
     }
     .settingsTitle{
       margin: 0;
@@ -161,9 +170,9 @@
     }
 
     .settingsMain{
-      border: 1px solid rgba(231,233,242,.95);
+      border: 1px solid rgba(231,233,242,.90);
       border-radius: 16px;
-      background: rgba(255,255,255,.75);
+      background: rgba(255,255,255,.72);
       overflow: auto;
       -webkit-overflow-scrolling: touch;
       overscroll-behavior: contain;
@@ -171,10 +180,10 @@
       min-height: 0;
     }
     .settingsSection{
-      padding: 12px;
+      padding: var(--s-4);
     }
     .settingsSection + .settingsSection{
-      border-top: 1px solid rgba(231,233,242,.95);
+      border-top: 1px solid rgba(231,233,242,.85);
     }
     .settingsSectionHead{
       display:flex;
@@ -182,7 +191,7 @@
       justify-content:space-between;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 10px;
+      margin-bottom: var(--s-2);
     }
     .settingsSectionTitle{
       font-size: 12px;
@@ -192,6 +201,52 @@
       text-transform: none;
       min-width: 0;
     }
+
+    .settingsSectionTitleRow{
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .badge{
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .2px;
+      color: rgba(43,47,58,.62);
+      background: rgba(255,255,255,.9);
+      border: 1px solid rgba(231,233,242,.95);
+      white-space: nowrap;
+    }
+    .badge.plus{
+      color: color-mix(in oklab, var(--brand) 70%, #1f2230);
+      background:
+        radial-gradient(14px 14px at 30% 25%, rgba(255,255,255,.70), transparent 60%),
+        linear-gradient(135deg, rgba(79,109,245,.16), rgba(139,92,246,.12));
+      border-color: rgba(79,109,245,.22);
+    }
+
+    .settingsBullets{
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 13px;
+      display: grid;
+      gap: 6px;
+    }
+    .settingsBullets b{color: var(--ink)}
+
+    .settingsMeta{
+      margin-top: var(--s-3);
+      display: grid;
+      gap: 4px;
+      font-size: 12px;
+      color: rgba(43,47,58,.62);
+    }
+    .settingsMeta b{color: var(--ink)}
+    .settingsMeta span{opacity: .85}
     .settingsSectionHelper{
       color: rgba(43,47,58,.55);
       font-size: 12px;
@@ -250,7 +305,12 @@
       padding: 10px 0;
       cursor: pointer;
       user-select:none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      outline: none;
     }
+    .settingRow:focus{outline:none;}
+    .settingRow:focus-visible{outline:none;}
     .settingRow + .settingRow{
       border-top: 1px solid rgba(231,233,242,.75);
     }
@@ -319,6 +379,12 @@
       flex-wrap: wrap;
       align-items:center;
     }
+
+    @media (max-width: 520px){
+      .settingsActions .btn{
+        width: 100%;
+      }
+    }
     .btn.dangerGhost{
       border-color: transparent;
       background: transparent;
@@ -383,74 +449,6 @@
       text-align:right;
     }
 
-    /* Calming filler shown only when optional note is collapsed */
-    .calmVisual{
-      margin-top:12px;
-      border:1px dashed #dfe2ee;
-      border-radius:16px;
-      background: #fff;
-      overflow:hidden;
-      position:relative;
-      /* pointer-events:none; */ /* Allow clicks */
-      min-height: 80px; /* ensure it has some size */
-      -webkit-tap-highlight-color: transparent; /* remove blue flash on click */
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.65), 0 10px 22px rgba(17,24,39,.04);
-    }
-
-    .calmCanvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      opacity: 0;
-      animation: fadeIn 0.5s ease forwards;
-    }
-
-    @keyframes fadeIn {
-      to {
-        opacity: 1;
-      }
-    }
-
-    /* Breathing aura (subtle, visible on white) */
-    .calmAura::before,
-    .calmAura::after{
-      content:"";
-      position:absolute;
-      inset:-25%;
-      border-radius:999px;
-      filter: blur(20px);
-      transform: translate3d(0,0,0) scale(.9);
-      opacity:.45;
-      mix-blend-mode: multiply;
-      will-change: transform, opacity;
-      animation: calmBreathe 5.5s ease-in-out infinite;
-    }
-    .calmAura::before{
-      background:
-        radial-gradient(circle at 35% 40%, rgba(79,109,245,.35), transparent 55%),
-        radial-gradient(circle at 70% 58%, rgba(139,92,246,.32), transparent 60%),
-        radial-gradient(circle at 62% 30%, rgba(56,189,248,.3), transparent 58%);
-    }
-    .calmAura::after{
-      inset:-30%;
-      filter: blur(30px);
-      background:
-        radial-gradient(circle at 50% 50%, rgba(110,231,183,.35), transparent 58%);
-      animation-delay: -2.75s;
-    }
-
-    @keyframes calmBreathe {
-      50% {
-        transform: translate3d(0,0,0) scale(1.15);
-        opacity: .5;
-      }
-    }
-    @media (prefers-reduced-motion: reduce){
-      .calmAura::before,
-      .calmAura::after{animation:none; opacity:.7; transform: none;}
-    }
     .pillrow{display:flex; gap:8px; flex-wrap:wrap}
     .pill{
       border:1px solid var(--line);
@@ -701,11 +699,15 @@
       filter: drop-shadow(0 6px 10px rgba(0,0,0,.18));
     }
 
+    /* Section blocks inside cards (visually not "mini-cards") */
     .result{
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:12px;
-      background: linear-gradient(180deg, rgba(79,109,245,.06), transparent);
+      border:0;
+      border-radius:0;
+      padding: var(--s-3) 0;
+      background: transparent;
+    }
+    .result + .result{
+      border-top: 1px solid var(--divider);
     }
     .resultTitle{font-size:12px; color:var(--muted); margin:0 0 6px}
     .resultTask{font-size:15px; font-weight:800; margin:0 0 8px}
@@ -734,11 +736,46 @@
       padding:7px 10px;
       border-radius:999px;
       background:#fff;
-      border:1px solid var(--line);
+      border:1px solid rgba(231,233,242,.95);
       font-size:12px;
       font-weight:800;
       color: #2b2f3a;
     }
+
+    /* Info tooltip */
+    .infoTip{position:relative; display:inline-flex;}
+    .infoBtn{
+      border: 1px solid rgba(231,233,242,.95);
+      background: rgba(255,255,255,.9);
+      color: rgba(43,47,58,.62);
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      font-weight: 950;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      user-select: none;
+    }
+    .infoBtn:hover{border-color: rgba(79,109,245,.22)}
+    .infoTip.open .infoBtn{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
+    .infoBubble{
+      position: fixed;
+      width: min(260px, 80vw);
+      padding: 10px 12px;
+      background: rgba(255,255,255,.98);
+      border: 1px solid rgba(231,233,242,.95);
+      border-radius: 14px;
+      box-shadow: 0 16px 40px rgba(20,30,60,.14);
+      color: rgba(43,47,58,.82);
+      font-size: 12px;
+      line-height: 1.35;
+      z-index: 80;
+    }
+    .infoBubble.left{transform-origin: top left;}
 
     .list{
       margin:0; padding:0; list-style:none;

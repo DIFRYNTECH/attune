@@ -50,6 +50,23 @@ html {
 
 /* Mobile-first tightening */
 @media (max-width: 520px) {
+  /* Bottom nav is the primary navigation on mobile.
+     Keep the brand row visible so app name/version/plan is always shown. */
+  .top {
+    padding: 6px 2px 10px;
+    gap: 8px;
+  }
+
+  .brandMark {
+    width: 32px;
+    height: 32px;
+    border-radius: 11px;
+  }
+
+  h1 {
+    font-size: 18px;
+  }
+
   .wrap {
     /* Single source of truth for fixed bottom nav clearance on mobile. */
     --bottomNavSpace: 56px;
