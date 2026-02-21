@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAttuneStore } from "../store/useAttuneStore";
+import { smartPickPool } from "../lib/smartPick";
 
 function shuffle(arr) {
   const a = [...arr];
@@ -10,7 +11,7 @@ function shuffle(arr) {
   return a;
 }
 
-function buildBoardAssigned({ options, pinnedTexts, tileCount }) {
+function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
   // Stable, no-repeats board assignment.
   // If we run out of unique options, fill with placeholders.
   const list = [];
@@ -24,8 +25,8 @@ function buildBoardAssigned({ options, pinnedTexts, tileCount }) {
     if (list.length >= tileCount) return list;
   }
 
-  const pool = options?.length ? shuffle(options) : [];
-  for (const o of pool) {
+  const optionsPool = Array.isArray(pool) ? pool : [];
+  for (const o of optionsPool) {
     if (!o?.text) continue;
     if (seen.has(o.text)) continue;
     seen.add(o.text);
@@ -49,6 +50,20 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
 
   const TILE_COUNT = 15;
   const HARD_CAP = 10;
+
+  const canSmartPick = !!state?.entitlements?.smartPick;
+  const optionsPool = useMemo(() => {
+    const base = Array.isArray(options) ? options : [];
+    if (!base.length) return [];
+
+    const nowMs = Date.now();
+
+    // Free mode: keep the existing behavior (pure shuffle from today's check-in pool).
+    if (!canSmartPick) return shuffle(base);
+
+    // Plus: bias which options surface using local event history.
+    return smartPickPool(base, state?.events, { nowMs });
+  }, [options, canSmartPick, state?.events]);
 
   const [revealed, setRevealed] = useState(() => Array(TILE_COUNT).fill(false));
   const [boardAssigned, setBoardAssigned] = useState(() => {
@@ -110,7 +125,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
       shown = storedBoardAssigned;
       setBoardAssigned(storedBoardAssigned);
     } else {
-      const next = buildBoardAssigned({ options, pinnedTexts, tileCount: TILE_COUNT });
+      const next = buildBoardAssigned({ pool: optionsPool, pinnedTexts, tileCount: TILE_COUNT });
       shown = next;
       persistBoard(next);
     }

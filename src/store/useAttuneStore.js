@@ -230,6 +230,7 @@ export function useAttuneStore(){
           options: [],
           myDay: [],
           myDayCap: 5,
+          boardAssigned: [],
           currentSpin: null,
           toast: null,
           dailyMessage: dailyMessageFromCheckin(checkin, level),
