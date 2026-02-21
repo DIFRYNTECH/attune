@@ -57,6 +57,7 @@ export default function Profile({ state, actions }) {
   const profileEmail = state.profile?.email || "";
   const useNoteForAi = state.profile?.useNoteForAi !== false;
   const canUseMemory = !!state?.entitlements?.noteMemory;
+  const isPlus = !!state?.entitlements?.isPlus;
   const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
   const recentThemes = summarizeRecentThemes(state?.noteMemory, 10);
   const recentNotes = (Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes : [])
@@ -84,6 +85,41 @@ export default function Profile({ state, actions }) {
       </div>
 
       <div className="settingsMain">
+        <SettingsSection
+          title="Attune Plus"
+          helper={isPlus ? "Enabled on this device." : "Optional upgrade (local toggle for now)."}
+        >
+          <div style={{ display: "grid", gap: 8, fontSize: 13, color: "var(--muted)" }}>
+            <div><b style={{ color: "var(--ink)" }}>Note memory</b> from your check-in note (local).</div>
+            <div><b style={{ color: "var(--ink)" }}>Smarter picking</b> that adapts to what you complete/skip.</div>
+            <div><b style={{ color: "var(--ink)" }}>Premium Weekly</b>: exact signal, past weeks, comparisons, patterns.</div>
+          </div>
+
+          <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
+            Yearly price: <b style={{ color: "var(--ink)" }}>$—/year</b> (placeholder)
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
+            Restore purchases: coming later.
+          </div>
+
+          <div className="settingsActions" style={{ marginTop: 10 }}>
+            {!isPlus ? (
+              <button type="button" className="btn" onClick={() => actions?.openPaywall?.("plus", "profile")}
+                aria-label="Try Attune Plus on this device">
+                Try Plus on this device
+              </button>
+            ) : (
+              <button type="button" className="btn ghost" onClick={() => actions?.setPlan?.("free")}
+                aria-label="Turn off Attune Plus on this device">
+                Turn off Plus
+              </button>
+            )}
+            <button type="button" className="btn ghost" disabled={true} aria-disabled="true" title="Coming soon">
+              Restore (coming soon)
+            </button>
+          </div>
+        </SettingsSection>
+
         <SettingsSection title="About you" helper="Optional. Saved locally on this device.">
           <div className="settingsFields">
             <div>
@@ -177,6 +213,17 @@ export default function Profile({ state, actions }) {
             >
               Clear note history
             </button>
+
+            {!canUseMemory ? (
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => actions?.openPaywall?.("noteMemory", "profile")}
+                aria-label="Try Attune Plus to enable note memory"
+              >
+                Try Plus
+              </button>
+            ) : null}
             <div style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>
               {canUseMemory ? `${noteCount} saved` : "0 saved"}
             </div>

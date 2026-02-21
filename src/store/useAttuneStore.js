@@ -71,6 +71,7 @@ function defaultState(){
     },
     dailyMessage: dailyMessageFromCheckin(checkin, level),
     toast: null, // {text, good, screen}
+    paywall: null, // { feature, source } (ephemeral)
     currentSpin: null,
   };
 }
@@ -199,6 +200,8 @@ function normalizeLoadedState(loaded){
 
   // Toasts are ephemeral; don't restore them across reloads.
   next.toast = null;
+  // Paywall is ephemeral; don't restore it across reloads.
+  next.paywall = null;
 
   // Treat the Check-in screen as a fresh form on app start.
   // This avoids confusing "defaults" that persist from an old selection.
@@ -645,6 +648,16 @@ export function useAttuneStore(){
     setToast: (text, good = false) =>
       setState(s => ({ ...s, toast: { text, good, screen: s.screen } })),
 
+    openPaywall: (feature, source) =>
+      setState(s => {
+        if(s?.profile?.plan === "plus") return s;
+        const f = typeof feature === "string" ? feature : "plus";
+        const src = typeof source === "string" ? source : "";
+        return { ...s, paywall: { feature: f, source: src } };
+      }),
+
+    closePaywall: () => setState(s => ({ ...s, paywall: null })),
+
     setBoardAssigned: (boardAssigned) =>
       setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
 
@@ -674,7 +687,8 @@ export function useAttuneStore(){
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), plan };
         // Free plan should not keep historical note memory.
         const noteMemory = plan === "plus" ? s.noteMemory : clearNoteMemoryObj(s.noteMemory);
-        return { ...s, profile, noteMemory };
+        const paywall = plan === "plus" ? null : s.paywall;
+        return { ...s, profile, noteMemory, paywall };
       }),
 
     clearNoteMemory: () =>

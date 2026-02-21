@@ -6,6 +6,7 @@ import CheckIn from "../screens/CheckIn.jsx";
 import Profile from "../screens/Profile.jsx";
 import Today from "../screens/Today.jsx";
 import Weekly from "../screens/Weekly.jsx";
+import PaywallSheet from "../components/PaywallSheet.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
 
 function renderToastText(text) {
@@ -187,6 +188,8 @@ export default function App() {
       )}
 
       <BottomNav screen={screen} setScreen={actions.go} />
+
+      <PaywallSheet state={state} actions={actions} />
     </div>
   );
 }

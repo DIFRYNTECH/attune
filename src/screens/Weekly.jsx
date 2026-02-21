@@ -136,6 +136,8 @@ export default function Weekly({ state, actions }) {
   const canExactMomentum = !!state?.entitlements?.momentumExact;
   const meterPercent = canExactMomentum ? score : momentumLabelToMeterPercent(label);
 
+  const isPlus = !!state?.entitlements?.isPlus;
+
   const canMultiWeek = !!state?.entitlements?.multiWeekHistory;
   const [weeksToShow, setWeeksToShow] = useState(4);
 
@@ -323,7 +325,18 @@ export default function Weekly({ state, actions }) {
             <div className="footerNote" style={{ marginTop: 0 }}>
               Signal {score}/100
             </div>
-          ) : null}
+          ) : (
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => actions?.openPaywall?.("momentumExact", "weekly")}
+              aria-label="Unlock exact Momentum signal with Attune Plus"
+              title="Plus feature"
+              style={{ marginTop: 0 }}
+            >
+              🔒 Try Plus
+            </button>
+          )}
         </div>
 
         <div className="miniPills" aria-label="Momentum details">
@@ -339,9 +352,28 @@ export default function Weekly({ state, actions }) {
 
         <div className="footerNote">
           This isn’t a grade, it’s a gentle signal: showing up matters most, plus a small boost for finishing activities.
-          {!canExactMomentum ? " (Exact signal is a Plus feature.)" : ""}
+          {!canExactMomentum ? "" : ""}
         </div>
       </div>
+
+      {!isPlus && (
+        <div className="result" style={{ marginBottom: 12 }} aria-label="Patterns (Plus)">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <div className="resultTitle">Patterns</div>
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => actions?.openPaywall?.("patternCallouts", "weekly")}
+              aria-label="Try Attune Plus to unlock pattern callouts"
+            >
+              🔒 Try Plus
+            </button>
+          </div>
+          <div className="footerNote" style={{ marginTop: 8 }}>
+            Gentle callouts based on your history, only when there’s enough data.
+          </div>
+        </div>
+      )}
 
       {canPatternCallouts && patternCallouts.length > 0 && (
         <div className="result" style={{ marginBottom: 12 }} aria-label="Patterns">
@@ -435,6 +467,25 @@ export default function Weekly({ state, actions }) {
 
           <div className="footerNote" style={{ marginTop: 10 }}>
             This list is saved locally on this device.
+          </div>
+        </div>
+      )}
+
+      {!canMultiWeek && !isPlus && (
+        <div className="result" style={{ marginBottom: 12 }} aria-label="Past weeks (Plus)">
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
+            <div className="resultTitle">Past weeks</div>
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={() => actions?.openPaywall?.("multiWeekHistory", "weekly")}
+              aria-label="Try Attune Plus to unlock past weeks"
+            >
+              🔒 Try Plus
+            </button>
+          </div>
+          <div className="footerNote" style={{ marginTop: 8 }}>
+            See 4–12 weeks at a glance, with gentle comparisons.
           </div>
         </div>
       )}

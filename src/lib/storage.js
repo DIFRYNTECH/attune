@@ -21,6 +21,6 @@ export function loadState() {
 
 export function saveState(state) {
   // Toasts are ephemeral UI; don't persist them.
-  const { toast: _toast, ...rest } = state || {};
+  const { toast: _toast, paywall: _paywall, ...rest } = state || {};
   localStorage.setItem(KEY, JSON.stringify(rest));
 }
