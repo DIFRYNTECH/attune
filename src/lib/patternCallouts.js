@@ -135,7 +135,7 @@ function pickTopNonOverlapping(candidates, max) {
     if (!c) continue;
     if (picked.length >= max) break;
     if (c.category && usedCategories.has(c.category)) continue;
-    picked.push({ id: c.id, text: c.text });
+    picked.push({ id: c.id, category: c.category, text: c.text });
     if (c.category) usedCategories.add(c.category);
   }
 

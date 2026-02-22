@@ -740,6 +740,7 @@
       border: 1px solid rgba(231,233,242,.9);
       overflow: hidden;
       margin-top: 10px;
+      position: relative;
     }
     .meterFill{
       height: 100%;
@@ -747,6 +748,33 @@
       background: linear-gradient(135deg, var(--brand), #8b5cf6);
       box-shadow: 0 10px 18px rgba(79,109,245,.14);
     }
+
+    .meterBand{
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      border-radius: 999px;
+      background:
+        linear-gradient(135deg, rgba(79,109,245,.55), rgba(139,92,246,.45)),
+        repeating-linear-gradient(45deg, rgba(255,255,255,.38) 0, rgba(255,255,255,.38) 8px, rgba(255,255,255,0) 8px, rgba(255,255,255,0) 16px);
+      background-blend-mode: overlay;
+      box-shadow: 0 10px 18px rgba(79,109,245,.12);
+      border: 1px solid rgba(79,109,245,.22);
+    }
+
+    .meterBand::before,
+    .meterBand::after{
+      content: "";
+      position: absolute;
+      top: -2px;
+      bottom: -2px;
+      width: 2px;
+      background: rgba(79,109,245,.55);
+      border-radius: 999px;
+      opacity: .9;
+    }
+    .meterBand::before{left: 0;}
+    .meterBand::after{right: 0;}
 
     .miniPills{display:flex; flex-wrap:wrap; gap:8px; margin-top:8px}
     .miniPill{
@@ -766,7 +794,25 @@
       overflow-wrap: anywhere;
     }
 
+    .miniPillBtn{
+      appearance: none;
+      cursor: pointer;
+      text-align: left;
+    }
+    .miniPillBtn:hover{border-color: rgba(79,109,245,.22)}
+    .miniPillBtn:focus-visible{
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+    }
+
     /* Weekly */
+    .weeklyRangeTiny{
+      margin-top: 2px;
+      font-size: 12px;
+      color: rgba(43,47,58,.62);
+      font-weight: 800;
+    }
+
     .weekInsight{
       padding: 10px 12px;
       border-radius: 14px;
@@ -777,6 +823,27 @@
       color: var(--ink);
       font-size: 13px;
       line-height: 1.35;
+      display: grid;
+      gap: 6px;
+    }
+
+    .weekInsightTag{
+      width: fit-content;
+      max-width: 100%;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .15px;
+      color: rgba(43,47,58,.72);
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(231,233,242,.95);
+      overflow-wrap: anywhere;
+    }
+
+    .weekInsightActions{
+      margin-top: 8px;
+      text-align: right;
     }
     .weekSummaryCard{
       padding: 10px 10px;
@@ -820,6 +887,17 @@
       min-width: 0;
       touch-action: pan-x;
     }
+
+    .pastWeeksSticky{
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding-top: 2px;
+      padding-bottom: 8px;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(231,233,242,.75);
+    }
     .weekStripItem{
       flex: 0 0 auto;
       min-width: 120px;
@@ -835,6 +913,12 @@
       touch-action: pan-x;
     }
     .weekStripItem:hover{border-color: rgba(79,109,245,.22)}
+    .weekStripItem.current{
+      border-color: rgba(79,109,245,.28);
+      background:
+        radial-gradient(18px 18px at 18px 16px, rgba(255,255,255,.80), transparent 60%),
+        linear-gradient(135deg, rgba(79,109,245,.08), rgba(139,92,246,.04));
+    }
     .weekStripItem.active{
       border-color: rgba(79,109,245,.35);
       box-shadow: 0 0 0 3px rgba(79,109,245,.08);
@@ -844,7 +928,7 @@
     }
     .weekStripTop{
       display: flex;
-      align-items: baseline;
+      align-items: flex-start;
       justify-content: space-between;
       gap: 10px;
     }
@@ -853,6 +937,22 @@
       font-weight: 950;
       letter-spacing: .15px;
       color: rgba(43,47,58,.62);
+    }
+
+    .weekStripLabel{
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .15px;
+      color: rgba(43,47,58,.62);
+      line-height: 1.15;
+      min-width: 0;
+    }
+    .weekStripItem.current .weekStripLabel{color: var(--ink);}
+    .weekStripSub{
+      margin-top: 2px;
+      font-size: 10px;
+      font-weight: 850;
+      color: rgba(43,47,58,.55);
     }
     .weekStripScore{
       font-size: 15px;
