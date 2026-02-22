@@ -2,6 +2,8 @@ import React from "react";
 
 function featureTitle(feature) {
   switch (feature) {
+    case "darkMode":
+      return "Dark mode";
     case "momentumExact":
       return "Exact Momentum signal";
     case "multiWeekHistory":
@@ -17,12 +19,14 @@ function featureTitle(feature) {
 
 function featureBlurb(feature) {
   switch (feature) {
+    case "darkMode":
+      return "A calmer, darker look, available with Attune Plus.";
     case "momentumExact":
       return "See your exact weekly signal number (e.g. 82/100).";
     case "multiWeekHistory":
-      return "See 4–12 weeks of history with comparisons and highlights.";
+      return "See 4-12 weeks of history with comparisons and highlights.";
     case "patternCallouts":
-      return "Get 1–3 soft pattern callouts when there’s enough data.";
+      return "Get 1-3 soft pattern callouts when there’s enough data.";
     case "noteMemory":
       return "Your optional check-in note is saved and summarized over time (on this device).";
     default:
@@ -68,10 +72,18 @@ export default function PaywallSheet({ state, actions }) {
         <div className="modalTitle">Attune Plus</div>
 
         <div className="modalBody" style={{ marginTop: 8 }}>
-          <div style={{ fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{featureTitle(feature)}</div>
+          {feature !== "plus" ? (
+            <div style={{ fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{featureTitle(feature)}</div>
+          ) : null}
           <div>{featureBlurb(feature)}</div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
+              <b style={{ color: "var(--ink)" }}>Dark mode</b>: a calmer, darker look.
+            </div>
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
+              <b style={{ color: "var(--ink)" }}>Exports</b>: download your local data.
+            </div>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
               <b style={{ color: "var(--ink)" }}>Note memory</b>: your optional note becomes local memory.
             </div>

@@ -149,27 +149,27 @@ function buildWeekRecords(state) {
 const MOMENTUM_LEVELS = [
   {
     label: "Quiet",
-    range: "0–9",
+    range: "0-9",
     desc: "A quieter week. Rest counts, and you can start small anytime.",
   },
   {
     label: "Starting",
-    range: "10–29",
+    range: "10-29",
     desc: "Some momentum. A few check-ins or one small finish can shift this.",
   },
   {
     label: "Building",
-    range: "30–54",
+    range: "30-54",
     desc: "You’re building a rhythm. Consistency is forming.",
   },
   {
     label: "Steady",
-    range: "55–79",
+    range: "55-79",
     desc: "A steady pattern. You’re showing up in a repeatable way.",
   },
   {
     label: "Strong",
-    range: "80–100",
+    range: "80-100",
     desc: "A strong signal of consistency. Keep it kind - no need to maintain this every week.",
   },
 ];
@@ -537,8 +537,8 @@ export default function Weekly({ state, actions }) {
                 justifyContent: "space-between",
                 gap: 10,
                 padding: "10px 10px",
-                border: "1px solid rgba(231,233,242,.95)",
-                background: "rgba(255,255,255,.85)",
+                border: "1px solid var(--line)",
+                background: "var(--card85)",
                 borderRadius: 14,
               }}
             >
@@ -565,14 +565,14 @@ export default function Weekly({ state, actions }) {
                 justifyContent: "space-between",
                 gap: 10,
                 padding: "10px 10px",
-                border: "1px solid rgba(231,233,242,.95)",
-                background: "rgba(255,255,255,.85)",
+                border: "1px solid var(--line)",
+                background: "var(--card85)",
                 borderRadius: 14,
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, color: "var(--ink)" }}>Past weeks</div>
-                <InfoTip label="About Past weeks">See 4–12 weeks at a glance, with low-pressure comparisons.</InfoTip>
+                <InfoTip label="About Past weeks">See 4-12 weeks at a glance, with low-pressure comparisons.</InfoTip>
               </div>
               <button
                 type="button"
@@ -620,7 +620,7 @@ export default function Weekly({ state, actions }) {
                   Past weeks
                 </div>
                 <InfoTip label="About Past weeks">
-                  See 4–12 weeks at a glance, with low-pressure comparisons. This list is saved locally on this device.
+                  See 4-12 weeks at a glance, with low-pressure comparisons. This list is saved locally on this device.
                 </InfoTip>
               </div>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
@@ -628,7 +628,7 @@ export default function Weekly({ state, actions }) {
                 <select
                   value={weeksToShow}
                   onChange={(e) => setWeeksToShow(Number(e.target.value) || 4)}
-                  style={{ borderRadius: 10, border: "1px solid var(--line)", padding: "6px 8px", background: "white" }}
+                  style={{ borderRadius: 10, border: "1px solid var(--line)", padding: "6px 8px", background: "var(--card)" }}
                   aria-label="How many weeks to show"
                 >
                   {[4, 6, 8, 12].map((n) => (
@@ -778,12 +778,12 @@ export default function Weekly({ state, actions }) {
                     alignItems: "center",
                     gap: 10,
                     padding: "8px 10px",
-                    border: "1px solid rgba(231,233,242,.90)",
+                    border: "1px solid var(--line)",
                     borderRadius: 14,
-                    background: "rgba(255,255,255,.85)",
+                    background: "var(--card85)",
                   }}
                 >
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(43,47,58,.62)" }}>
+                  <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
                     {formatWeekdayShort(d.date)}
                   </div>
                   <div style={{ minWidth: 0 }}>
@@ -792,8 +792,8 @@ export default function Weekly({ state, actions }) {
                       {d.checkedIn ? "Present" : "Not present"} · {Number(d.tasksDone) || 0} completed
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(43,47,58,.62)" }}>
-                    {d.checkedIn ? "✓" : "–"}
+                  <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
+                    {d.checkedIn ? "✓" : "○"}
                   </div>
                 </div>
               ))}
@@ -844,17 +844,17 @@ export default function Weekly({ state, actions }) {
                   <div
                     key={d.dayKey}
                     style={{
-                      border: "1px solid rgba(231,233,242,.90)",
+                      border: "1px solid var(--line)",
                       borderRadius: 14,
-                      background: "rgba(255,255,255,.85)",
+                      background: "var(--card85)",
                       padding: "10px 10px",
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 950, color: "rgba(43,47,58,.62)" }}>
+                      <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
                         {formatWeekdayShort(d.dayKey)}
                       </div>
-                      <div style={{ fontSize: 12, color: "rgba(43,47,58,.62)" }}>{formatDateShort(d.dayKey)}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDateShort(d.dayKey)}</div>
                     </div>
 
                     {d.completed.length ? (

@@ -51,6 +51,7 @@ function defaultState(){
       name: "",
       email: "",
       useNoteForAi: true,
+      theme: "light", // 'light' | 'dark'
       plan: "free", // 'free' | 'plus'
     },
     ai: {
@@ -189,12 +190,16 @@ function normalizeLoadedState(loaded){
     .slice(0, 2);
   if(typeof next.aiDailyNote.error !== "string") next.aiDailyNote.error = "";
 
-  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true, plan: "free" };
+  if(!next.profile || typeof next.profile !== "object" || Array.isArray(next.profile)) next.profile = { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
   if(typeof next.profile.name !== "string") next.profile.name = "";
   if(typeof next.profile.email !== "string") next.profile.email = "";
   if(typeof next.profile.useNoteForAi !== "boolean") next.profile.useNoteForAi = true;
+  if(typeof next.profile.theme !== "string") next.profile.theme = "light";
+  if(next.profile.theme !== "light" && next.profile.theme !== "dark") next.profile.theme = "light";
   if(typeof next.profile.plan !== "string") next.profile.plan = "free";
   if(next.profile.plan !== "free" && next.profile.plan !== "plus") next.profile.plan = "free";
+  // Dark mode is a Plus feature; fall back to light for free plan.
+  if(next.profile.plan !== "plus") next.profile.theme = "light";
 
   if(!next.noteMemory || typeof next.noteMemory !== "object" || Array.isArray(next.noteMemory)) next.noteMemory = { notes: [] };
   if(!Array.isArray(next.noteMemory.notes)) next.noteMemory.notes = [];
@@ -677,7 +682,7 @@ export function useAttuneStore(){
     setProfile: (patch) =>
       setState(s => {
         const nextPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
-        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), ...nextPatch };
+        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
 
@@ -688,8 +693,14 @@ export function useAttuneStore(){
 
         if(typeof profile.useNoteForAi !== "boolean") profile.useNoteForAi = true;
 
+        if(typeof profile.theme !== "string") profile.theme = "light";
+        if(profile.theme !== "light" && profile.theme !== "dark") profile.theme = "light";
+
         if(typeof profile.plan !== "string") profile.plan = "free";
         if(profile.plan !== "free" && profile.plan !== "plus") profile.plan = "free";
+
+        // Dark mode is a Plus feature; keep free plan on light.
+        if(profile.plan !== "plus") profile.theme = "light";
 
         return { ...s, profile };
       }),
@@ -697,7 +708,8 @@ export function useAttuneStore(){
     setPlan: (nextPlan) =>
       setState(s => {
         const plan = nextPlan === "plus" ? "plus" : "free";
-        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, plan: "free" }), plan };
+        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), plan };
+        if(plan !== "plus") profile.theme = "light";
         // Free plan should not keep historical note memory.
         const noteMemory = plan === "plus" ? s.noteMemory : clearNoteMemoryObj(s.noteMemory);
         const paywall = plan === "plus" ? null : s.paywall;

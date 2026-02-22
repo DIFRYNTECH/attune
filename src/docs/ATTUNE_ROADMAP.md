@@ -88,7 +88,7 @@ Status: DONE
 Goal: Make action feel achievable.
 
 ### My Day
-- 2–5 tasks max (soft limit)
+- 2-5 tasks max (soft limit)
 - Clear “done” interaction
 - Gentle encouragement on completion
 - Removing a task feels neutral, not bad

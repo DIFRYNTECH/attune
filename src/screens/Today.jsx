@@ -31,7 +31,7 @@ export default function Today({ state, actions }) {
 	return (
 		<div className="card myDayCard">
 			<h2>🧭 My Day</h2>
-			<div className="sub">Aim for 2–5 tasks. You can add up to 10 if you’d like.</div>
+			<div className="sub">Aim for 2-5 tasks. You can add up to 10 if you’d like.</div>
 
 			<div className="result personalNote" style={{ marginBottom: 12 }}>
 				<div className="personalNoteTop">

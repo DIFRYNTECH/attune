@@ -13,7 +13,7 @@ export const TASKS = {
     "Wrap in a blanket and rest without guilt",
     "Wash your face with warm water, slowly",
     "Smell a lotion or oil you like (one minute)",
-    "Sit in sunlight for 3–5 minutes (if possible)",
+    "Sit in sunlight for 3-5 minutes (if possible)",
     "Pick one tiny comfort: softer light, quieter sound, warmer socks"
   ],
   gentle: [
@@ -34,7 +34,7 @@ export const TASKS = {
     "Make a small plan for something pleasant later (even 5 minutes)"
   ],
   light: [
-    "Take a short walk (5–8 minutes)",
+    "Take a short walk (5-8 minutes)",
     "Tidy one small surface (5 minutes)",
     "Do a quick stretch + shoulder roll (4 minutes)",
     "Make a simple snack and actually sit to eat it",
@@ -64,7 +64,7 @@ export const TASKS = {
     "Do one small thing that makes your space nicer (light, scent, tidy)"
   ],
   capable: [
-    "Take a short walk outside (10–15 minutes if comfortable)",
+    "Take a short walk outside (10-15 minutes if comfortable)",
     "Prepare a simple snack or light meal",
     "Do a gentle mobility routine (12 minutes)",
     "Organize a small area (15 minutes)",

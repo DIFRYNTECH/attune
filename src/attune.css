@@ -22,9 +22,9 @@ html {
   right: 0;
   bottom: 0;
   padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
-  background: rgba(246, 247, 251, 0.92);
+  background: var(--card92);
   backdrop-filter: blur(10px);
-  border-top: 1px solid #e7e9f2;
+  border-top: 1px solid var(--divider);
   display: none;
   gap: 8px;
   justify-content: space-around;
@@ -33,13 +33,14 @@ html {
 }
 
 .bottomNavBtn {
-  border: 1px solid #e7e9f2;
-  background: white;
+  border: 1px solid var(--line);
+  background: var(--card);
   border-radius: 999px;
   padding: 10px 12px;
   font-weight: 700;
   font-size: 13px;
   white-space: nowrap;
+  color: var(--ink);
 }
 
 .bottomNavBtn.active {
@@ -71,7 +72,9 @@ html {
     /* Single source of truth for fixed bottom nav clearance on mobile. */
     --bottomNavSpace: 56px;
     /* Extra breathing room when a toast is showing (fixed above the nav). */
-    --toastSpace: 76px;
+    --toastSpace: 48px;
+    /* Additional in-card scroll padding when toast is visible. */
+    --toastReserve: 0px;
 
     padding: 12px;
     /* Keep content clear of the fixed bottom nav without creating a huge blank band. */
@@ -85,16 +88,9 @@ html {
     max-width: 100%;
   }
 
-  /* When a toast is visible, reserve extra space so it can't cover card content. */
-  .wrap.toastOn {
-    padding-bottom: calc(
-      12px +
-      4px +
-      var(--bottomNavSpace) +
-      var(--toastSpace) +
-      env(safe-area-inset-bottom)
-    );
-  }
+  /* When a toast is visible, reserve extra *scroll* space inside the card
+     (toast is fixed, so we don't want to shrink the entire layout). */
+  .wrap.toastOn { --toastReserve: var(--toastSpace); }
 
   .top {
     flex-direction: column;
@@ -148,7 +144,7 @@ html {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-bottom: 16px;
+    padding-bottom: calc(16px + var(--toastReserve));
   }
 
   /* Activity Picker board: allow tiles to scroll within the card.
@@ -168,6 +164,18 @@ html {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
     padding-bottom: 8px;
+  }
+
+  /* Toast sits fixed above the bottom nav on mobile */
+  .toast {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: calc(24px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
+    width: auto;
+    transform: none;
+    margin-top: 0;
+    z-index: 60;
   }
 
   .weeklyCard .weeklyNoteResult {
@@ -211,16 +219,6 @@ html {
   .bottomNavBtn {
     padding: 9px 10px;
     font-size: 12px;
-  }
-
-  /* Toast: keep it from stealing layout height (which clips cards). */
-  .toast {
-    position: fixed;
-    left: 12px;
-    right: 12px;
-    bottom: calc(12px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
-    margin-top: 0;
-    z-index: 60;
   }
 
   .quickStatusCard {

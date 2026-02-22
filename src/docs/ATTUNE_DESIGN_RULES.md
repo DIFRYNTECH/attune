@@ -69,7 +69,7 @@ Each screen should have:
 Core screens:
 1. Check-in: “Where are you today?”
 2. Activity Picker: “Here are gentle options”
-3. My Day: “2–5 small tasks, no pressure”
+3. My Day: “2-5 small tasks, no pressure”
 4. Weekly: “A kind reflection, no scoring”
 5. Profile: “Local-only identity + preferences”
 

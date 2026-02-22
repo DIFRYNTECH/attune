@@ -341,7 +341,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
 
               {isRevealed && (
                 <div className="tileBack">
-                  <div className="tileText">{opt?.text || "…"}</div>
+                  <div className={"tileText" + ((opt?.text?.length || 0) > 90 ? " xs" : (opt?.text?.length || 0) > 55 ? " sm" : "")}>{opt?.text || "…"}</div>
                 </div>
               )}
             </button>

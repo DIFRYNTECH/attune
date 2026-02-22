@@ -149,7 +149,7 @@ Current behavior highlights:
 	- Toggle for whether the optional Check-in note is sent to AI
 
 ## Mobile-first rules
-- Phone is primary (≈ 390–420px width)
+- Phone is primary (≈ 390-420px width)
 - One main action per screen
 - No dashboard overload
 - Bottom navigation on mobile

@@ -1,11 +1,19 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
 import InfoTip from "../components/InfoTip";
 
-function SettingToggleRow({ title, description, checked, onChange, disabled = false, id }) {
+function SettingToggleRow({ title, description, checked, onChange, disabled = false, locked = false, onLockedClick, id }) {
+  const isDisabled = !!disabled || !!locked;
+  const handleClick = (e) => {
+    if(locked && !disabled){
+      e.preventDefault();
+      onLockedClick?.(e);
+    }
+  };
   return (
-    <label className={"settingRow" + (disabled ? " disabled" : "")}
-      aria-disabled={disabled ? "true" : "false"}
+    <label className={"settingRow" + (isDisabled ? " disabled" : "")}
+      aria-disabled={isDisabled ? "true" : "false"}
+      onClick={handleClick}
     >
       <div className="settingRowText">
         <div className="settingRowTitle">{title}</div>
@@ -18,8 +26,8 @@ function SettingToggleRow({ title, description, checked, onChange, disabled = fa
         role="switch"
         aria-checked={!!checked}
         checked={!!checked}
-        disabled={disabled}
-        onChange={onChange}
+        disabled={!!disabled || !!locked}
+        onChange={locked ? undefined : onChange}
       />
     </label>
   );
@@ -61,6 +69,19 @@ export default function Profile({ state, actions }) {
   const profileName = state.profile?.name || "";
   const profileEmail = state.profile?.email || "";
   const useNoteForAi = state.profile?.useNoteForAi !== false;
+  const theme = state.profile?.theme === "dark" ? "dark" : "light";
+
+  const [draftName, setDraftName] = useState(profileName);
+  const [draftEmail, setDraftEmail] = useState(profileEmail);
+  const [nameError, setNameError] = useState("");
+  const [emailError, setEmailError] = useState("");
+
+  useEffect(() => {
+    setDraftName(profileName);
+    setDraftEmail(profileEmail);
+    setNameError("");
+    setEmailError("");
+  }, [profileName, profileEmail]);
   const canUseMemory = !!state?.entitlements?.noteMemory;
   const isPlus = !!state?.entitlements?.isPlus;
   const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
@@ -75,11 +96,121 @@ export default function Profile({ state, actions }) {
     return rest;
   }, [state]);
 
+  const exportNoteMemoryPayload = useMemo(() => {
+    return {
+      kind: "attune-note-memory",
+      exportedAt: new Date().toISOString(),
+      noteMemory: state?.noteMemory || { notes: [] },
+    };
+  }, [state?.noteMemory]);
+
   const doExport = () => {
+    if(!isPlus){
+      actions?.openPaywall?.("plus", "profile");
+      return;
+    }
     const d = new Date();
     const stamp = d.toISOString().slice(0, 10);
     downloadJson(`attune-${stamp}.json`, exportPayload);
     actions?.setToast?.("Exported a copy of your data.", true);
+  };
+
+  const doExportNoteMemory = () => {
+    if(!isPlus || !canUseMemory){
+      actions?.openPaywall?.("noteMemory", "profile");
+      return;
+    }
+    if(noteCount === 0) return;
+    const d = new Date();
+    const stamp = d.toISOString().slice(0, 10);
+    downloadJson(`attune-note-memory-${stamp}.json`, exportNoteMemoryPayload);
+    actions?.setToast?.("Exported your note history.", true);
+  };
+
+  const commitName = () => {
+    const next = String(draftName || "").trim();
+    if(!next){
+      setNameError("Name is required.");
+      setDraftName(profileName);
+      return;
+    }
+    if(next.length < 2){
+      setNameError("Name must be at least 2 characters.");
+      return;
+    }
+    if(next.length > 40){
+      setNameError("Name must be 40 characters or fewer.");
+      return;
+    }
+    setNameError("");
+    if(next !== profileName) actions?.setProfile?.({ name: next });
+  };
+
+  const commitEmail = () => {
+    const next = String(draftEmail || "").trim().toLowerCase();
+    if(!next){
+      setEmailError("Email is required.");
+      setDraftEmail(profileEmail);
+      return;
+    }
+    if(next.length > 120){
+      setEmailError("Email is too long.");
+      return;
+    }
+
+    // Practical validation (not RFC-perfect): blocks empty domain labels like `a@.com.com`.
+    const at = next.indexOf("@");
+    const lastAt = next.lastIndexOf("@");
+    if(at <= 0 || at !== lastAt || at === next.length - 1){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    const local = next.slice(0, at);
+    const domain = next.slice(at + 1);
+
+    if(local.startsWith(".") || local.endsWith(".") || local.includes("..")){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    if(domain.startsWith(".") || domain.endsWith(".") || domain.includes("..")){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    const labels = domain.split(".");
+    if(labels.length < 2){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    // Product guard: block suspicious duplicated endings like `example.com.com`.
+    if(labels.length >= 2 && labels[labels.length - 1] === labels[labels.length - 2]){
+      setEmailError("Enter a valid email domain.");
+      return;
+    }
+
+    const labelOk = (s) => {
+      if(!s) return false;
+      if(s.length > 63) return false;
+      if(s.startsWith("-") || s.endsWith("-")) return false;
+      return /^[a-z0-9-]+$/.test(s);
+    };
+
+    if(!labels.every(labelOk)){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    const tld = labels[labels.length - 1];
+    if(!/^[a-z]{2,63}$/.test(tld)){
+      setEmailError("Enter a valid email.");
+      return;
+    }
+
+    setEmailError("");
+    if(next !== profileEmail) actions?.setProfile?.({ email: next });
   };
 
   return (
@@ -98,11 +229,17 @@ export default function Profile({ state, actions }) {
             </div>
           }
           helper={
-            "Plus unlocks note memory, smarter picking, and premium Weekly details. For now, this is a local toggle on this device."
+            "Plus unlocks dark mode, exports, note memory, smarter picking, and premium Weekly details. For now, it’s a local toggle on this device."
           }
           helperLabel="About Attune Plus"
         >
           <ul className="settingsBullets" aria-label="Attune Plus features">
+            <li>
+              <b>Dark mode</b> for a calmer, darker look.
+            </li>
+            <li>
+              <b>Exports</b> to download your local data.
+            </li>
             <li>
               <b>Note memory</b> from your check-in note (saved locally).
             </li>
@@ -116,10 +253,10 @@ export default function Profile({ state, actions }) {
 
           <div className="settingsMeta">
             <div>
-              Yearly price: <b>$-/year</b> <span>(placeholder)</span>
+              Billing: <span>coming soon</span>
             </div>
             <div>
-              Restore purchases: <span>coming later</span>
+              Purchases are saved locally on this device.
             </div>
           </div>
 
@@ -127,7 +264,7 @@ export default function Profile({ state, actions }) {
             {!isPlus ? (
               <button
                 type="button"
-                className="btn"
+                className="btn primary"
                 onClick={() => actions?.openPaywall?.("plus", "profile")}
                 aria-label="Try Attune Plus on this device"
               >
@@ -144,59 +281,91 @@ export default function Profile({ state, actions }) {
               </button>
             )}
             <button type="button" className="btn ghost" disabled={true} aria-disabled="true" title="Coming soon">
-              Restore
+              Restore (coming soon)
             </button>
           </div>
         </SettingsSection>
 
-        <SettingsSection title="About you" helper="Optional. Saved locally on this device." helperLabel="About you info">
+        <SettingsSection title="About you" helper="Required. Saved locally on this device." helperLabel="About you info">
           <div className="settingsFields">
             <div>
               <div className="fieldLabelRow">
                 <label htmlFor="profileName">Name</label>
-                <span className="fieldPill" aria-hidden="true">Optional</span>
+                <span className="fieldPill" aria-hidden="true">Required</span>
               </div>
               <input
                 id="profileName"
-                className="inputCompact"
+                className={"inputCompact" + (nameError ? " inputError" : "")}
                 type="text"
-                value={profileName}
-                placeholder="What should we call you?"
-                onChange={(e) => actions?.setProfile?.({ name: e.target.value })}
+                value={draftName}
+                placeholder="Your name"
+                required
+                minLength={2}
+                aria-invalid={nameError ? "true" : "false"}
+                aria-describedby={nameError ? "profileNameError" : undefined}
+                title="Name must be 2-40 characters"
+                onChange={(e) => {
+                  setDraftName(e.target.value);
+                  if(nameError) setNameError("");
+                }}
+                onKeyDown={(e) => {
+                  if(e.key === "Enter"){
+                    e.currentTarget.blur();
+                  }
+                }}
+                onBlur={commitName}
                 maxLength={40}
                 aria-label="Name"
               />
+              {nameError ? <div id="profileNameError" className="fieldError">{nameError}</div> : null}
             </div>
 
             <div>
               <div className="fieldLabelRow">
                 <label htmlFor="profileEmail">Email</label>
-                <span className="fieldPill" aria-hidden="true">Optional</span>
+                <span className="fieldPill" aria-hidden="true">Required</span>
               </div>
               <input
                 id="profileEmail"
-                className="inputCompact"
+                className={"inputCompact" + (emailError ? " inputError" : "")}
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                value={profileEmail}
+                value={draftEmail}
                 placeholder="you@example.com"
-                onChange={(e) => actions?.setProfile?.({ email: e.target.value })}
+                required
+                title="Enter a valid email (e.g. name@example.com)"
+                aria-invalid={emailError ? "true" : "false"}
+                aria-describedby={emailError ? "profileEmailError" : undefined}
+                onChange={(e) => {
+                  setDraftEmail(e.target.value);
+                  if(emailError) setEmailError("");
+                }}
+                onKeyDown={(e) => {
+                  if(e.key === "Enter"){
+                    e.currentTarget.blur();
+                  }
+                }}
+                onBlur={commitEmail}
                 maxLength={120}
                 aria-label="Email"
               />
+              {emailError ? <div id="profileEmailError" className="fieldError">{emailError}</div> : null}
             </div>
           </div>
         </SettingsSection>
 
         <SettingsSection title="Preferences" helper="These apply only on this device." helperLabel="Preferences info">
           <SettingToggleRow
-            id="weekStartsMonday"
-            title="Week starts on Monday"
-            description="Weekly view runs Monday → Sunday."
-            checked={true}
-            disabled={true}
-            onChange={() => {}}
+            id="darkMode"
+            title="Dark mode"
+            description={isPlus ? "A darker look that’s easier on the eyes." : "Included with Attune Plus."}
+            checked={theme === "dark"}
+            locked={!isPlus}
+            onLockedClick={() => actions?.openPaywall?.("darkMode", "profile")}
+            onChange={(e) => {
+              actions?.setProfile?.({ theme: e.target.checked ? "dark" : "light" });
+            }}
           />
 
           <SettingToggleRow
@@ -210,11 +379,21 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Data"
-          helper="Export a copy of your local data, or clear everything stored on this device."
+          helper="Export is included with Attune Plus. You can always clear everything stored on this device."
           helperLabel="Data info"
         >
           <div className="settingsActions">
-            <button type="button" className="btn" onClick={doExport}>
+            <button
+              type="button"
+              className="btn ghost"
+              aria-disabled={!isPlus ? "true" : "false"}
+              title={!isPlus ? "Included with Attune Plus" : ""}
+              style={!isPlus ? { opacity: 0.75 } : undefined}
+              onClick={() => {
+                if(!isPlus) actions?.openPaywall?.("plus", "profile");
+                else doExport();
+              }}
+            >
               Export data
             </button>
             <button
@@ -222,7 +401,7 @@ export default function Profile({ state, actions }) {
               className="btn ghost dangerGhost"
               onClick={() => setConfirmOpen(true)}
             >
-              Clear this device
+              Clear Attune data from this device
             </button>
           </div>
         </SettingsSection>
@@ -239,24 +418,32 @@ export default function Profile({ state, actions }) {
           <div className="settingsActions">
             <button
               type="button"
+              className="btn ghost"
+              disabled={isPlus && canUseMemory ? noteCount === 0 : false}
+              aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
+              onClick={() => {
+                if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
+                else doExportNoteMemory();
+              }}
+              title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
+              style={!isPlus || !canUseMemory ? { opacity: 0.75 } : undefined}
+            >
+              Export note history
+            </button>
+
+            <button
+              type="button"
               className="btn ghost dangerGhost"
-              disabled={!canUseMemory || noteCount === 0}
-              onClick={() => setClearMemoryOpen(true)}
-              title={!canUseMemory ? "Enable Plus to use note memory" : noteCount === 0 ? "No note memory yet" : ""}
+              disabled={isPlus && canUseMemory ? noteCount === 0 : false}
+              aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
+              onClick={() => {
+                if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
+                else setClearMemoryOpen(true);
+              }}
+              title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
             >
               Clear note history
             </button>
-
-            {!canUseMemory ? (
-              <button
-                type="button"
-                className="btn small ghost"
-                onClick={() => actions?.openPaywall?.("noteMemory", "profile")}
-                aria-label="Try Attune Plus to enable note memory"
-              >
-                🔒 Try Plus
-              </button>
-            ) : null}
             <div style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>
               {canUseMemory ? `${noteCount} saved` : "0 saved"}
             </div>
@@ -305,7 +492,7 @@ export default function Profile({ state, actions }) {
           }}
         >
           <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear device confirmation">
-            <div className="modalTitle">Clear this device?</div>
+            <div className="modalTitle">Clear Attune data from this device?</div>
             <div className="modalBody">
               This removes your Attune data stored locally on this device (including history and preferences). You can’t undo this.
             </div>
@@ -322,7 +509,7 @@ export default function Profile({ state, actions }) {
                 }}
                 style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
               >
-                Clear device
+                Clear Attune data
               </button>
             </div>
           </div>

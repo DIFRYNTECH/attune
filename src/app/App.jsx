@@ -109,7 +109,11 @@ export default function App() {
   const screen = state.screen;
   const showToast = !!(state.toast && state.toast.screen === screen);
   const wrapClassName = "wrap" + (showToast ? " toastOn" : "");
-  useEffect(() => {}, []);
+
+  useEffect(() => {
+    const theme = state?.profile?.theme === "dark" ? "dark" : "light";
+    document.documentElement.dataset.theme = theme;
+  }, [state?.profile?.theme]);
 
   return (
     <div className={wrapClassName}>
@@ -169,19 +173,10 @@ export default function App() {
 
       {showToast && (
         <div
-          className={"toast show"}
+          className={"toast show " + (state.toast.good ? "good" : "warn")}
           role="status"
           aria-live="polite"
           onClick={actions.clearToast}
-          style={{
-            background: state.toast.good
-              ? "rgba(110,231,183,.18)"
-              : "rgba(245,158,11,.14)",
-            borderColor: state.toast.good
-              ? "rgba(110,231,183,.35)"
-              : "rgba(245,158,11,.30)",
-            color: state.toast.good ? "#14532d" : "#7c4a00",
-          }}
         >
           {renderToastText(state.toast.text)}
         </div>
