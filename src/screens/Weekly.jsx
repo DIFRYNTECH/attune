@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { todayKey } from "../lib/storage";
-import { computeWeekArchetype, explainWeekArchetype, prettyLevel, weekArchetypeCopy } from "../lib/attuneEngine";
+import { computeWeekArchetype, prettyLevel } from "../lib/attuneEngine";
 import { computeMomentum, momentumLabelToMeterPercent } from "../lib/momentum";
 import { buildWeekKeysMondayToSundayFromStart, buildWeekRecordsFromState, findSimilarWeeks, upsertWeeklySummary } from "../lib/weeklyHistory";
 import { generatePatternCallouts } from "../lib/patternCallouts";
@@ -174,8 +174,6 @@ const MOMENTUM_LEVELS = [
   },
 ];
 
-const WEEK_TYPES = ["Recovering Week", "Resting Week", "Gentle Week", "Steady Week", "Capable Week", "Brave Week"];
-
 function countChars(text) {
   return typeof text === "string" ? text.length : 0;
 }
@@ -188,22 +186,17 @@ function limitChars(text, maxChars) {
 
 export default function Weekly({ state, actions }) {
   const [showMomentumInfo, setShowMomentumInfo] = useState(false);
-  const [showWeekTypeInfo, setShowWeekTypeInfo] = useState(false);
-  const [showWeekTypeWhy, setShowWeekTypeWhy] = useState(false);
   const [showWeekDetails, setShowWeekDetails] = useState(false);
   const [weekDetailsStart, setWeekDetailsStart] = useState(null);
   const [showWeekActivities, setShowWeekActivities] = useState(false);
   const [weekActivitiesStart, setWeekActivitiesStart] = useState(null);
   const momentumCloseBtnRef = useRef(null);
-  const weekTypeCloseBtnRef = useRef(null);
   const weekDetailsCloseBtnRef = useRef(null);
   const weekActivitiesCloseBtnRef = useRef(null);
   const noteRef = useRef(null);
 
   const weekRecords = buildWeekRecords(state);
   const archetype = computeWeekArchetype(weekRecords);
-  const copy = weekArchetypeCopy(archetype);
-  const why = explainWeekArchetype(weekRecords);
 
   const { score, label, daysPresent, tasksDone } = computeMomentum(weekRecords);
   const canExactMomentum = !!state?.entitlements?.momentumExact;
@@ -235,17 +228,15 @@ export default function Weekly({ state, actions }) {
   const noteChars = countChars(note);
 
   useEffect(() => {
-    if (!showMomentumInfo && !showWeekTypeInfo && !showWeekDetails && !showWeekActivities) return;
+    if (!showMomentumInfo && !showWeekDetails && !showWeekActivities) return;
 
     if (showWeekActivities) weekActivitiesCloseBtnRef.current?.focus?.();
     else if (showWeekDetails) weekDetailsCloseBtnRef.current?.focus?.();
-    else if (showWeekTypeInfo) weekTypeCloseBtnRef.current?.focus?.();
     else momentumCloseBtnRef.current?.focus?.();
 
     function onKeyDown(e) {
       if (e.key === "Escape") {
         setShowMomentumInfo(false);
-        setShowWeekTypeInfo(false);
         setShowWeekDetails(false);
         setShowWeekActivities(false);
       }
@@ -253,7 +244,7 @@ export default function Weekly({ state, actions }) {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showMomentumInfo, showWeekTypeInfo, showWeekDetails, showWeekActivities]);
+  }, [showMomentumInfo, showWeekDetails, showWeekActivities]);
 
   const weekDetailsRecords = (() => {
     if (!showWeekDetails) return [];
@@ -426,7 +417,7 @@ export default function Weekly({ state, actions }) {
         </div>
       </div>
 
-      <div className="sub" style={{ marginTop: 2 }}>
+      <div className="sub" style={{ marginTop: 10, marginBottom: 8 }}>
         A low-pressure look back.
       </div>
 
@@ -512,39 +503,6 @@ export default function Weekly({ state, actions }) {
             </div>
           ) : null}
         </div>
-      </div>
-
-      <div className="result">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div className="resultTitle">Week type</div>
-          <button
-            type="button"
-            onClick={() => setShowWeekTypeInfo(true)}
-            aria-label="What does Week type mean?"
-            title="What does Week type mean?"
-            className="infoBtn"
-          >
-            i
-          </button>
-        </div>
-        <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{archetype}</div>
-        <div style={{ marginTop: 0, marginBottom: 8 }}>
-          <button
-            type="button"
-            className="linkBtn"
-            onClick={() => setShowWeekTypeWhy((v) => !v)}
-            aria-expanded={showWeekTypeWhy}
-            aria-controls="weekTypeWhy"
-          >
-            {showWeekTypeWhy ? "Hide why" : "Why?"}
-          </button>
-          {showWeekTypeWhy ? (
-            <div id="weekTypeWhy" className="footerNote" style={{ marginTop: 6 }}>
-              {why}
-            </div>
-          ) : null}
-        </div>
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>{copy}</div>
       </div>
 
       <div className="result">
@@ -752,7 +710,6 @@ export default function Weekly({ state, actions }) {
               </div>
 
               <div className="weekSummaryMeta">
-                <span>Type: {activePastSummary.weekType}</span>
                 {activePastSummary.avgPace ? <span>Avg pace: {prettyLevel(activePastSummary.avgPace)}</span> : null}
               </div>
 
@@ -961,45 +918,6 @@ export default function Weekly({ state, actions }) {
                 type="button"
                 className="btn"
                 onClick={() => setShowMomentumInfo(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showWeekTypeInfo && (
-        <div
-          className="modalOverlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Week type explanation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowWeekTypeInfo(false);
-          }}
-        >
-          <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="modalTitle">About week type</div>
-            <div className="modalBody">
-              Week type is a quick summary of your last 7 days, based on check-ins and the pace you chose. The “Why this week
-              type” line explains what tipped yours.
-            </div>
-
-            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-              {WEEK_TYPES.map((type) => (
-                <div key={type} style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                  <b style={{ color: "var(--ink)" }}>{type}</b>: {weekArchetypeCopy(type)}
-                </div>
-              ))}
-            </div>
-
-            <div className="modalActions">
-              <button
-                ref={weekTypeCloseBtnRef}
-                type="button"
-                className="btn"
-                onClick={() => setShowWeekTypeInfo(false)}
               >
                 Close
               </button>
