@@ -488,6 +488,54 @@ export default function Weekly({ state, actions }) {
         </div>
       </div>
 
+      <div className="result">
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div className="resultTitle">Week type</div>
+          <button
+            type="button"
+            onClick={() => setShowWeekTypeInfo(true)}
+            aria-label="What does Week type mean?"
+            title="What does Week type mean?"
+            className="infoBtn"
+          >
+            i
+          </button>
+        </div>
+        <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{archetype}</div>
+        <div style={{ marginTop: 0, marginBottom: 8 }}>
+          <button
+            type="button"
+            className="linkBtn"
+            onClick={() => setShowWeekTypeWhy((v) => !v)}
+            aria-expanded={showWeekTypeWhy}
+            aria-controls="weekTypeWhy"
+          >
+            {showWeekTypeWhy ? "Hide why" : "Why?"}
+          </button>
+          {showWeekTypeWhy ? (
+            <div id="weekTypeWhy" className="footerNote" style={{ marginTop: 6 }}>
+              {why}
+            </div>
+          ) : null}
+        </div>
+        <div style={{ color: "var(--muted)", fontSize: 13 }}>{copy}</div>
+      </div>
+
+      <div className="result">
+        <div className="resultTitle">Paces you chose</div>
+        <div className="miniPills" aria-label="Pace counts">
+          <span className="miniPill">🫧 Rest: {levelCounts.rest}</span>
+          <span className="miniPill">🌿 Gentle: {levelCounts.gentle}</span>
+          <span className="miniPill">✨ Light: {levelCounts.light}</span>
+          <span className="miniPill">🌤️ Steady: {levelCounts.steady}</span>
+          <span className="miniPill">🌊 Capable: {levelCounts.capable}</span>
+          <span className="miniPill">🔥 Brave: {levelCounts.brave}</span>
+        </div>
+        <div className="footerNote" style={{ marginTop: 8 }}>
+          Today’s pace: <b>{prettyLevel(state.level)}</b>
+        </div>
+      </div>
+
       {!isPlus && (
         <div className="result" aria-label="Attune Plus (teaser)">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
@@ -888,39 +936,6 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      <div className="result">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div className="resultTitle">Week type</div>
-          <button
-            type="button"
-            onClick={() => setShowWeekTypeInfo(true)}
-            aria-label="What does Week type mean?"
-            title="What does Week type mean?"
-            className="infoBtn"
-          >
-            i
-          </button>
-        </div>
-        <div style={{ fontWeight: 900, fontSize: 15, marginBottom: 6 }}>{archetype}</div>
-        <div style={{ marginTop: 0, marginBottom: 8 }}>
-          <button
-            type="button"
-            className="linkBtn"
-            onClick={() => setShowWeekTypeWhy((v) => !v)}
-            aria-expanded={showWeekTypeWhy}
-            aria-controls="weekTypeWhy"
-          >
-            {showWeekTypeWhy ? "Hide why" : "Why?"}
-          </button>
-          {showWeekTypeWhy ? (
-            <div id="weekTypeWhy" className="footerNote" style={{ marginTop: 6 }}>
-              {why}
-            </div>
-          ) : null}
-        </div>
-        <div style={{ color: "var(--muted)", fontSize: 13 }}>{copy}</div>
-      </div>
-
       {showWeekTypeInfo && (
         <div
           className="modalOverlay"
@@ -959,21 +974,6 @@ export default function Weekly({ state, actions }) {
           </div>
         </div>
       )}
-
-      <div className="result">
-        <div className="resultTitle">Paces you chose</div>
-        <div className="miniPills" aria-label="Pace counts">
-          <span className="miniPill">🫧 Rest: {levelCounts.rest}</span>
-          <span className="miniPill">🌿 Gentle: {levelCounts.gentle}</span>
-          <span className="miniPill">✨ Light: {levelCounts.light}</span>
-          <span className="miniPill">🌤️ Steady: {levelCounts.steady}</span>
-          <span className="miniPill">🌊 Capable: {levelCounts.capable}</span>
-          <span className="miniPill">🔥 Brave: {levelCounts.brave}</span>
-        </div>
-        <div className="footerNote" style={{ marginTop: 8 }}>
-          Today’s pace: <b>{prettyLevel(state.level)}</b>
-        </div>
-      </div>
 
       <div className="result weeklyNoteResult" aria-label="Weekly note">
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
