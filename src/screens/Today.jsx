@@ -17,7 +17,6 @@ export default function Today({ state, actions }) {
 	const noteIsLoading = aiNote?.status === "loading";
 	const noteTitle = noteIsAi ? aiNote.title : dailyMessage?.a;
 	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
-	const noteFocus = noteIsAi ? aiNote.focus : "";
 	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "Local";
 	const canToggleNote = (noteBody || "").length > 180;
 
@@ -66,11 +65,6 @@ export default function Today({ state, actions }) {
 				{recentThemes.length > 0 && (
 					<div className="miniPills" aria-label="Recent themes">
 						<div className="miniPill">🧠 Lately: {latelyText}</div>
-					</div>
-				)}
-				{!!noteFocus && (
-					<div className="miniPills" aria-label="Today focus">
-						<div className="miniPill">🎯 {noteFocus}</div>
 					</div>
 				)}
 			</div>
