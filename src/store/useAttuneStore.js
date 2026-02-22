@@ -43,6 +43,7 @@ function defaultState(){
     myDayCap: 5,
     history: [],
     weeklyNotes: {},
+    weeklyNotesMeta: {},
     weeklySummaries: [],
     events: {},
     noteMemory: { notes: [] },
@@ -128,6 +129,18 @@ function normalizeLoadedState(loaded){
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
   if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
+
+  if(!next.weeklyNotesMeta || typeof next.weeklyNotesMeta !== "object" || Array.isArray(next.weeklyNotesMeta)) next.weeklyNotesMeta = {};
+  {
+    const safeMeta = {};
+    for(const k of Object.keys(next.weeklyNotesMeta)){
+      const v = next.weeklyNotesMeta[k];
+      if(!v || typeof v !== "object" || Array.isArray(v)) continue;
+      const updatedAt = Number(v.updatedAt);
+      if(Number.isFinite(updatedAt) && updatedAt > 0) safeMeta[k] = { updatedAt };
+    }
+    next.weeklyNotesMeta = safeMeta;
+  }
 
   if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
   next.weeklySummaries = next.weeklySummaries
@@ -711,14 +724,17 @@ export function useAttuneStore(){
 
         const nextText = typeof text === "string" ? text : "";
         const weeklyNotes = { ...(s.weeklyNotes || {}) };
+        const weeklyNotesMeta = { ...(s.weeklyNotesMeta || {}) };
 
         if(nextText.trim().length === 0){
           delete weeklyNotes[id];
+          delete weeklyNotesMeta[id];
         }else{
           weeklyNotes[id] = nextText;
+          weeklyNotesMeta[id] = { updatedAt: Date.now() };
         }
 
-        return { ...s, weeklyNotes };
+        return { ...s, weeklyNotes, weeklyNotesMeta };
       }),
 
     toggleDone: (id, done) =>

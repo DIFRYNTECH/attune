@@ -62,6 +62,27 @@ function formatWeekdayShort(key) {
   return dt.toLocaleDateString("en-GB", { weekday: "short" });
 }
 
+function formatUpdatedAt(updatedAtMs) {
+  const ms = Number(updatedAtMs);
+  if (!Number.isFinite(ms) || ms <= 0) return "";
+  const dt = new Date(ms);
+  const now = new Date();
+  const isSameDay =
+    dt.getFullYear() === now.getFullYear() &&
+    dt.getMonth() === now.getMonth() &&
+    dt.getDate() === now.getDate();
+  if (isSameDay) return "Updated today";
+  return `Updated ${dt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+}
+
+function weekIdFromStartKey(startKey) {
+  if (typeof startKey !== "string" || !startKey) return "";
+  const keys = buildWeekKeysMondayToSundayFromStart(startKey);
+  if (!keys.length) return "";
+  const endKey = keys[keys.length - 1];
+  return `${startKey}_${endKey}`;
+}
+
 function momentumLabelToRange(label) {
   const hit = MOMENTUM_LEVELS.find((l) => l.label === label);
   const r = typeof hit?.range === "string" ? hit.range : "";
@@ -209,6 +230,7 @@ export default function Weekly({ state, actions }) {
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
   const note = state.weeklyNotes?.[weekId] || "";
+  const noteUpdatedAt = state.weeklyNotesMeta?.[weekId]?.updatedAt || 0;
   const NOTE_CHAR_LIMIT = 500;
   const noteChars = countChars(note);
 
@@ -374,6 +396,10 @@ export default function Weekly({ state, actions }) {
   const activePastSummary = activePastWeekStart
     ? stripSummaries.find((w) => w.weekStart === activePastWeekStart) || null
     : null;
+
+  const activePastWeekId = activePastSummary?.weekStart ? weekIdFromStartKey(activePastSummary.weekStart) : "";
+  const activePastNote = activePastWeekId ? state.weeklyNotes?.[activePastWeekId] || "" : "";
+  const activePastIsCurrentWeek = !!activePastSummary?.weekStart && activePastSummary.weekStart === weekRange.startKey;
 
   useEffect(() => {
     if (!canMultiWeek) return;
@@ -754,6 +780,13 @@ export default function Weekly({ state, actions }) {
                   ✅ {activePastSummary.completions} completed
                 </button>
               </div>
+
+              {!activePastIsCurrentWeek && activePastNote.trim().length > 0 ? (
+                <div className="weeklyNotePreview" aria-label="Saved note for this week" style={{ marginTop: 10 }}>
+                  <div className="weeklyNotePreviewLabel">Note</div>
+                  <div className="weeklyNotePreviewBody">{activePastNote}</div>
+                </div>
+              ) : null}
             </div>
           ) : null}
 
@@ -977,23 +1010,27 @@ export default function Weekly({ state, actions }) {
 
       <div className="result weeklyNoteResult" aria-label="Weekly note">
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-          <div className="resultTitle">Weekly note</div>
-          {noteChars > 420 ? (
-            <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note limit">
-              {noteChars}/{NOTE_CHAR_LIMIT}
-            </div>
-          ) : null}
+          <div className="resultTitle">This week’s note</div>
+          <div className="footerNote" style={{ marginTop: 0, textAlign: "right" }} aria-label="Weekly note status">
+            {formatUpdatedAt(noteUpdatedAt) || (note.trim().length ? "Saved" : "")}
+            {noteChars > 420 ? (
+              <span>
+                {formatUpdatedAt(noteUpdatedAt) ? " · " : ""}
+                {noteChars}/{NOTE_CHAR_LIMIT}
+              </span>
+            ) : null}
+          </div>
         </div>
         <div className="weeklyNoteBody">
           <div className="weeklyNoteHelp">
-            A few words about how this week felt. Saved on this device.
+            Optional. Add context as the week goes.
           </div>
           <textarea
             className="weeklyNoteInput"
             value={note}
             maxLength={NOTE_CHAR_LIMIT}
             rows={4}
-            placeholder="This week felt…"
+            placeholder="What’s affecting this week? (travel, deadlines, energy, stress, wins…)"
             onChange={(e) => actions?.setWeeklyNote?.(weekId, limitChars(e.target.value, NOTE_CHAR_LIMIT))}
             onFocus={() => {
               window.requestAnimationFrame(() => {

@@ -458,6 +458,32 @@
       max-height: 220px;
     }
 
+    .weeklyNotePreview{
+      border: 1px solid rgba(231,233,242,.95);
+      background: rgba(255,255,255,.85);
+      border-radius: 14px;
+      padding: 10px 10px;
+    }
+    .weeklyNotePreviewLabel{
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .15px;
+      color: rgba(43,47,58,.62);
+      text-transform: none;
+    }
+    .weeklyNotePreviewBody{
+      margin-top: 6px;
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.35;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+
     @media (max-width: 520px){
       .weeklyNoteInput{max-height: 180px;}
     }
