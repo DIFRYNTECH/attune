@@ -835,21 +835,21 @@
       position:absolute;
       left:-20%;
       right:-20%;
-      top:-140px;
-      height:220px;
+      top:-120px;
+      height:160px;
       background:
-        radial-gradient(circle at 30% 20%, rgba(79,109,245,.22), transparent 55%),
-        radial-gradient(circle at 70% 10%, rgba(139,92,246,.16), transparent 60%),
-        radial-gradient(circle at 55% 60%, rgba(110,231,183,.14), transparent 55%);
+        radial-gradient(circle at 30% 20%, rgba(79,109,245,.16), transparent 55%),
+        radial-gradient(circle at 70% 10%, rgba(139,92,246,.12), transparent 60%),
+        radial-gradient(circle at 55% 60%, rgba(110,231,183,.10), transparent 55%);
       pointer-events:none;
       filter: blur(2px);
     }
     .myDayCard > *{position:relative; z-index:1;}
 
     .myDayCard .result{
-      border-color: rgba(79,109,245,.18);
+      border-color: rgba(79,109,245,.14);
       background:
-        linear-gradient(180deg, rgba(79,109,245,.10), rgba(255,255,255,.0));
+        linear-gradient(180deg, rgba(79,109,245,.075), rgba(255,255,255,.0));
     }
     .myDayCard .resultTitle{
       color: rgba(43,47,58,.72);
