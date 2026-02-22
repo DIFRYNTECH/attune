@@ -221,7 +221,7 @@ function ruleMidweekDip(checkins, nowDate) {
   return candidate({
     id: "midweek-dip",
     category: "schedule",
-    text: "Midweek dips look fairly common for you sometimes — that’s okay.",
+    text: "Midweek dips look fairly common for you sometimes - that’s okay.",
     confidence,
     threshold,
   });
@@ -356,7 +356,7 @@ function ruleHigherRemoveOnPace(pickedByPace, removedByPace) {
   return candidate({
     id: "remove-more-on-pace",
     category: "followthrough",
-    text: `On ${paceTitle(worst.pace)} pace days, you sometimes change your mind about activities — that can be part of finding what fits.`,
+    text: `On ${paceTitle(worst.pace)} pace days, you sometimes change your mind about activities - that can be part of finding what fits.`,
     confidence,
     threshold,
   });

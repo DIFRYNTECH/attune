@@ -20,7 +20,7 @@ function featureBlurb(feature) {
     case "momentumExact":
       return "See your exact weekly signal number (e.g. 82/100).";
     case "multiWeekHistory":
-      return "See 4–12 weeks of history and gentle similarity notes.";
+      return "See 4–12 weeks of history with comparisons and highlights.";
     case "patternCallouts":
       return "Get 1–3 soft pattern callouts when there’s enough data.";
     case "noteMemory":
@@ -84,7 +84,7 @@ export default function PaywallSheet({ state, actions }) {
           </div>
 
           <div style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
-            Yearly price: <b style={{ color: "var(--ink)" }}>$—/year</b> (placeholder)
+            Yearly price: <b style={{ color: "var(--ink)" }}>$-/year</b> (placeholder)
           </div>
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
             Restore purchases: coming later.

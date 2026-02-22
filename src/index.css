@@ -12,6 +12,11 @@
       --shadow: 0 10px 30px rgba(20,30,60,.08);
       --radius: 18px;
 
+  /* Scrollbars */
+  --scrollTrack: rgba(231,233,242,.75);
+  --scrollThumb: rgba(139,92,246,.38);
+  --scrollThumbHover: rgba(139,92,246,.55);
+
   /* Spacing scale (4px baseline) */
   --s-1: 4px;
   --s-2: 8px;
@@ -22,6 +27,23 @@
     }
 
     *{box-sizing:border-box}
+
+    /* Scrollbar theming (Firefox) */
+    *{
+      scrollbar-width: thin;
+      scrollbar-color: var(--scrollThumb) var(--scrollTrack);
+    }
+
+    /* Scrollbar theming (Chromium/Safari) */
+    *::-webkit-scrollbar{width: 12px; height: 12px;}
+    *::-webkit-scrollbar-track{background: var(--scrollTrack); border-radius: 999px;}
+    *::-webkit-scrollbar-thumb{
+      background-color: var(--scrollThumb);
+      border-radius: 999px;
+      border: 4px solid transparent;
+      background-clip: padding-box;
+    }
+    *::-webkit-scrollbar-thumb:hover{background: var(--scrollThumbHover);}
 
     html, body {
       height: 100%;
@@ -173,11 +195,8 @@
       border: 1px solid rgba(231,233,242,.90);
       border-radius: 16px;
       background: rgba(255,255,255,.72);
-      overflow: auto;
-      -webkit-overflow-scrolling: touch;
-      overscroll-behavior: contain;
-      flex: 1;
-      min-height: 0;
+      overflow: visible;
+      flex: 0 0 auto;
     }
     .settingsSection{
       padding: var(--s-4);
@@ -733,6 +752,8 @@
       display:inline-flex;
       align-items:center;
       gap:6px;
+      min-width: 0;
+      max-width: 100%;
       padding:7px 10px;
       border-radius:999px;
       background:#fff;
@@ -740,6 +761,8 @@
       font-size:12px;
       font-weight:800;
       color: #2b2f3a;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
 
     /* Info tooltip */
@@ -789,9 +812,15 @@
       gap:10px;
       background:#fff;
     }
-    .item .left{display:flex; gap:10px; align-items:flex-start}
+    .item .left{
+      display:flex;
+      gap:10px;
+      align-items:flex-start;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
     .item input{margin-top:3px}
-    .item .txt{font-weight:700}
+    .item .txt{font-weight:700; overflow-wrap: anywhere;}
     .item .small{font-size:12px; color:var(--muted); margin-top:2px}
     .item.done{opacity:.65}
     .item.done .txt{text-decoration: line-through}
@@ -842,6 +871,27 @@
       white-space: nowrap;
       margin-top: 1px;
     }
+
+    .sourceChip{
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 950;
+      letter-spacing: .15px;
+      color: rgba(43,47,58,.62);
+      background: rgba(255,255,255,.88);
+      border: 1px solid rgba(231,233,242,.95);
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .sourceChip.ai{
+      color: color-mix(in oklab, var(--brand) 70%, #1f2230);
+      border-color: rgba(79,109,245,.22);
+      background:
+        radial-gradient(14px 14px at 30% 25%, rgba(255,255,255,.70), transparent 60%),
+        linear-gradient(135deg, rgba(79,109,245,.16), rgba(139,92,246,.12));
+    }
+    .sourceChip.loading{opacity: .85}
     .personalNoteTitle{
       margin: 0;
       font-weight: 950;
@@ -855,6 +905,29 @@
       font-size: 13px;
       line-height: 1.35;
     }
+
+    .personalNoteBody.clamp{
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .personalNoteActions{
+      margin-top: 6px;
+    }
+
+    .linkBtn{
+      appearance: none;
+      border: 0;
+      padding: 0;
+      background: transparent;
+      color: color-mix(in oklab, var(--brand) 75%, #1f2230);
+      font-weight: 900;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .linkBtn:hover{text-decoration: underline;}
 
     .myDayCard .item{
       background: rgba(255,255,255,.92);
@@ -872,13 +945,12 @@
 
     /* My Day: scroll only the task list area */
     .myDayScroll{
-      overflow-y:auto;
-      overscroll-behavior: contain;
-      max-height: 48vh;
-      padding-right: 4px;
+      overflow: visible;
+      max-height: none;
+      padding-right: 0;
     }
     @media (max-width: 520px){
-      .myDayScroll{max-height: 56vh;}
+      .myDayScroll{max-height: none;}
     }
     .toast{
       margin-top:10px;

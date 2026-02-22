@@ -612,7 +612,7 @@ export function useAttuneStore(){
     addOption: (opt) =>
       setState(s => {
         if(!opt?.text){
-          return { ...s, toast: { text: "That one didn't load—try another tile.", good: false, screen: s.screen } };
+          return { ...s, toast: { text: "That one didn't load - try another tile.", good: false, screen: s.screen } };
         }
 
         if((s.myDay?.length || 0) >= 10){

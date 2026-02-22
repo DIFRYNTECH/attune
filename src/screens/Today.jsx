@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
 
 export default function Today({ state, actions }) {
@@ -6,34 +6,66 @@ export default function Today({ state, actions }) {
 	const aiNote = state.aiDailyNote;
 	const canUseMemory = !!state?.entitlements?.noteMemory;
 	const recentThemes = canUseMemory ? summarizeRecentThemes(state.noteMemory, 10) : [];
+	const [noteExpanded, setNoteExpanded] = useState(false);
 
 	useEffect(() => {
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
 
-	const noteTitle = aiNote?.status === "ready" ? aiNote.title : dailyMessage?.a;
-	const noteBody = aiNote?.status === "ready" ? aiNote.body : dailyMessage?.b;
-	const noteFocus = aiNote?.status === "ready" ? aiNote.focus : "";
-	const noteSource = aiNote?.status === "ready" ? "AI" : "Local";
+	const noteIsAi = aiNote?.status === "ready";
+	const noteIsLoading = aiNote?.status === "loading";
+	const noteTitle = noteIsAi ? aiNote.title : dailyMessage?.a;
+	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
+	const noteFocus = noteIsAi ? aiNote.focus : "";
+	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "Local";
+	const canToggleNote = (noteBody || "").length > 180;
+
+	const latelyText = useMemo(() => {
+		if (!recentThemes.length) return "";
+		const short = recentThemes.slice(0, 3);
+		const more = recentThemes.length - short.length;
+		return short.join(" · ") + (more > 0 ? ` +${more}` : "");
+	}, [recentThemes]);
 
 	return (
 		<div className="card myDayCard">
 			<h2>🧭 My Day</h2>
-			<div className="sub">2-5 tasks is plenty. If you want, you can go up to 10.</div>
+			<div className="sub">Aim for 2–5 tasks. You can add up to 10 if you’d like.</div>
 
 			<div className="result personalNote" style={{ marginBottom: 12 }}>
 				<div className="personalNoteTop">
-					<div className="resultTitle">Your personal note for today</div>
-					<div className="personalNoteMeta" aria-label="Note source">
-						{aiNote?.status === "loading" ? "Personalizing…" : noteSource}
-					</div>
+					<div className="resultTitle">Personal note</div>
+					<span
+						className={
+							"sourceChip" +
+							(noteIsAi ? " ai" : "") +
+							(noteIsLoading ? " loading" : "")
+						}
+						aria-label="Note source"
+					>
+						{noteSource}
+					</span>
 				</div>
-				<p className="personalNoteTitle">{noteTitle}</p>
-				<p className="personalNoteBody">{noteBody}</p>
+				{!!noteTitle && <p className="personalNoteTitle">{noteTitle}</p>}
+				{!!noteBody && (
+					<p className={"personalNoteBody" + (!noteExpanded ? " clamp" : "")}>{noteBody}</p>
+				)}
+				{canToggleNote && (
+					<div className="personalNoteActions">
+						<button
+							type="button"
+							className="linkBtn"
+							onClick={() => setNoteExpanded((v) => !v)}
+							aria-expanded={noteExpanded}
+						>
+							{noteExpanded ? "Show less" : "Read more"}
+						</button>
+					</div>
+				)}
 				{recentThemes.length > 0 && (
 					<div className="miniPills" aria-label="Recent themes">
-						<div className="miniPill">🧠 Lately: {recentThemes.join(" + ")}</div>
+						<div className="miniPill">🧠 Lately: {latelyText}</div>
 					</div>
 				)}
 				{!!noteFocus && (
@@ -45,7 +77,7 @@ export default function Today({ state, actions }) {
 
 			{myDay.length === 0 ? (
 				<div className="hint">
-					No tasks yet. Use the <b>Activity Picker</b> tab to add a few. You got this!
+					No tasks yet. Use <b>Activity Picker</b> to add a few.
 				</div>
 			) : (
 				<div className="myDayScroll" aria-label="My Day tasks">

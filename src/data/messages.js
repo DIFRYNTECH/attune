@@ -1,9 +1,9 @@
 export const MESSAGES = [
   {a:"Meet yourself where you are.", b:"If all you do today is show up, that still counts."},
-  {a:"Small is enough.", b:"One gentle step can shift the whole day."},
+  {a:"Small is enough.", b:"One small step can shift the whole day."},
   {a:"No pressure. Just presence.", b:"You don’t have to fix today - just meet it."},
-  {a:"You’re not alone in this.", b:"We’ll keep it kind and doable."},
-  {a:"Rest can be progress.", b:"We can try again tomorrow, gently."},
+  {a:"You’re not alone in this.", b:"We’ll keep it practical and doable."},
+  {a:"Rest can be progress.", b:"We can try again tomorrow."},
   {a:"Good days and hard days both belong.", b:"Your pace is allowed to change."},
 ];
 
@@ -17,7 +17,7 @@ export const ENCOURAGE_DONE = [
 ];
 
 export const ENCOURAGE_EMPTY = [
-  "No judgment - some days are heavy. Tomorrow, we’ll go gently again.",
-  "It’s okay. Rest happened here. We can try one small thing tomorrow.",
-  "You didn’t fail. You’re human. If you come back, that’s enough.",
+  "No judgment - some days are heavy. Tomorrow is a fresh start.",
+  "It’s okay. Rest happened here. Try one small thing tomorrow.",
+  "You didn’t fail. If you come back, that’s enough.",
 ];

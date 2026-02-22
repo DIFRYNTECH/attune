@@ -740,7 +740,7 @@ app.post("/api/daily-note", async (req, res) => {
     const client = new OpenAI({ apiKey: OPENAI_API_KEY });
 
     const system =
-      "You write a very short, gentle daily note for a wellbeing app. " +
+      "You write a very short, calm daily note for a wellbeing app. " +
       "Return ONLY valid JSON. No markdown. No extra keys. " +
       "Do NOT suggest anything harmful, illegal, or risky. " +
       "Do NOT mention self-harm. " +
@@ -748,7 +748,8 @@ app.post("/api/daily-note", async (req, res) => {
       "Do NOT infer emotions or problems the user did not state. " +
       "Do NOT shame, scold, or pressure. Avoid absolute language (never/always). " +
       "Make it feel fresh daily, but still grounded in the check-in. " +
-      "Keep it practical and kind; not inspirational fluff.";
+      "Keep it practical and supportive; not inspirational fluff. " +
+      "Avoid awkward phrases like 'gentle task'. Prefer 'small step', 'low-effort', or 'doable'.";
 
     const user = {
       today,

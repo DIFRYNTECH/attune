@@ -116,7 +116,7 @@ export default function Profile({ state, actions }) {
 
           <div className="settingsMeta">
             <div>
-              Yearly price: <b>$—/year</b> <span>(placeholder)</span>
+              Yearly price: <b>$-/year</b> <span>(placeholder)</span>
             </div>
             <div>
               Restore purchases: <span>coming later</span>
@@ -202,7 +202,7 @@ export default function Profile({ state, actions }) {
           <SettingToggleRow
             id="useNoteForAi"
             title="Use my optional check-in note for AI"
-            description="If off, Attune won’t send your note — just mood, energy, body, and pace."
+            description="If off, Attune won’t send your note (only mood, energy, body, and pace)."
             checked={useNoteForAi}
             onChange={(e) => actions?.setProfile?.({ useNoteForAi: !!e.target.checked })}
           />
@@ -287,7 +287,7 @@ export default function Profile({ state, actions }) {
                     <span style={{ opacity: 0.8 }}>{n?.date ?? ""}</span>
                     {": "}
                     <span style={{ whiteSpace: "normal" }}>{String(n?.text ?? "").trim() || "(empty)"}</span>
-                    {Array.isArray(n?.themes) && n.themes.length > 0 ? ` — ${n.themes.join(", ")}` : ""}
+                    {Array.isArray(n?.themes) && n.themes.length > 0 ? ` (${n.themes.join(", ")})` : ""}
                   </li>
                 ))}
               </ul>

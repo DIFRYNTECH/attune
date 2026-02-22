@@ -101,7 +101,7 @@ export function dailyMessageFromCheckin(checkin, level){
   if(depleted || tender){
     return {
       a: "Let today be small.",
-      b: "Comfort counts. Choose the gentlest version of anything."
+      b: "Comfort matters. Choose the simplest version that helps."
     };
   }
 
@@ -128,7 +128,7 @@ export function dailyMessageFromCheckin(checkin, level){
 
   if(drained || sore){
     return {
-      a: "Steady can be gentle.",
+      a: "Steady can be supportive.",
       b: "Aim for a small win and stop early if you need to."
     };
   }
@@ -136,7 +136,7 @@ export function dailyMessageFromCheckin(checkin, level){
   if(hopeful){
     return {
       a: "There’s a little steadiness here.",
-      b: "Use it for one kind step that makes tomorrow easier."
+      b: "Use it for one helpful step that makes tomorrow easier."
     };
   }
 
@@ -155,7 +155,7 @@ export function dailyMessageFromCheckin(checkin, level){
     case "brave":
       return { a: "A small stretch can be kind.", b: "Choose a safe challenge, then recover." };
     default:
-      return { a: "Meet yourself where you are.", b: "We’ll keep it kind and doable." };
+      return { a: "Meet yourself where you are.", b: "We’ll keep it practical and doable." };
   }
 }
 

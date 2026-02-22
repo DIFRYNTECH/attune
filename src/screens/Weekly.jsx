@@ -103,7 +103,7 @@ const MOMENTUM_LEVELS = [
   {
     label: "Strong",
     range: "80–100",
-    desc: "A strong signal of consistency. Keep it kind—no need to maintain this every week.",
+    desc: "A strong signal of consistency. Keep it kind - no need to maintain this every week.",
   },
 ];
 
@@ -242,7 +242,7 @@ export default function Weekly({ state, actions }) {
         <h2 style={{ margin: 0 }}>Weekly</h2>
       </div>
 
-      <div className="sub">A gentle look back, without pressure.</div>
+      <div className="sub">A low-pressure look back.</div>
 
       {showWeekRangeInfo && (
         <div
@@ -323,7 +323,7 @@ export default function Weekly({ state, actions }) {
         </div>
 
         <div className="footerNote">
-          This isn’t a grade, it’s a gentle signal: showing up matters most, plus a small boost for finishing activities.
+          This isn’t a grade. It’s a helpful signal: showing up matters most, with a small boost for finishing activities.
           {!canExactMomentum ? "" : ""}
         </div>
       </div>
@@ -333,7 +333,7 @@ export default function Weekly({ state, actions }) {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
             <div className="resultTitle">Attune Plus</div>
             <InfoTip label="What does Plus unlock?">
-              Unlock gentle patterns and a multi-week view. These stay local to this device.
+              Unlock patterns and a multi-week view. Everything stays local to this device.
             </InfoTip>
           </div>
 
@@ -353,7 +353,7 @@ export default function Weekly({ state, actions }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, color: "var(--ink)" }}>Patterns</div>
                 <InfoTip label="About Patterns">
-                  Gentle callouts based on your history, only when there’s enough data.
+                  Low-pressure callouts based on your history, only when there’s enough data.
                 </InfoTip>
               </div>
               <button
@@ -380,7 +380,7 @@ export default function Weekly({ state, actions }) {
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                 <div style={{ fontWeight: 900, color: "var(--ink)" }}>Past weeks</div>
-                <InfoTip label="About Past weeks">See 4–12 weeks at a glance, with gentle comparisons.</InfoTip>
+                <InfoTip label="About Past weeks">See 4–12 weeks at a glance, with low-pressure comparisons.</InfoTip>
               </div>
               <button
                 type="button"
@@ -399,7 +399,7 @@ export default function Weekly({ state, actions }) {
         <div className="result" aria-label="Patterns">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
             <div className="resultTitle">Patterns</div>
-            <InfoTip label="About Patterns">A few gentle observations from your recent history.</InfoTip>
+            <InfoTip label="About Patterns">A few observations from your recent history.</InfoTip>
           </div>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             {patternCallouts.map((c) => (
@@ -430,7 +430,7 @@ export default function Weekly({ state, actions }) {
                 Past weeks
               </div>
               <InfoTip label="About Past weeks">
-                See 4–12 weeks at a glance, with gentle comparisons. This list is saved locally on this device.
+                See 4–12 weeks at a glance, with low-pressure comparisons. This list is saved locally on this device.
               </InfoTip>
             </div>
             <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
