@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
+import InfoTip from "../components/InfoTip";
 
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
@@ -17,7 +18,7 @@ export default function Today({ state, actions }) {
 	const noteIsLoading = aiNote?.status === "loading";
 	const noteTitle = noteIsAi ? aiNote.title : dailyMessage?.a;
 	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
-	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "Local";
+	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "On-device";
 	const canToggleNote = (noteBody || "").length > 180;
 
 	const latelyText = useMemo(() => {
@@ -34,7 +35,14 @@ export default function Today({ state, actions }) {
 
 			<div className="result personalNote" style={{ marginBottom: 12 }}>
 				<div className="personalNoteTop">
-					<div className="resultTitle">Personal note</div>
+					<div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+						<div className="resultTitle" style={{ margin: 0 }}>
+							Personal note
+						</div>
+						<InfoTip label="About Personal note">
+							AI notes are generated from your check-in. On-device notes use built-in guidance based on your selected pace.
+						</InfoTip>
+					</div>
 					<span
 						className={
 							"sourceChip" +
@@ -71,7 +79,16 @@ export default function Today({ state, actions }) {
 
 			{myDay.length === 0 ? (
 				<div className="hint">
-					No tasks yet. Use <b>Activity Picker</b> to add a few.
+					No tasks yet. Tap{" "}
+					<button
+						type="button"
+						className="linkBtn"
+						onClick={() => actions?.go?.("wheel")}
+						aria-label="Open Pick (Activity Picker)"
+					>
+						Pick
+					</button>
+					{" "}to add a few.
 				</div>
 			) : (
 				<div className="myDayScroll" aria-label="My Day tasks">
