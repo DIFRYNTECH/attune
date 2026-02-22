@@ -81,6 +81,8 @@ html {
     min-height: 100svh;
     display: flex;
     flex-direction: column;
+    width: 100%;
+    max-width: 100%;
   }
 
   /* When a toast is visible, reserve extra space so it can't cover card content. */
@@ -116,9 +118,12 @@ html {
     gap: 12px;
     flex: 1;
     min-height: 0;
-    /* No scrolling on the screen container on mobile. */
-    overflow: hidden;
+    /* Keep scrolling inside the main card; don't clip shadows/glows. */
+    overflow: visible;
     padding-bottom: 0;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .grid > main {
@@ -126,6 +131,9 @@ html {
     flex-direction: column;
     flex: 1;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
   }
 
   .grid > main > .card {
@@ -133,6 +141,9 @@ html {
     display: flex;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;

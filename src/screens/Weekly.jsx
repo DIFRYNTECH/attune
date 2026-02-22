@@ -47,6 +47,15 @@ function formatDateLong(key) {
   });
 }
 
+function formatDateShort(key) {
+  const dt = dateFromKey(key);
+  if (!dt) return "";
+  return dt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
+
 function buildWeekRecords(state) {
   const history = state.history || [];
   const today = todayKey();
@@ -141,6 +150,7 @@ export default function Weekly({ state, actions }) {
 
   const canMultiWeek = !!state?.entitlements?.multiWeekHistory;
   const [weeksToShow, setWeeksToShow] = useState(4);
+  const [selectedPastWeekStart, setSelectedPastWeekStart] = useState(null);
 
   const canPatternCallouts = !!state?.entitlements?.patternCallouts;
   const patternCallouts = canPatternCallouts
@@ -226,6 +236,25 @@ export default function Weekly({ state, actions }) {
   const priorSummaries = summariesDesc.filter((s) => s.weekStart !== weekRange.startKey);
   const similar = canMultiWeek ? findSimilarWeeks(currentWeekSummary, priorSummaries, { max: 2 }) : [];
 
+  const activePastWeekStart = (() => {
+    if (!shownSummaries.length) return null;
+    const wanted = selectedPastWeekStart;
+    const exists = wanted && shownSummaries.some((w) => w.weekStart === wanted);
+    return exists ? wanted : shownSummaries[0].weekStart;
+  })();
+
+  const activePastSummary = activePastWeekStart
+    ? shownSummaries.find((w) => w.weekStart === activePastWeekStart) || null
+    : null;
+
+  useEffect(() => {
+    if (!canMultiWeek) return;
+    if (!shownSummaries.length) return;
+    const wanted = selectedPastWeekStart;
+    const exists = wanted && shownSummaries.some((w) => w.weekStart === wanted);
+    if (!exists) setSelectedPastWeekStart(shownSummaries[0].weekStart);
+  }, [canMultiWeek, shownSummaries, selectedPastWeekStart]);
+
   return (
     <div className="card weeklyCard">
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -295,14 +324,14 @@ export default function Weekly({ state, actions }) {
           <div style={{ fontWeight: 900, fontSize: 20, color: "var(--ink)" }}>{label}</div>
           {canExactMomentum ? (
             <div className="footerNote" style={{ marginTop: 0 }}>
-              Signal {score}/100
+              Score {score}/100
             </div>
           ) : (
             <button
               type="button"
               className="btn small ghost"
               onClick={() => actions?.openPaywall?.("momentumExact", "weekly")}
-              aria-label="Unlock exact Momentum signal with Attune Plus"
+              aria-label="Unlock exact Momentum score with Attune Plus"
               title="Plus feature"
               style={{ marginTop: 0 }}
             >
@@ -323,7 +352,7 @@ export default function Weekly({ state, actions }) {
         </div>
 
         <div className="footerNote">
-          This isn’t a grade. It’s a helpful signal: showing up matters most, with a small boost for finishing activities.
+          Not a grade. This score is based on showing up, with a small boost for finishing activities.
           {!canExactMomentum ? "" : ""}
         </div>
       </div>
@@ -403,18 +432,7 @@ export default function Weekly({ state, actions }) {
           </div>
           <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
             {patternCallouts.map((c) => (
-              <div
-                key={c.id}
-                style={{
-                  padding: "10px 10px",
-                  border: "1px solid rgba(231,233,242,.95)",
-                  background: "rgba(255,255,255,.85)",
-                  borderRadius: 14,
-                  fontSize: 13,
-                  color: "var(--ink)",
-                  lineHeight: 1.35,
-                }}
-              >
+              <div key={c.id} className="weekInsight">
                 {c.text}
               </div>
             ))}
@@ -461,36 +479,63 @@ export default function Weekly({ state, actions }) {
             </div>
           ) : (
             <div className="footerNote" style={{ marginTop: 8 }}>
-              Add a little more history and we’ll start making gentle comparisons.
+              Add a little more history and we’ll start making low-pressure comparisons.
             </div>
           )}
 
-          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            {shownSummaries.map((w) => (
-              <div
-                key={w.weekStart}
-                style={{
-                  padding: "10px 10px",
-                  border: "1px solid rgba(231,233,242,.95)",
-                  background: "rgba(255,255,255,.85)",
-                  borderRadius: 14,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ fontWeight: 900, color: "var(--ink)" }}>{formatDateLong(w.weekStart)}</div>
-                  <div className="footerNote" style={{ marginTop: 0 }}>
-                    Signal {w.momentum}/100
+          {shownSummaries.length > 0 ? (
+            <>
+              <div className="weekStrip" role="list" aria-label="Past weeks (scroll left and right)">
+                {shownSummaries.map((w) => {
+                  const isActive = w.weekStart === activePastWeekStart;
+                  const meter = Math.max(0, Math.min(100, Number(w.momentum) || 0));
+                  return (
+                    <button
+                      key={w.weekStart}
+                      type="button"
+                      className={`weekStripItem${isActive ? " active" : ""}`}
+                      onClick={() => setSelectedPastWeekStart(w.weekStart)}
+                      aria-pressed={isActive}
+                      aria-label={`Week of ${formatDateLong(w.weekStart)}. Momentum ${w.momentum} out of 100.`}
+                    >
+                      <div className="weekStripTop">
+                        <div className="weekStripDate">{formatDateShort(w.weekStart)}</div>
+                        <div className="weekStripScore">{w.momentum}</div>
+                      </div>
+                      <div className="weekStripBar" aria-hidden="true">
+                        <div className="weekStripBarFill" style={{ width: `${meter}%` }} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="footerNote" style={{ marginTop: 8 }}>
+                Tap a week for details.
+              </div>
+
+              {activePastSummary ? (
+                <div className="weekSummaryCard" style={{ marginTop: 10 }} aria-label="Selected week details">
+                  <div className="weekSummaryHeader">
+                    <div className="weekSummaryTitle">{formatDateLong(activePastSummary.weekStart)}</div>
+                    <div className="footerNote" style={{ marginTop: 0 }}>
+                      Momentum {activePastSummary.momentum}/100
+                    </div>
+                  </div>
+
+                  <div className="weekSummaryMeta">
+                    <span>Type: {activePastSummary.weekType}</span>
+                    {activePastSummary.avgPace ? <span>Avg pace: {prettyLevel(activePastSummary.avgPace)}</span> : null}
+                  </div>
+
+                  <div className="miniPills" style={{ marginTop: 8 }}>
+                    <span className="miniPill">📅 {activePastSummary.presence}/7 present</span>
+                    <span className="miniPill">✅ {activePastSummary.completions} completed</span>
                   </div>
                 </div>
-                <div className="miniPills" style={{ marginTop: 8 }}>
-                  <span className="miniPill">📅 {w.presence}/7 present</span>
-                  <span className="miniPill">✅ {w.completions} completed</span>
-                  <span className="miniPill">🏷️ {w.weekType}</span>
-                  {w.avgPace ? <span className="miniPill">🏁 avg pace: {prettyLevel(w.avgPace)}</span> : null}
-                </div>
-              </div>
-            ))}
-          </div>
+              ) : null}
+            </>
+          ) : null}
 
         </div>
       )}
@@ -508,7 +553,7 @@ export default function Weekly({ state, actions }) {
           <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">About Momentum</div>
             <div className="modalBody">
-              Momentum is a gentle signal based on your last 7 days: showing up matters most, with a small boost for finishing
+              Momentum is a helpful score based on your last 7 days: showing up matters most, with a small boost for finishing
               activities.
             </div>
 
@@ -567,7 +612,7 @@ export default function Weekly({ state, actions }) {
           <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">About week type</div>
             <div className="modalBody">
-              Week type is a gentle summary of your last 7 days, based on check-ins and the pace you chose. The “Why this week
+              Week type is a quick summary of your last 7 days, based on check-ins and the pace you chose. The “Why this week
               type” line explains what tipped yours.
             </div>
 
