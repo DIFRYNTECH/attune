@@ -115,6 +115,16 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
   }, [state?.profile?.theme]);
 
+  useEffect(() => {
+    if (!showToast) return;
+
+    const timeoutId = window.setTimeout(() => {
+      actions.clearToast?.();
+    }, 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [showToast, state.toast?.text, state.toast?.good, state.toast?.screen, actions]);
+
   return (
     <div className={wrapClassName}>
       <TopNav screen={screen} go={actions.go} entitlements={state.entitlements} />

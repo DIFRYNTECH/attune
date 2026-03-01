@@ -71,10 +71,6 @@ html {
   .wrap {
     /* Single source of truth for fixed bottom nav clearance on mobile. */
     --bottomNavSpace: 56px;
-    /* Extra breathing room when a toast is showing (fixed above the nav). */
-    --toastSpace: 48px;
-    /* Additional in-card scroll padding when toast is visible. */
-    --toastReserve: 0px;
 
     padding: 12px;
     /* Keep content clear of the fixed bottom nav without creating a huge blank band. */
@@ -87,10 +83,6 @@ html {
     width: 100%;
     max-width: 100%;
   }
-
-  /* When a toast is visible, reserve extra *scroll* space inside the card
-     (toast is fixed, so we don't want to shrink the entire layout). */
-  .wrap.toastOn { --toastReserve: var(--toastSpace); }
 
   .top {
     flex-direction: column;
@@ -144,7 +136,14 @@ html {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
-    padding-bottom: calc(16px + var(--toastReserve));
+    padding-bottom: 16px;
+  }
+
+  /* When a toast is visible, add extra scroll space at the bottom of the card
+     so the last list item can scroll above the fixed toast. */
+  .wrap.toastOn .grid > main > .card {
+    padding-bottom: calc(16px + 32px);
+    scroll-padding-bottom: 32px;
   }
 
   /* Activity Picker board: allow tiles to scroll within the card.
@@ -171,7 +170,8 @@ html {
     position: fixed;
     left: 12px;
     right: 12px;
-    bottom: calc(24px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
+    /* Keep toast in the reserved gap below the card (above bottom nav). */
+    bottom: calc(12px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
     width: auto;
     transform: none;
     margin-top: 0;
