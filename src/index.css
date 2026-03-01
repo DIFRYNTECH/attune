@@ -644,8 +644,8 @@
       border:1px solid var(--line);
       background:var(--card);
       border-radius:16px;
-      min-height:56px;
-      padding:7px 6px 6px;
+      min-height:60px;
+      padding:8px 6px 7px;
       display:flex;
       flex-direction:column;
       align-items:center;
@@ -674,14 +674,14 @@
     .moodBtn[data-tone="good"]{ --moodA: rgba(110,231,183,.14); --moodB: rgba(79,109,245,.08); }
 
     .moodEmoji{
-      font-size:19px;
+      font-size:20px;
       line-height:1;
       position:relative;
       z-index:1;
       filter: saturate(1.02);
     }
     .moodLabel{
-      font-size:10.5px;
+      font-size:10.8px;
       font-weight:900;
       color:var(--muted);
       letter-spacing:-.15px;
@@ -1617,15 +1617,15 @@
       }
 
       .moodGrid{grid-template-columns: repeat(5, minmax(0, 1fr)); gap:6px;}
-      .moodBtn{min-height:50px; padding:6px 4px 5px; border-radius:14px;}
-      .moodEmoji{font-size:18px;}
-      .moodLabel{font-size:9.8px;}
+      .moodBtn{min-height:54px; padding:7px 4px 6px; border-radius:14px;}
+      .moodEmoji{font-size:19px;}
+      .moodLabel{font-size:10.2px;}
     }
 
     @media (max-width: 380px){
       .moodGrid{gap:5px;}
-      .moodBtn{min-height:48px; padding:5px 3px 4px;}
-      .moodLabel{font-size:9.4px;}
+      .moodBtn{min-height:50px; padding:6px 3px 5px;}
+      .moodLabel{font-size:9.7px;}
     }
 
     .hide{display:none !important;}
