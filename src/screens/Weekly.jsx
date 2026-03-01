@@ -760,7 +760,7 @@ export default function Weekly({ state, actions }) {
             if (e.target === e.currentTarget) setShowWeekDetails(false);
           }}
         >
-          <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="modalCard weekDetailsModal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">Week details</div>
             <div className="modalBody">
               {weekDetailsStart && weekDetailsEnd
@@ -768,31 +768,25 @@ export default function Weekly({ state, actions }) {
                 : ""}
             </div>
 
-            <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+            <div className="weekDetailsList">
               {weekDetailsRecords.map((d) => (
                 <div
                   key={d.date}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "72px 1fr auto",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 10px",
-                    border: "1px solid var(--line)",
-                    borderRadius: 14,
-                    background: "var(--card85)",
-                  }}
+                  className={"weekDetailsRow" + (d.checkedIn ? " present" : "")}
                 >
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
+                  <div className="weekDetailsDow">
                     {formatWeekdayShort(d.date)}
                   </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 900, color: "var(--ink)" }}>{formatDateShort(d.date)}</div>
-                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                  <div className="weekDetailsMain">
+                    <div className="weekDetailsDate">{formatDateShort(d.date)}</div>
+                    <div className="weekDetailsMeta">
                       {d.checkedIn ? "Present" : "Not present"} · {Number(d.tasksDone) || 0} completed
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
+                  <div
+                    className={"weekDetailsIcon" + (d.checkedIn ? " present" : " absent")}
+                    aria-label={d.checkedIn ? "Present" : "Not present"}
+                  >
                     {d.checkedIn ? "✓" : "○"}
                   </div>
                 </div>
@@ -823,7 +817,7 @@ export default function Weekly({ state, actions }) {
             if (e.target === e.currentTarget) setShowWeekActivities(false);
           }}
         >
-          <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="modalCard weekActivitiesModal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">Completed activities</div>
             <div className="modalBody">
               {weekActivitiesStart && weekActivitiesEnd
@@ -831,11 +825,11 @@ export default function Weekly({ state, actions }) {
                 : ""}
             </div>
 
-            <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
+            <div className="weekActivitiesList">
               {weekActivitiesByDay.every((d) => d.completed.length === 0) ? (
-                <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
+                <div className="weekActivitiesEmpty">
                   No completed activities recorded for this week.
-                  <div style={{ marginTop: 6 }}>
+                  <div className="weekActivitiesEmptyTip">
                     Tip: activity names are saved as you complete them, and recent history is kept for about 90 days.
                   </div>
                 </div>
@@ -843,30 +837,25 @@ export default function Weekly({ state, actions }) {
                 weekActivitiesByDay.map((d) => (
                   <div
                     key={d.dayKey}
-                    style={{
-                      border: "1px solid var(--line)",
-                      borderRadius: 14,
-                      background: "var(--card85)",
-                      padding: "10px 10px",
-                    }}
+                    className={"weekActivitiesDayCard" + (d.completed.length ? " has" : " empty")}
                   >
-                    <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-                      <div style={{ fontSize: 12, fontWeight: 950, color: "var(--muted)" }}>
+                    <div className="weekActivitiesDayHeader">
+                      <div className="weekActivitiesDow">
                         {formatWeekdayShort(d.dayKey)}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{formatDateShort(d.dayKey)}</div>
+                      <div className="weekActivitiesDate">{formatDateShort(d.dayKey)}</div>
                     </div>
 
                     {d.completed.length ? (
-                      <div style={{ marginTop: 8, display: "grid", gap: 6 }}>
+                      <div className="weekActivitiesItems">
                         {d.completed.map((a) => (
-                          <div key={a.id} style={{ fontSize: 13, fontWeight: 800, color: "var(--ink)" }}>
+                          <div key={a.id} className="weekActivitiesItem">
                             ✓ {a.text}
                           </div>
                         ))}
                       </div>
                     ) : (
-                      <div style={{ marginTop: 8, fontSize: 12, color: "var(--muted)" }}>No completions</div>
+                      <div className="weekActivitiesNone">No completions</div>
                     )}
                   </div>
                 ))
