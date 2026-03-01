@@ -15,7 +15,31 @@ export function shuffle(arr){
   return a;
 }
 
-export function suggestLevelFromCheckin({ mood, energy, body }){
+export function suggestLevelFromCheckin(checkin){
+  const mood = typeof checkin?.mood === "string" ? checkin.mood : "okay";
+  const energy = typeof checkin?.energy === "string" ? checkin.energy : "okay";
+  const body = typeof checkin?.body === "string" ? checkin.body : "manageable";
+  const clampLevel = (key, maxKey) => {
+    const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
+    const i = order.indexOf(key);
+    const j = order.indexOf(maxKey);
+    if(i === -1 || j === -1) return key;
+    return order[Math.min(i, j)];
+  };
+
+  const raiseLevel = (key, minKey) => {
+    const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
+    const i = order.indexOf(key);
+    const j = order.indexOf(minKey);
+    if(i === -1 || j === -1) return key;
+    return order[Math.max(i, j)];
+  };
+
+  const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords : [];
+  const words = moodWords.map(w => (w === "Steady" ? "Settled" : w));
+  const has = (w) => words.includes(w);
+  const hasAny = (...ws) => ws.some(has);
+
   let suggested = "gentle";
 
   if(energy==="verylow" || mood==="low"){
@@ -28,6 +52,37 @@ export function suggestLevelFromCheckin({ mood, energy, body }){
   }else if(energy==="high"){
     // "High / wired" can be usable energy, but we keep suggestions grounded.
     suggested = (mood==="good" && body==="manageable") ? "capable" : "steady";
+  }
+
+  // Mood-word combination nudges (keeps it warm + safe).
+  // If the user picked explicitly tough words, we cap intensity.
+  const tough =
+    hasAny("Worn out", "Tired", "Flat", "Overwhelmed", "Anxious", "Irritable");
+
+  if(has("Worn out")) suggested = "rest";
+
+  // Wired + overwhelmed often needs grounding even if energy is high.
+  if(hasAny("Overwhelmed", "Anxious") && has("Restless")){
+    suggested = clampLevel(suggested, "gentle");
+  }
+
+  if(has("Irritable")){
+    suggested = clampLevel(suggested, "gentle");
+  }
+
+  if(tough){
+    suggested = clampLevel(suggested, "steady");
+  }
+
+  // Positive combos can gently raise the default, but never if tough words are present.
+  const positiveCombo =
+    (has("Motivated") && has("Hopeful")) ||
+    (has("Motivated") && has("Settled")) ||
+    (has("Hopeful") && has("Settled"));
+
+  if(!tough && body === "manageable" && (energy === "okay" || energy === "high")){
+    if(positiveCombo) suggested = raiseLevel(suggested, "capable");
+    else if(has("Motivated")) suggested = raiseLevel(suggested, "steady");
   }
 
   return suggested;

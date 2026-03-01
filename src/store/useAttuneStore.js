@@ -37,6 +37,7 @@ function defaultState(){
     checkin,
     level,
     options: [],
+    levelSource: "auto", // 'auto' | 'manual'
     optionsSource: "default", // 'default' | 'ai'
     boardAssigned: [],
     myDay: [],
@@ -162,6 +163,9 @@ function normalizeLoadedState(loaded){
   if(typeof next.optionsSource !== "string") next.optionsSource = "default";
   if(next.optionsSource !== "default" && next.optionsSource !== "ai") next.optionsSource = "default";
 
+  if(typeof next.levelSource !== "string") next.levelSource = "auto";
+  if(next.levelSource !== "auto" && next.levelSource !== "manual") next.levelSource = "auto";
+
   if(!next.ai || typeof next.ai !== "object" || Array.isArray(next.ai)){
     next.ai = { status: "idle", today: "", sig: "", tasks: [], error: "" };
   }
@@ -227,6 +231,7 @@ function normalizeLoadedState(loaded){
     next.checkedInToday = false;
     next.checkin = { ...DEFAULT_CHECKIN };
     next.level = "gentle";
+    next.levelSource = "auto";
     next.options = [];
     next.myDayCap = 5;
     next.currentSpin = null;
@@ -350,23 +355,28 @@ export function useAttuneStore(){
     setCheckin: (patch) =>
       setState(s => {
         const checkin = { ...s.checkin, ...patch };
-        const level = suggestLevelFromCheckin(checkin);
+        const source = s.levelSource === "manual" ? "manual" : "auto";
+        const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);
         const options = suggestActivities(checkin, level);
-        return { ...s, checkin, level, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
+        return { ...s, checkin, level, levelSource: source, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
       setState(s => {
         const options = suggestActivities(s.checkin, level);
-        return {...s, level, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
+        return {...s, level, levelSource: "manual", options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
       }),
 
     suggestLevel: () =>
       setState(s => {
         const suggested = suggestLevelFromCheckin(s.checkin);
+        const options = suggestActivities(s.checkin, suggested);
         return {
           ...s,
           level: suggested,
+          levelSource: "auto",
+          options,
+          optionsSource: "default",
           dailyMessage: dailyMessageFromCheckin(s.checkin, suggested)
         };
       }),
