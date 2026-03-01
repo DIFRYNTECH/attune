@@ -1,18 +1,37 @@
 import { useCallback, useEffect, useRef } from "react";
 import { LEVELS } from "../data/levels";
+import EmojiIcon from "../components/EmojiIcon";
 
 const MOOD_WORDS = [
-  { label: "Worn out", emoji: "🪫", tone: "tough" },
-  { label: "Tired", emoji: "😴", tone: "tough" },
-  { label: "Overwhelmed", emoji: "😵‍💫", tone: "tough" },
-  { label: "Irritable", emoji: "😣", tone: "tough" },
-  { label: "Restless", emoji: "⚡", tone: "tough" },
-  { label: "Tender", emoji: "🫧", tone: "okay" },
-  { label: "Okay", emoji: "🙂", tone: "okay" },
-  { label: "Settled", emoji: "😌", tone: "good" },
-  { label: "Hopeful", emoji: "🌤️", tone: "good" },
-  { label: "Motivated", emoji: "✨", tone: "good" },
+  { label: "Worn out", emoji: "🪫", icon: "low-battery", tone: "tough" },
+  { label: "Tired", emoji: "😴", icon: "sleeping-face", tone: "tough" },
+  { label: "Overwhelmed", emoji: "😵‍💫", icon: "face-with-spiral-eyes", tone: "tough" },
+  { label: "Irritable", emoji: "😣", icon: "persevering-face", tone: "tough" },
+  { label: "Restless", emoji: "⚡", icon: "high-voltage", tone: "tough" },
+  { label: "Tender", emoji: "🫧", icon: "bubbles", tone: "okay" },
+  { label: "Okay", emoji: "🙂", icon: "slightly-smiling-face", tone: "okay" },
+  { label: "Settled", emoji: "😌", icon: "relieved-face", tone: "good" },
+  { label: "Hopeful", emoji: "🌤️", icon: "sun-behind-cloud", tone: "good" },
+  { label: "Motivated", emoji: "✨", icon: "sparkles", tone: "good" },
 ];
+
+const MOOD_WORD_ALIASES = {
+  // Back-compat (older saved check-ins)
+  Steady: "Settled",
+  Anxious: "Overwhelmed",
+  Flat: "Tired",
+};
+
+function normalizeMoodWord(word) {
+  return MOOD_WORD_ALIASES[word] || word;
+}
+
+function moodMeta(word) {
+  const label = normalizeMoodWord(word);
+  const found = MOOD_WORDS.find((x) => x.label === label);
+  if (found) return found;
+  return { label, tone: "okay" };
+}
 
 function moodCategoryFromWords(words) {
   if (!words?.length) return null;
@@ -69,10 +88,7 @@ export default function CheckIn({ state, actions }) {
         ? ["Okay"]
         : [];
 
-  // Back-compat: "Steady" used to be a mood word; it is now "Settled".
-  const selectedMoodWords = selectedMoodWordsRaw.map((w) =>
-    w === "Steady" ? "Settled" : w
-  );
+  const selectedMoodWords = selectedMoodWordsRaw.map(normalizeMoodWord);
 
   const toggleMoodWord = (word) => {
     const already = selectedMoodWords.includes(word);
@@ -117,7 +133,11 @@ export default function CheckIn({ state, actions }) {
                   ✓
                 </span>
                 <span className="moodEmoji" aria-hidden="true">
-                  {w.emoji}
+                  <EmojiIcon
+                    id={w.icon}
+                    size="var(--moodEmojiSize)"
+                    fallback={w.emoji}
+                  />
                 </span>
                 <span className="moodLabel">{w.label}</span>
               </button>
@@ -127,20 +147,18 @@ export default function CheckIn({ state, actions }) {
             <span className="moodSelectedKey">Selected</span>
             {selectedMoodWords.length ? (
               selectedMoodWords.map((label) => {
-                const found = MOOD_WORDS.find((x) => x.label === label);
-                if (!found) {
-                  return (
-                    <span key={label} className="moodBadge" data-tone="okay">
-                      <span>{label}</span>
-                    </span>
-                  );
-                }
+                const meta = moodMeta(label);
+
                 return (
-                  <span key={label} className="moodBadge" data-tone={found.tone}>
+                  <span key={label} className="moodBadge" data-tone={meta.tone}>
                     <span className="moodBadgeEmoji" aria-hidden="true">
-                      {found.emoji}
+                      <EmojiIcon
+                        id={meta.icon}
+                        size="14px"
+                        fallback={meta.emoji}
+                      />
                     </span>
-                    <span>{label}</span>
+                    <span>{meta.label}</span>
                   </span>
                 );
               })
@@ -209,7 +227,15 @@ export default function CheckIn({ state, actions }) {
               className={"pill" + (level === l.key ? " active" : "")}
               onClick={() => actions.setLevel(l.key)}
             >
-              {l.emoji} {l.name}
+              <span className="pillIcon" aria-hidden="true">
+                <EmojiIcon
+                  id={l.icon}
+                  size="var(--pillEmojiSize)"
+                  fallback={l.emoji}
+                  className="pillEmoji"
+                />
+              </span>
+              <span className="pillLabel">{l.name}</span>
             </button>
           ))}
         </div>
