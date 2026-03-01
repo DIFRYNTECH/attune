@@ -2,16 +2,16 @@ import { useCallback, useEffect, useRef } from "react";
 import { LEVELS } from "../data/levels";
 
 const MOOD_WORDS = [
-  { label: "Tired", emoji: "😴" },
-  { label: "Anxious", emoji: "😰" },
-  { label: "Flat", emoji: "😐" },
-  { label: "Tender", emoji: "🫧" },
-  { label: "Irritable", emoji: "😣" },
-  { label: "Okay", emoji: "🙂" },
-  { label: "Steady", emoji: "🌿" },
-  { label: "Hopeful", emoji: "🌤️" },
-  { label: "Worn out", emoji: "🪫" },
-  { label: "Restless", emoji: "⚡" },
+  { label: "Worn out", emoji: "🪫", tone: "tough" },
+  { label: "Tired", emoji: "😴", tone: "tough" },
+  { label: "Overwhelmed", emoji: "😵‍💫", tone: "tough" },
+  { label: "Irritable", emoji: "😣", tone: "tough" },
+  { label: "Restless", emoji: "⚡", tone: "tough" },
+  { label: "Tender", emoji: "🫧", tone: "okay" },
+  { label: "Okay", emoji: "🙂", tone: "okay" },
+  { label: "Settled", emoji: "😌", tone: "good" },
+  { label: "Hopeful", emoji: "🌤️", tone: "good" },
+  { label: "Motivated", emoji: "✨", tone: "good" },
 ];
 
 function moodCategoryFromWords(words) {
@@ -20,14 +20,19 @@ function moodCategoryFromWords(words) {
   const scoreMap = {
     "Worn out": -2,
     Tired: -1,
+    Overwhelmed: -1,
+    // Back-compat (older saved check-ins)
     Flat: -1,
     Tender: -1,
     Anxious: -1,
     Irritable: -1,
     Restless: -1,
     Okay: 0,
+    Settled: 1,
+    // Back-compat (older saved check-ins)
     Steady: 1,
     Hopeful: 2,
+    Motivated: 2,
   };
 
   const scores = words
@@ -58,12 +63,17 @@ export default function CheckIn({ state, actions }) {
     autosizeNote();
   }, [note, autosizeNote]);
 
-  const selectedMoodWords =
+  const selectedMoodWordsRaw =
     checkin.moodWords?.length
       ? checkin.moodWords
       : checkin.mood === "okay"
         ? ["Okay"]
         : [];
+
+  // Back-compat: "Steady" used to be a mood word; it is now "Settled".
+  const selectedMoodWords = selectedMoodWordsRaw.map((w) =>
+    w === "Steady" ? "Settled" : w
+  );
 
   const toggleMoodWord = (word) => {
     const already = selectedMoodWords.includes(word);
@@ -99,25 +109,45 @@ export default function CheckIn({ state, actions }) {
                 className={
                   "moodBtn" + (selectedMoodWords.includes(w.label) ? " active" : "")
                 }
-                aria-label={w.label}
                 title={w.label}
+                data-tone={w.tone}
                 aria-pressed={selectedMoodWords.includes(w.label)}
                 onClick={() => toggleMoodWord(w.label)}
               >
-                <span aria-hidden="true">{w.emoji}</span>
+                <span className="moodCheck" aria-hidden="true">
+                  ✓
+                </span>
+                <span className="moodEmoji" aria-hidden="true">
+                  {w.emoji}
+                </span>
+                <span className="moodLabel">{w.label}</span>
               </button>
             ))}
           </div>
-          <div className="footerNote" style={{ marginTop: 8 }}>
-            <b style={{ color: "var(--ink)" }}>Selected:</b>{" "}
-            {selectedMoodWords.length
-              ? selectedMoodWords
-                  .map((label) => {
-                    const found = MOOD_WORDS.find((x) => x.label === label);
-                    return found ? `${found.emoji} ${label}` : label;
-                  })
-                  .join(" · ")
-              : "-"}
+          <div className="moodSelectedRow" aria-live="polite">
+            <span className="moodSelectedKey">Selected</span>
+            {selectedMoodWords.length ? (
+              selectedMoodWords.map((label) => {
+                const found = MOOD_WORDS.find((x) => x.label === label);
+                if (!found) {
+                  return (
+                    <span key={label} className="moodBadge" data-tone="okay">
+                      <span>{label}</span>
+                    </span>
+                  );
+                }
+                return (
+                  <span key={label} className="moodBadge" data-tone={found.tone}>
+                    <span className="moodBadgeEmoji" aria-hidden="true">
+                      {found.emoji}
+                    </span>
+                    <span>{label}</span>
+                  </span>
+                );
+              })
+            ) : (
+              <span className="moodSelectedEmpty">—</span>
+            )}
           </div>
         </div>
 

@@ -88,11 +88,13 @@ export function dailyMessageFromCheckin(checkin, level){
   const has = (w) => moodWords.includes(w);
 
   const depleted = energy === "verylow" || has("Worn out");
+  // Back-compat: older check-ins may still include "Flat".
   const drained = energy === "low" || has("Tired") || has("Flat");
   const wired = energy === "high" || has("Restless");
-  const anxious = has("Anxious");
+  // "Overwhelmed" replaced "Anxious" in the UI, but we keep both for older saved check-ins.
+  const overwhelmed = has("Overwhelmed") || has("Anxious");
   const irritable = has("Irritable");
-  const hopeful = has("Hopeful") || has("Steady");
+  const hopeful = has("Hopeful") || has("Settled") || has("Steady") || has("Motivated");
 
   const tender = body === "tender";
   const sore = body === "achey";
@@ -105,7 +107,7 @@ export function dailyMessageFromCheckin(checkin, level){
     };
   }
 
-  if(wired && anxious){
+  if(wired && overwhelmed){
     return {
       a: "High energy can still need softness.",
       b: "Pick one grounding step, then give your nervous system a pause."
@@ -119,7 +121,7 @@ export function dailyMessageFromCheckin(checkin, level){
     };
   }
 
-  if(anxious){
+  if(overwhelmed){
     return {
       a: "We can keep today simple.",
       b: "One small step at a time. No urgency needed."
