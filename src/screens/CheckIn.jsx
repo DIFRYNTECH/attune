@@ -48,7 +48,6 @@ function moodCategoryFromWords(words) {
 
 export default function CheckIn({ state, actions }) {
   const { checkin, level, checkedInToday } = state;
-  const isPlus = !!state?.entitlements?.isPlus;
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
 
@@ -218,34 +217,6 @@ export default function CheckIn({ state, actions }) {
 
       <div className="hint" style={{ marginTop: 12 }}>
         Used to personalize your options and keep suggestions relevant. If AI is enabled, your optional note may be used to help build today’s board. You can change this anytime.
-      </div>
-
-      <div
-        className="settingRow"
-        style={{ marginTop: 10 }}
-        onClick={() => actions.setPlan?.(isPlus ? "free" : "plus")}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if(e.key === "Enter" || e.key === " "){
-            e.preventDefault();
-            actions.setPlan?.(isPlus ? "free" : "plus");
-          }
-        }}
-        aria-label="Attune Plus (on this device)"
-      >
-        <div className="settingRowText">
-          <div className="settingRowTitle">Attune Plus (on this device)</div>
-          <div className="settingRowDesc">Saved locally on this phone.</div>
-        </div>
-        <input
-          type="checkbox"
-          className="switchInput"
-          checked={isPlus}
-          onChange={(e) => actions.setPlan?.(e.target.checked ? "plus" : "free")}
-          onClick={(e) => e.stopPropagation()}
-          aria-label="Attune Plus (on this device)"
-        />
       </div>
 
       <div className="checkinBottom">
