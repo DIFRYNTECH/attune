@@ -7,8 +7,103 @@ const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
+const TRUST_PROXY = String(process.env.TRUST_PROXY || "").trim() === "1";
+const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
+const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+const allowedOrigins = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : DEFAULT_ALLOWED_ORIGINS;
+
 const app = express();
+if (TRUST_PROXY) app.set("trust proxy", 1);
 app.use(express.json({ limit: "64kb" }));
+
+// Basic hardening for API responses.
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  // These endpoints may include user-entered note snippets; avoid caching.
+  if (req.path.startsWith("/api/")) res.setHeader("Cache-Control", "no-store");
+  next();
+});
+
+function enforceAllowedOrigin(req, res, next) {
+  // Browser requests include Origin; enforce it to reduce accidental cross-site use.
+  // Non-browser clients may omit Origin; rate limiting is the primary control.
+  const origin = req.headers.origin;
+  if (!origin) return next();
+  if (allowedOrigins.includes(origin)) return next();
+  res.status(403).json({ error: "forbidden_origin" });
+}
+
+function makeRateLimiter({ windowMs, max, keyPrefix }) {
+  const hits = new Map();
+  const cleanupEveryMs = Math.max(10_000, Math.floor(windowMs / 2));
+  let lastCleanup = 0;
+
+  function cleanup(now) {
+    if (now - lastCleanup < cleanupEveryMs) return;
+    lastCleanup = now;
+    for (const [key, entry] of hits.entries()) {
+      if (!entry || entry.resetAt <= now) hits.delete(key);
+    }
+  }
+
+  return (req, res, next) => {
+    const now = Date.now();
+    cleanup(now);
+
+    const ip = req.ip || "unknown";
+    const key = `${keyPrefix}:${ip}`;
+    const cur = hits.get(key);
+    if (!cur || cur.resetAt <= now) {
+      hits.set(key, { count: 1, resetAt: now + windowMs });
+      return next();
+    }
+
+    cur.count += 1;
+    if (cur.count > max) {
+      const retryAfter = Math.max(1, Math.ceil((cur.resetAt - now) / 1000));
+      res.setHeader("Retry-After", String(retryAfter));
+      return res.status(429).json({ error: "rate_limited" });
+    }
+    next();
+  };
+}
+
+function makeTtlCache({ ttlMs, maxEntries }) {
+  const cache = new Map();
+
+  function get(key) {
+    const entry = cache.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+      cache.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  function set(key, value) {
+    // Simple FIFO eviction.
+    if (cache.size >= maxEntries) {
+      const first = cache.keys().next().value;
+      if (first) cache.delete(first);
+    }
+    cache.set(key, { expiresAt: Date.now() + ttlMs, value });
+  }
+
+  return { get, set };
+}
+
+const boardCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 250 });
+const noteCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 400 });
+
+const limitBoard = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "board" });
+const limitNote = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: "note" });
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
@@ -195,7 +290,17 @@ function fillAndSanitizeTasks(tasks, { pace, energy, body }) {
     const k = text.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push(t);
+
+    const minutes = clampInt(t?.minutes, 1, 45, 10);
+    const intensityRaw = String(t?.intensity || "low").toLowerCase();
+    const intensity = intensityRaw === "low" || intensityRaw === "medium" || intensityRaw === "high" ? intensityRaw : "low";
+    const categoryRaw = String(t?.category || "mind").toLowerCase();
+    const allowedCategories = ["rest", "mind", "body", "home", "connection", "admin"];
+    const category = allowedCategories.includes(categoryRaw) ? categoryRaw : "mind";
+    const why = clampString(t?.why, 160) || makeFallbackTask(text, { pace, energy, body }).why;
+
+    // Only keep the keys we expect.
+    out.push({ text, minutes, intensity, category, why });
   }
 
   for (const s of safePool) {
@@ -611,7 +716,7 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
   return { ok: false, error: lastError || "Invalid board", warnings: lastWarnings };
 }
 
-app.post("/api/generate-board", async (req, res) => {
+app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) {
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
@@ -619,13 +724,22 @@ app.post("/api/generate-board", async (req, res) => {
     }
 
     const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
-    const level = clampString(req.body?.level, 24) || "gentle";
+    const allowedLevels = new Set(["rest", "gentle", "light", "steady", "capable", "brave"]);
+    const levelRaw = (clampString(req.body?.level, 24) || "gentle").toLowerCase();
+    const level = allowedLevels.has(levelRaw) ? levelRaw : "gentle";
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
     const note = clampString(checkin.note, 200);
+
+    const cacheKey = JSON.stringify({ kind: "board", level, moodWords, mood, energy, body, note });
+    const cached = boardCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
 
     const preferences = computeBoardPreferences({ pace: level, energy });
 
@@ -705,20 +819,24 @@ app.post("/api/generate-board", async (req, res) => {
       return;
     }
 
-    res.json({
+    const payload = {
       tasks: generated.tasks,
       meta: {
         model: MODEL,
         createdAt: new Date().toISOString(),
         warnings: Array.isArray(generated.warnings) ? generated.warnings : [],
+        cached: false,
       },
-    });
+    };
+
+    boardCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
+    res.json(payload);
   } catch {
     res.status(500).json({ error: "Failed to generate board" });
   }
 });
 
-app.post("/api/daily-note", async (req, res) => {
+app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) => {
   try {
     if (!OPENAI_API_KEY) {
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
@@ -734,6 +852,13 @@ app.post("/api/daily-note", async (req, res) => {
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
     const note = clampString(checkin.note, 200);
+
+    const cacheKey = JSON.stringify({ kind: "note", level, today, moodWords, mood, energy, body, note });
+    const cached = noteCache.get(cacheKey);
+    if (cached) {
+      res.json(cached);
+      return;
+    }
 
     const theme = pickDailyTheme(today || new Date().toISOString().slice(0, 10));
 
@@ -798,10 +923,12 @@ app.post("/api/daily-note", async (req, res) => {
       return;
     }
 
-    res.json({
+    const payload = {
       note: generated.note,
-      meta: { model: MODEL, createdAt: new Date().toISOString() },
-    });
+      meta: { model: MODEL, createdAt: new Date().toISOString(), cached: false },
+    };
+    noteCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
+    res.json(payload);
   } catch {
     res.status(500).json({ error: "Failed to generate daily note" });
   }
