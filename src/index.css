@@ -858,6 +858,26 @@
       border-color: color-mix(in oklab, var(--brand) 18%, var(--line));
     }
 
+    html[data-theme="dark"] .modalCard.weekDetailsModal{
+      background:
+        radial-gradient(circle at 20% 0%, rgba(79,109,245,.18), rgba(0,0,0,0) 55%),
+        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 60%),
+        var(--card98);
+      border-color: color-mix(in oklab, var(--brand) 26%, var(--line));
+    }
+    html[data-theme="dark"] .weekDetailsRow{
+      background:
+        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 70%),
+        var(--card90);
+      border-color: color-mix(in oklab, var(--brand) 16%, var(--line));
+    }
+    html[data-theme="dark"] .weekDetailsRow.present{
+      background:
+        linear-gradient(180deg, rgba(110,231,183,.12), rgba(0,0,0,0) 72%),
+        var(--card90);
+      border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
+    }
+
     /* Completed activities modal */
     .weekActivitiesList{margin-top:12px; display:grid; gap:10px;}
     .weekActivitiesEmpty{font-size:13px; color:var(--muted); line-height:1.35;}
@@ -894,6 +914,26 @@
         linear-gradient(180deg, rgba(110,231,183,.12), rgba(255,255,255,0) 70%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 16%, var(--line));
+    }
+
+    html[data-theme="dark"] .modalCard.weekActivitiesModal{
+      background:
+        radial-gradient(circle at 20% 0%, rgba(79,109,245,.18), rgba(0,0,0,0) 55%),
+        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 60%),
+        var(--card98);
+      border-color: color-mix(in oklab, var(--brand) 26%, var(--line));
+    }
+    html[data-theme="dark"] .weekActivitiesDayCard{
+      background:
+        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 72%),
+        var(--card90);
+      border-color: color-mix(in oklab, var(--brand) 16%, var(--line));
+    }
+    html[data-theme="dark"] .weekActivitiesDayCard.has{
+      background:
+        linear-gradient(180deg, rgba(110,231,183,.12), rgba(0,0,0,0) 74%),
+        var(--card90);
+      border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
     }
 
     /* Wheel */
