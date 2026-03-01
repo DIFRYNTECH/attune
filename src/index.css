@@ -1661,6 +1661,15 @@
     .myDayCard .item:hover{border-color: rgba(79,109,245,.22)}
     .myDayCard .item:focus-within{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
 
+    /* My Day: activity text runs a bit large by default */
+    .myDayCard .item .txt{
+      font-size: 14px;
+      line-height: 1.25;
+    }
+    @media (max-width: 520px){
+      .myDayCard .item .txt{font-size: 13px;}
+    }
+
     .myDayCard .item.done{
       opacity: 1;
       border-color: color-mix(in oklab, var(--brand2) 45%, var(--line));
