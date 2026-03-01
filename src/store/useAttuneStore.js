@@ -26,12 +26,23 @@ const DEFAULT_CHECKIN = {
   note: "",
 };
 
+function clampText(value, maxLen){
+  const s = typeof value === "string" ? value.trim() : "";
+  return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
 function defaultState(){
   const checkin = { ...DEFAULT_CHECKIN };
   const level = "gentle";
   return {
     schemaVersion: SCHEMA_VERSION,
     screen: "checkin",
+    auth: {
+      signedIn: false,
+      username: "",
+      rememberMe: true,
+      view: "signin", // 'signin' | 'signup'
+    },
     today: todayKey(),
     checkedInToday: false,
     checkin,
@@ -131,6 +142,17 @@ function normalizeLoadedState(loaded){
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
   if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
+
+  // Auth (added later): keep it optional + safe.
+  if(!next.auth || typeof next.auth !== "object" || Array.isArray(next.auth)){
+    next.auth = { signedIn: false, username: "", rememberMe: true, view: "signin" };
+  }
+  if(typeof next.auth.signedIn !== "boolean") next.auth.signedIn = false;
+  if(typeof next.auth.username !== "string") next.auth.username = "";
+  if(next.auth.username.length > 40) next.auth.username = next.auth.username.slice(0, 40);
+  if(typeof next.auth.rememberMe !== "boolean") next.auth.rememberMe = true;
+  if(typeof next.auth.view !== "string") next.auth.view = "signin";
+  if(next.auth.view !== "signin" && next.auth.view !== "signup") next.auth.view = "signin";
 
   if(!next.weeklyNotesMeta || typeof next.weeklyNotesMeta !== "object" || Array.isArray(next.weeklyNotesMeta)) next.weeklyNotesMeta = {};
   {
@@ -302,6 +324,60 @@ export function useAttuneStore(){
   const actions = useMemo(() => ({
     trackEvent: (type, payload) =>
       setState(s => recordEventOnState(s, type, payload, { maxDays: EVENT_DAYS_TO_KEEP })),
+
+    setAuthView: (view) =>
+      setState(s => {
+        const v = view === "signup" ? "signup" : "signin";
+        return {
+          ...s,
+          auth: { ...(s.auth || {}), view: v },
+          toast: null,
+        };
+      }),
+
+    // Stub auth for early Capacitor builds: any username/password succeeds.
+    login: ({ username, rememberMe } = {}) =>
+      setState(s => ({
+        ...s,
+        auth: {
+          signedIn: true,
+          username: clampText(username, 40),
+          rememberMe: typeof rememberMe === "boolean" ? rememberMe : (s?.auth?.rememberMe !== false),
+          view: "signin",
+        },
+        screen: "checkin",
+        toast: null,
+      })),
+
+    signup: ({ name, username, rememberMe } = {}) =>
+      setState(s => ({
+        ...s,
+        auth: {
+          signedIn: true,
+          username: clampText(username, 40),
+          rememberMe: typeof rememberMe === "boolean" ? rememberMe : (s?.auth?.rememberMe !== false),
+          view: "signin",
+        },
+        profile: {
+          ...(s.profile || {}),
+          name: clampText(name, 40),
+        },
+        screen: "checkin",
+        toast: null,
+      })),
+
+    logout: () =>
+      setState(s => ({
+        ...s,
+        auth: {
+          signedIn: false,
+          username: s?.auth?.rememberMe !== false ? (s?.auth?.username || "") : "",
+          rememberMe: s?.auth?.rememberMe !== false,
+          view: "signin",
+        },
+        toast: null,
+        screen: "checkin",
+      })),
 
     go: (screen) =>
       setState(s => {

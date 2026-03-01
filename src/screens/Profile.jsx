@@ -65,9 +65,11 @@ function downloadJson(filename, data) {
 export default function Profile({ state, actions }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
 
   const profileName = state.profile?.name || "";
   const profileEmail = state.profile?.email || "";
+  const signedInUser = String(state?.auth?.username || "").trim();
   const useNoteForAi = state.profile?.useNoteForAi !== false;
   const theme = state.profile?.theme === "dark" ? "dark" : "light";
 
@@ -481,6 +483,32 @@ export default function Profile({ state, actions }) {
             </div>
           )}
         </SettingsSection>
+
+        <SettingsSection
+          title="Account"
+          helper="This is a placeholder sign-in for early builds. We’ll replace it with real sign-in + sync later."
+          helperLabel="Account info"
+        >
+          <div className="settingsActions">
+            <div style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 auto", minWidth: 180 }}>
+              Signed in{signedInUser ? (
+                <>
+                  {" as "}
+                  <b style={{ color: "var(--ink)" }}>{signedInUser}</b>
+                </>
+              ) : null}
+              {" on this device."}
+            </div>
+
+            <button
+              type="button"
+              className="btn ghost dangerGhost"
+              onClick={() => setSignOutOpen(true)}
+            >
+              Sign out
+            </button>
+          </div>
+        </SettingsSection>
       </div>
 
       {confirmOpen && (
@@ -543,6 +571,39 @@ export default function Profile({ state, actions }) {
                 style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
               >
                 Clear notes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {signOutOpen && (
+        <div
+          className="modalOverlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setSignOutOpen(false);
+          }}
+        >
+          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Sign out confirmation">
+            <div className="modalTitle">Sign out of Attune?</div>
+            <div className="modalBody">
+              This signs you out on this device. Your local data will remain here unless you clear it.
+            </div>
+            <div className="modalActions">
+              <button type="button" className="btn small ghost" onClick={() => setSignOutOpen(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn small"
+                onClick={() => {
+                  setSignOutOpen(false);
+                  actions?.logout?.();
+                }}
+                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
+              >
+                Sign out
               </button>
             </div>
           </div>

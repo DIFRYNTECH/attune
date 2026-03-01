@@ -245,6 +245,235 @@
       padding: var(--s-4);
       box-shadow: var(--shadow);
     }
+
+    /* Login */
+    .authPage{
+      min-height: 100dvh;
+      display:flex;
+      align-items: stretch;
+      justify-content: center;
+      padding: clamp(16px, 3vw, 32px);
+      /* Uses a static file in /public.
+         Put your image at: public/auth-bg.png (or change the URL here). */
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,.70)),
+        url("/auth-bg.png"),
+        radial-gradient(520px 340px at 18% 12%, rgba(79,109,245,.12), transparent 60%),
+        radial-gradient(520px 340px at 82% 8%, rgba(139,92,246,.10), transparent 62%),
+        var(--bodyBg);
+      background-size: auto, cover, auto, auto, auto;
+      background-position: 0 0, center, 0 0, 0 0, 0 0;
+      background-repeat: no-repeat;
+    }
+    .loginShell{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width: 100%;
+      max-width: 980px;
+      margin: 0 auto;
+      min-height: 100dvh;
+    }
+    .loginCard{
+      width: min(520px, 100%);
+      margin: 0 auto;
+      border-radius: 20px;
+      border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+      background:
+        radial-gradient(200px 160px at 20% 0%, rgba(79,109,245,.12), transparent 60%),
+        radial-gradient(220px 160px at 90% 10%, rgba(139,92,246,.10), transparent 65%),
+        var(--card);
+      box-shadow: 0 26px 80px rgba(0,0,0,.16), 0 8px 26px rgba(0,0,0,.10);
+      padding: 22px 20px;
+      backdrop-filter: blur(10px);
+    }
+    .loginBrand{display:flex; justify-content:center; margin-bottom: 8px;}
+    .loginBrand .brandMark{width:54px; height:54px; border-radius:18px;}
+    .loginKicker{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      margin: 0 auto 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      background: color-mix(in oklab, var(--card) 82%, var(--bg) 18%);
+      border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
+      width: fit-content;
+    }
+    .loginCard .loginTitle{
+      margin: 0 0 6px;
+      font-size: 18px;
+      font-weight: 950;
+      letter-spacing: -.25px;
+      color: var(--ink);
+      text-align:center;
+      display:block;
+      width:100%;
+    }
+    .loginSub{
+      text-align:center;
+      margin-bottom: 12px;
+    }
+    .loginMiniTitle{
+      text-align:center;
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: color-mix(in oklab, var(--muted) 86%, var(--ink) 14%);
+      margin: 2px 0 10px;
+    }
+    .loginForm{margin-top: 10px;}
+
+    .field{display:grid; gap:6px; margin-top: 12px;}
+    .fieldLabel{
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .15px;
+      color: var(--muted);
+    }
+    .inputRow{display:flex; gap:8px; align-items:center;}
+
+    .iconBtn{
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border: 1px solid color-mix(in oklab, var(--line) 90%, transparent);
+      background: color-mix(in oklab, var(--card) 86%, var(--bg) 14%);
+      color: var(--ink);
+      cursor:pointer;
+      user-select:none;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+      box-shadow: 0 10px 22px rgba(20,30,60,.08);
+    }
+    .iconBtn:hover{
+      transform: translateY(-1px);
+      background: color-mix(in oklab, var(--card) 92%, var(--bg) 8%);
+      box-shadow: 0 14px 28px rgba(20,30,60,.12);
+    }
+    .iconBtn:active{
+      transform: translateY(0);
+    }
+    .iconBtn:focus-visible{
+      outline: 2px solid rgba(79,109,245,.50);
+      outline-offset: 2px;
+    }
+    .eyeIcon{display:block;}
+    .eyeIcon path{opacity:.92;}
+
+    .input{
+      width:100%;
+      flex: 1 1 auto;
+      min-width: 0;
+      border: 1px solid var(--line);
+      background: color-mix(in oklab, var(--card) 86%, var(--bg) 14%);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--ink);
+      outline: none;
+      box-shadow: 0 10px 22px rgba(20,30,60,.06);
+    }
+    .input::placeholder{color: color-mix(in oklab, var(--muted) 72%, transparent); font-weight: 600;}
+    .input:focus{
+      border-color: rgba(79,109,245,.40);
+      box-shadow: 0 0 0 4px rgba(79,109,245,.12), 0 10px 22px rgba(20,30,60,.06);
+    }
+
+    .loginRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .remember{
+      display:inline-flex;
+      align-items:center;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 750;
+      color: var(--muted);
+      user-select:none;
+      cursor:pointer;
+    }
+    .remember input{
+      width: 16px;
+      height: 16px;
+      accent-color: var(--a1);
+    }
+    .loginLink{
+      appearance:none;
+      border:0;
+      background:transparent;
+      padding: 6px 0;
+      font-size: 13px;
+      font-weight: 850;
+      color: color-mix(in oklab, var(--a1) 70%, var(--ink) 30%);
+      cursor:pointer;
+      text-decoration: none;
+    }
+    .loginLink:hover{
+      text-decoration: underline;
+    }
+    .loginLink:focus-visible{
+      outline: 2px solid rgba(79,109,245,.45);
+      outline-offset: 2px;
+      border-radius: 10px;
+    }
+    .loginHint{
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      border: 1px solid color-mix(in oklab, var(--line) 85%, transparent);
+      background: color-mix(in oklab, var(--card) 84%, var(--bg) 16%);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .loginSubmit{
+      width: 100%;
+      margin-top: 14px;
+      padding: 11px 12px;
+      font-weight: 900;
+    }
+    .loginAlt{
+      margin-top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    .loginAltText{
+      color: var(--muted);
+      font-weight: 750;
+    }
+    .loginAlt .loginLink{
+      padding: 6px 10px;
+      border-radius: 12px;
+    }
+    .loginAlt .loginLink:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+      text-decoration: none;
+    }
+    .loginFinePrint{
+      margin-top: 10px;
+      text-align:center;
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
     .card h2{
       margin:0 0 10px; font-size:16px;
       display:flex; align-items:center; justify-content:space-between;
