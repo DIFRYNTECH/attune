@@ -163,7 +163,7 @@ export default function CheckIn({ state, actions }) {
                 );
               })
             ) : (
-              <span className="moodSelectedEmpty">—</span>
+              <span className="moodSelectedEmpty">None</span>
             )}
           </div>
         </div>

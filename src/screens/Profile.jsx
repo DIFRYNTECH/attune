@@ -233,7 +233,7 @@ export default function Profile({ state, actions }) {
           helper={
             <div style={{ display: "grid", gap: 10, maxWidth: 320 }}>
               <div>
-                Plus helps Attune understand your rhythms and offer better suggestions — without turning your day into a checklist.
+                Plus helps Attune understand your rhythms and offer better suggestions, without turning your day into a checklist.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
                 Everything stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly insights
