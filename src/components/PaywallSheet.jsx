@@ -5,7 +5,7 @@ function featureTitle(feature) {
     case "darkMode":
       return "Dark mode";
     case "momentumExact":
-      return "Exact Momentum signal";
+      return "Exact Momentum score";
     case "multiWeekHistory":
       return "Past weeks & comparisons";
     case "patternCallouts":
@@ -22,11 +22,11 @@ function featureBlurb(feature) {
     case "darkMode":
       return "A calmer, darker look, available with Attune Plus.";
     case "momentumExact":
-      return "See your exact weekly signal number (e.g. 82/100).";
+      return "See your exact Momentum score for the week (not a range).";
     case "multiWeekHistory":
-      return "See 4-12 weeks of history with comparisons and highlights.";
+      return "See 4-12 weeks of history at a glance, with gentle comparisons.";
     case "patternCallouts":
-      return "Get 1-3 soft pattern callouts when there’s enough data.";
+      return "Get a few gentle pattern callouts when there’s enough data.";
     case "noteMemory":
       return "Your optional check-in note is saved and summarized over time (on this device).";
     default:
@@ -91,7 +91,7 @@ export default function PaywallSheet({ state, actions }) {
               <b style={{ color: "var(--ink)" }}>Smarter picking</b>: avoids repeats you skip and leans toward what you complete.
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Premium Weekly</b>: exact signal, past weeks, comparisons, and pattern callouts.
+              <b style={{ color: "var(--ink)" }}>Weekly insights</b>: your exact score, past weeks, and gentle patterns.
             </div>
           </div>
 

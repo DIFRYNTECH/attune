@@ -231,9 +231,18 @@ export default function Profile({ state, actions }) {
             </div>
           }
           helper={
-            "Plus unlocks dark mode, exports, note memory, smarter picking, and premium Weekly details. For now, it’s a local toggle on this device."
+            <div style={{ display: "grid", gap: 10, maxWidth: 320 }}>
+              <div>
+                Plus helps Attune understand your rhythms and offer better suggestions — without turning your day into a checklist.
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
+                Everything stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly insights
+                (exact score, patterns, and past weeks).
+              </div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>Billing and restore purchases are coming later.</div>
+            </div>
           }
-          helperLabel="About Attune Plus"
+          helperLabel="About Plus"
         >
           <ul className="settingsBullets" aria-label="Attune Plus features">
             <li>
@@ -249,7 +258,7 @@ export default function Profile({ state, actions }) {
               <b>Smarter picking</b> that adapts to what you complete/skip.
             </li>
             <li>
-              <b>Premium Weekly</b>: exact signal, patterns, and past weeks.
+              <b>Weekly insights</b> that help you notice your rhythms over time.
             </li>
           </ul>
 

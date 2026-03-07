@@ -767,6 +767,10 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
       "Keep tasks small, doable, and non-punitive. " +
+      "Task text should feel like Attune, not a blunt task list: add 3-8 words of micro-context at the start that ties to a REAL check-in signal, then the action. " +
+      "Use patterns like: 'If your energy is low, …', 'With a gentle pace, …', 'If your body feels tight, …', or 'If you're feeling {moodWord}, …'. " +
+      "Do NOT add micro-context that introduces new emotional assumptions (e.g., don't say 'If you're anxious' unless the user said anxious). " +
+      "Keep task text concise and within maxTextChars. " +
       "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. " +
       "Avoid near-duplicate tasks. Prefer variety across categories. " +
       "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
@@ -791,10 +795,19 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       },
       taskRequirements: {
         count: 15,
-        style: "short, actionable, matched to today's pace",
+        style: "short, actionable, micro-context lead-in, matched to today's pace",
         maxTextChars: 120,
         avoidAssumptions: true,
         avoidNearDuplicates: true,
+        microContext: {
+          required: true,
+          rule: "Start each task with a short conditional/context clause grounded in the check-in (pace/energy/body/moodWords/note), then the action. Do not introduce new assumptions.",
+          examples: [
+            "With low energy, do a 3-minute tidy of one surface.",
+            "If your body feels tight, do a gentle neck stretch for 2 minutes.",
+            "With a gentle pace, write down one small next step.",
+          ],
+        },
         variety: {
           minDistinctCategories: 4,
           maxPerCategory: 5,

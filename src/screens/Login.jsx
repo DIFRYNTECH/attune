@@ -92,7 +92,7 @@ export default function Login({ state, actions }) {
           Check in, set your pace, and shape a Day that feels possible, even on low energy days.
         </div>
 
-        <div className="loginMiniTitle">Built for real life</div>
+        <div className="loginMiniTitle">BUILT FOR REAL LIFE DAYS</div>
 
         <form className="loginForm" onSubmit={onSubmit}>
           <label className="field">
