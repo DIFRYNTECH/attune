@@ -159,6 +159,7 @@
       height:38px;
       border-radius:12px;
       background:
+        url("/attune-logo.svg") center/cover no-repeat,
         radial-gradient(14px 14px at 30% 28%, rgba(255,255,255,.55), transparent 60%),
         linear-gradient(135deg, #4f6df5, #8b5cf6);
       border: 1px solid rgba(255,255,255,.7);
@@ -167,10 +168,7 @@
       overflow:hidden;
     }
     .brandMark:after{
-      content:"";
-      position:absolute; inset:-30%;
-      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.55), transparent 55%);
-      transform: rotate(18deg);
+      content:none;
     }
     h1{font-size:20px;margin:0; letter-spacing:-.2px}
     .versionTag{
@@ -1911,9 +1909,15 @@
       overflow: visible;
       max-height: none;
       padding-right: 0;
+      padding-bottom: 8px;
+    }
+    /* When a toast is showing, create a bottom gap so the last task can scroll fully into view. */
+    .wrap.toastOn .myDayScroll{
+      padding-bottom: 96px;
     }
     @media (max-width: 520px){
       .myDayScroll{max-height: none;}
+      .wrap.toastOn .myDayScroll{padding-bottom: 104px;}
     }
     .toast{
       position: fixed;
