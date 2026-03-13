@@ -75,14 +75,6 @@ function formatUpdatedAt(updatedAtMs) {
   return `Updated ${dt.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
 }
 
-function weekIdFromStartKey(startKey) {
-  if (typeof startKey !== "string" || !startKey) return "";
-  const keys = buildWeekKeysMondayToSundayFromStart(startKey);
-  if (!keys.length) return "";
-  const endKey = keys[keys.length - 1];
-  return `${startKey}_${endKey}`;
-}
-
 function momentumLabelToRange(label) {
   const hit = MOMENTUM_LEVELS.find((l) => l.label === label);
   const r = typeof hit?.range === "string" ? hit.range : "";
@@ -222,10 +214,22 @@ export default function Weekly({ state, actions }) {
 
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
-  const note = state.weeklyNotes?.[weekId] || "";
-  const noteUpdatedAt = state.weeklyNotesMeta?.[weekId]?.updatedAt || 0;
   const NOTE_CHAR_LIMIT = 500;
-  const noteChars = countChars(note);
+
+  const savedWeekSummary = (Array.isArray(state.weeklySummaries) ? state.weeklySummaries : []).find(
+    (w) => w?.weekStart === weekRange.startKey,
+  );
+  const savedNote = typeof savedWeekSummary?.weekNote === "string" ? savedWeekSummary.weekNote : "";
+  const savedNoteUpdatedAt = Number(savedWeekSummary?.weekNoteUpdatedAt) || 0;
+
+  const [draftNote, setDraftNote] = useState(savedNote);
+  useEffect(() => {
+    setDraftNote(savedNote);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekRange.startKey]);
+
+  const isDirty = draftNote !== savedNote;
+  const noteChars = countChars(draftNote);
 
   useEffect(() => {
     if (!showMomentumInfo && !showWeekDetails && !showWeekActivities) return;
@@ -388,8 +392,7 @@ export default function Weekly({ state, actions }) {
     ? stripSummaries.find((w) => w.weekStart === activePastWeekStart) || null
     : null;
 
-  const activePastWeekId = activePastSummary?.weekStart ? weekIdFromStartKey(activePastSummary.weekStart) : "";
-  const activePastNote = activePastWeekId ? state.weeklyNotes?.[activePastWeekId] || "" : "";
+  const activePastNote = typeof activePastSummary?.weekNote === "string" ? activePastSummary.weekNote : "";
   const activePastIsCurrentWeek = !!activePastSummary?.weekStart && activePastSummary.weekStart === weekRange.startKey;
 
   useEffect(() => {
@@ -918,14 +921,27 @@ export default function Weekly({ state, actions }) {
       <div className="result weeklyNoteResult" aria-label="Weekly note">
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
           <div className="resultTitle">This week’s note</div>
-          <div className="footerNote" style={{ marginTop: 0, textAlign: "right" }} aria-label="Weekly note status">
-            {formatUpdatedAt(noteUpdatedAt) || (note.trim().length ? "Saved" : "")}
-            {noteChars > 420 ? (
-              <span>
-                {formatUpdatedAt(noteUpdatedAt) ? " · " : ""}
-                {noteChars}/{NOTE_CHAR_LIMIT}
-              </span>
-            ) : null}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+            <div className="footerNote" style={{ marginTop: 0, textAlign: "right" }} aria-label="Weekly note status">
+              {isDirty
+                ? "Unsaved"
+                : formatUpdatedAt(savedNoteUpdatedAt) || (savedNote.trim().length ? "Saved" : "")}
+              {noteChars > 420 ? (
+                <span>
+                  {!isDirty && (formatUpdatedAt(savedNoteUpdatedAt) || savedNote.trim().length) ? " · " : ""}
+                  {noteChars}/{NOTE_CHAR_LIMIT}
+                </span>
+              ) : null}
+            </div>
+            <button
+              type="button"
+              className="btn small"
+              onClick={() => actions?.saveWeeklyNote?.(weekRange.startKey, draftNote)}
+              disabled={!isDirty}
+              aria-label="Save this week’s note"
+            >
+              Save
+            </button>
           </div>
         </div>
         <div className="weeklyNoteBody">
@@ -934,11 +950,11 @@ export default function Weekly({ state, actions }) {
           </div>
           <textarea
             className="weeklyNoteInput"
-            value={note}
+            value={draftNote}
             maxLength={NOTE_CHAR_LIMIT}
             rows={4}
             placeholder="What’s affecting this week? (travel, deadlines, energy, stress, wins…)"
-            onChange={(e) => actions?.setWeeklyNote?.(weekId, limitChars(e.target.value, NOTE_CHAR_LIMIT))}
+            onChange={(e) => setDraftNote(limitChars(e.target.value, NOTE_CHAR_LIMIT))}
             onFocus={() => {
               window.requestAnimationFrame(() => {
                 noteRef.current?.scrollIntoView?.({ block: "nearest" });

@@ -7,7 +7,7 @@ import { recordEventOnState, trimEventDays } from "../lib/events";
 import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj } from "../lib/noteMemory";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 // Bump this when the AI prompt/validation changes and you want fresh boards.
 const AI_BOARD_VERSION = 2;
@@ -54,8 +54,6 @@ function defaultState(){
     myDay: [],
     myDayCap: 5,
     history: [],
-    weeklyNotes: {},
-    weeklyNotesMeta: {},
     weeklySummaries: [],
     events: {},
     noteMemory: { notes: [] },
@@ -111,6 +109,16 @@ function normalizeLoadedState(loaded){
 
   const next = { ...loaded };
 
+  // Legacy (v7 and earlier): weekly notes were stored outside weekly summaries.
+  const legacyWeeklyNotes =
+    next.weeklyNotes && typeof next.weeklyNotes === "object" && !Array.isArray(next.weeklyNotes)
+      ? next.weeklyNotes
+      : null;
+  const legacyWeeklyNotesMeta =
+    next.weeklyNotesMeta && typeof next.weeklyNotesMeta === "object" && !Array.isArray(next.weeklyNotesMeta)
+      ? next.weeklyNotesMeta
+      : null;
+
   // If you tweak defaults/shape over time, bump SCHEMA_VERSION and migrate here.
   if(next.schemaVersion !== SCHEMA_VERSION){
     next.schemaVersion = SCHEMA_VERSION;
@@ -141,7 +149,6 @@ function normalizeLoadedState(loaded){
   }
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
-  if(!next.weeklyNotes || typeof next.weeklyNotes !== "object" || Array.isArray(next.weeklyNotes)) next.weeklyNotes = {};
 
   // Auth (added later): keep it optional + safe.
   if(!next.auth || typeof next.auth !== "object" || Array.isArray(next.auth)){
@@ -153,18 +160,6 @@ function normalizeLoadedState(loaded){
   if(typeof next.auth.rememberMe !== "boolean") next.auth.rememberMe = true;
   if(typeof next.auth.view !== "string") next.auth.view = "signin";
   if(next.auth.view !== "signin" && next.auth.view !== "signup") next.auth.view = "signin";
-
-  if(!next.weeklyNotesMeta || typeof next.weeklyNotesMeta !== "object" || Array.isArray(next.weeklyNotesMeta)) next.weeklyNotesMeta = {};
-  {
-    const safeMeta = {};
-    for(const k of Object.keys(next.weeklyNotesMeta)){
-      const v = next.weeklyNotesMeta[k];
-      if(!v || typeof v !== "object" || Array.isArray(v)) continue;
-      const updatedAt = Number(v.updatedAt);
-      if(Number.isFinite(updatedAt) && updatedAt > 0) safeMeta[k] = { updatedAt };
-    }
-    next.weeklyNotesMeta = safeMeta;
-  }
 
   if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
   next.weeklySummaries = next.weeklySummaries
@@ -178,9 +173,61 @@ function normalizeLoadedState(loaded){
       avgPaceIndex: typeof x.avgPaceIndex === "number" && Number.isFinite(x.avgPaceIndex) ? x.avgPaceIndex : null,
       weekType: typeof x.weekType === "string" ? x.weekType : "Gentle Week",
       momentum: typeof x.momentum === "number" ? x.momentum : Number(x.momentum) || 0,
+      weekNote: typeof x.weekNote === "string" ? x.weekNote : (typeof x.weeklyNote === "string" ? x.weeklyNote : ""),
+      weekNoteUpdatedAt: Number(x.weekNoteUpdatedAt || x.weeklyNoteUpdatedAt || 0) || 0,
     }))
     .sort((a,b) => String(a.weekStart).localeCompare(String(b.weekStart)))
     .slice(-52);
+
+  // Migrate legacy weekly notes into weeklySummaries.weekNote fields.
+  if(legacyWeeklyNotes){
+    const byWeekStart = new Map();
+    for(const legacyWeekId of Object.keys(legacyWeeklyNotes)){
+      const text = typeof legacyWeeklyNotes[legacyWeekId] === "string" ? legacyWeeklyNotes[legacyWeekId] : "";
+      if(!text.trim()) continue;
+
+      const weekStart = String(legacyWeekId).split("_")[0] || "";
+      if(!weekStart) continue;
+
+      const updatedAt = Number(legacyWeeklyNotesMeta?.[legacyWeekId]?.updatedAt) || 0;
+      const prev = byWeekStart.get(weekStart);
+      if(!prev || updatedAt >= (prev.updatedAt || 0)){
+        byWeekStart.set(weekStart, { text, updatedAt });
+      }
+    }
+
+    if(byWeekStart.size){
+      const list = next.weeklySummaries.slice();
+      for(const [weekStart, v] of byWeekStart.entries()){
+        const idx = list.findIndex((w) => w?.weekStart === weekStart);
+        if(idx >= 0){
+          list[idx] = {
+            ...list[idx],
+            weekNote: v.text,
+            weekNoteUpdatedAt: v.updatedAt || list[idx].weekNoteUpdatedAt || 0,
+          };
+        }else{
+          list.push({
+            weekStart,
+            presence: 0,
+            completions: 0,
+            avgPace: null,
+            avgPaceIndex: null,
+            weekType: "Gentle Week",
+            momentum: 0,
+            weekNote: v.text,
+            weekNoteUpdatedAt: v.updatedAt || 0,
+          });
+        }
+      }
+      list.sort((a,b) => String(a.weekStart).localeCompare(String(b.weekStart)));
+      next.weeklySummaries = list.slice(-52);
+    }
+  }
+
+  // Drop legacy fields so they stop persisting.
+  if("weeklyNotes" in next) delete next.weeklyNotes;
+  if("weeklyNotesMeta" in next) delete next.weeklyNotesMeta;
 
   if(typeof next.optionsSource !== "string") next.optionsSource = "default";
   if(next.optionsSource !== "default" && next.optionsSource !== "ai") next.optionsSource = "default";
@@ -815,24 +862,49 @@ export function useAttuneStore(){
         toast: { text: "Signed out. This device is cleared.", good: false, screen: "checkin" },
       })),
 
-    setWeeklyNote: (weekId, text) =>
-      setState(s => {
-        const id = typeof weekId === "string" ? weekId : "";
-        if(!id) return s;
+    saveWeeklyNote: (weekStart, text) =>
+      setState((s) => {
+        const startKey = typeof weekStart === "string" ? weekStart : "";
+        if(!startKey) return s;
 
-        const nextText = typeof text === "string" ? text : "";
-        const weeklyNotes = { ...(s.weeklyNotes || {}) };
-        const weeklyNotesMeta = { ...(s.weeklyNotesMeta || {}) };
+        const NOTE_CHAR_LIMIT = 500;
+        const input = typeof text === "string" ? text : "";
+        const nextText = input.length > NOTE_CHAR_LIMIT ? input.slice(0, NOTE_CHAR_LIMIT) : input;
+        const nowMs = Date.now();
 
-        if(nextText.trim().length === 0){
-          delete weeklyNotes[id];
-          delete weeklyNotesMeta[id];
-        }else{
-          weeklyNotes[id] = nextText;
-          weeklyNotesMeta[id] = { updatedAt: Date.now() };
+        // Ensure the weekly summary row exists (and is reasonably fresh) before attaching a note.
+        const weekRecords = buildWeekRecordsFromHistory(s.history, startKey).map((d) => {
+          if(d.date !== s.today) return d;
+          return {
+            ...d,
+            checkedIn: !!s.checkedInToday,
+            level: s.level,
+            tasksAdded: s.myDay?.length || 0,
+            tasksDone: s.myDay?.filter((t) => t.done).length || 0,
+          };
+        });
+        const computed = computeWeekSummaryFromWeekRecords(weekRecords, startKey);
+        let weeklySummaries = computed ? upsertWeeklySummary(s.weeklySummaries, computed, 52) : (Array.isArray(s.weeklySummaries) ? s.weeklySummaries : []);
+
+        const list = weeklySummaries.slice();
+        const idx = list.findIndex((w) => w?.weekStart === startKey);
+        if(idx < 0) return s;
+
+        const trimmed = nextText.trim();
+        if(!trimmed){
+          const prev = list[idx];
+          if(!prev?.weekNote && !prev?.weekNoteUpdatedAt) return { ...s, weeklySummaries, toast: { text: "Note cleared.", good: true, screen: s.screen } };
+          const { weekNote: _weekNote, weekNoteUpdatedAt: _weekNoteUpdatedAt, ...rest } = prev || {};
+          list[idx] = { ...rest };
+          return { ...s, weeklySummaries: list, toast: { text: "Note cleared.", good: true, screen: s.screen } };
         }
 
-        return { ...s, weeklyNotes, weeklyNotesMeta };
+        const prev = list[idx];
+        const unchanged = prev?.weekNote === nextText;
+        if(unchanged) return { ...s, weeklySummaries, toast: { text: "Saved.", good: true, screen: s.screen } };
+
+        list[idx] = { ...prev, weekNote: nextText, weekNoteUpdatedAt: nowMs };
+        return { ...s, weeklySummaries: list, toast: { text: "Saved.", good: true, screen: s.screen } };
       }),
 
     toggleDone: (id, done) =>

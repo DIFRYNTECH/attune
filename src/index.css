@@ -224,6 +224,13 @@
     .btn.ghost{background:transparent}
     .btn.small{padding:7px 10px; font-size:12px}
 
+    .btn:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn:disabled:hover{background: color-mix(in oklab, var(--card) 82%, transparent); border-color: var(--line)}
+
     .grid{
       display:grid;
       grid-template-columns: 1.2fr .8fr;
