@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
+import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabase";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
@@ -42,6 +43,9 @@ function defaultState(){
       username: "",
       rememberMe: true,
       view: "signin", // 'signin' | 'signup'
+      status: "idle", // idle | sending | sent | error
+      sentTo: "",
+      error: "",
     },
     today: todayKey(),
     checkedInToday: false,
@@ -152,7 +156,7 @@ function normalizeLoadedState(loaded){
 
   // Auth (added later): keep it optional + safe.
   if(!next.auth || typeof next.auth !== "object" || Array.isArray(next.auth)){
-    next.auth = { signedIn: false, username: "", rememberMe: true, view: "signin" };
+    next.auth = { signedIn: false, username: "", rememberMe: true, view: "signin", status: "idle", sentTo: "", error: "" };
   }
   if(typeof next.auth.signedIn !== "boolean") next.auth.signedIn = false;
   if(typeof next.auth.username !== "string") next.auth.username = "";
@@ -160,6 +164,11 @@ function normalizeLoadedState(loaded){
   if(typeof next.auth.rememberMe !== "boolean") next.auth.rememberMe = true;
   if(typeof next.auth.view !== "string") next.auth.view = "signin";
   if(next.auth.view !== "signin" && next.auth.view !== "signup") next.auth.view = "signin";
+
+  if(typeof next.auth.status !== "string") next.auth.status = "idle";
+  if(!["idle","sending","sent","error"].includes(next.auth.status)) next.auth.status = "idle";
+  if(typeof next.auth.sentTo !== "string") next.auth.sentTo = "";
+  if(typeof next.auth.error !== "string") next.auth.error = "";
 
   if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
   next.weeklySummaries = next.weeklySummaries
@@ -368,6 +377,53 @@ export function useAttuneStore(){
     saveState(state);
   }, [state]);
 
+  // Supabase auth bootstrap + listener (magic-link)
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if(!supabase) return;
+
+    let unsub = null;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session || null;
+        const email = session?.user?.email ? String(session.user.email) : "";
+        setState((s) => ({
+          ...s,
+          auth: {
+            ...(s.auth || {}),
+            signedIn: !!session,
+            username: email || (s?.auth?.username || ""),
+            status: "idle",
+            error: "",
+          },
+        }));
+      } catch {
+        // Ignore; app can still run without auth.
+      }
+    })();
+
+    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+      const email = session?.user?.email ? String(session.user.email) : "";
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
+          signedIn: !!session,
+          username: email || (s?.auth?.username || ""),
+          status: "idle",
+          error: "",
+        },
+        screen: session ? (s.screen || "checkin") : "checkin",
+      }));
+    });
+    unsub = data?.subscription?.unsubscribe || null;
+
+    return () => {
+      try { unsub?.(); } catch { /* noop */ }
+    };
+  }, []);
+
   const actions = useMemo(() => ({
     trackEvent: (type, payload) =>
       setState(s => recordEventOnState(s, type, payload, { maxDays: EVENT_DAYS_TO_KEEP })),
@@ -382,49 +438,100 @@ export function useAttuneStore(){
         };
       }),
 
-    // Stub auth for early Capacitor builds: any username/password succeeds.
-    login: ({ username, rememberMe } = {}) =>
-      setState(s => ({
-        ...s,
-        auth: {
-          signedIn: true,
-          username: clampText(username, 40),
-          rememberMe: typeof rememberMe === "boolean" ? rememberMe : (s?.auth?.rememberMe !== false),
-          view: "signin",
-        },
-        screen: "checkin",
-        toast: null,
-      })),
+    sendMagicLink: async ({ email, rememberMe, name } = {}) => {
+      const nextEmail = String(email || "").trim().toLowerCase();
+      const nextRememberMe = typeof rememberMe === "boolean" ? rememberMe : (stateRef.current?.auth?.rememberMe !== false);
+      const nextName = typeof name === "string" ? name : "";
 
-    signup: ({ name, username, rememberMe } = {}) =>
-      setState(s => ({
-        ...s,
-        auth: {
-          signedIn: true,
-          username: clampText(username, 40),
-          rememberMe: typeof rememberMe === "boolean" ? rememberMe : (s?.auth?.rememberMe !== false),
-          view: "signin",
-        },
-        profile: {
-          ...(s.profile || {}),
-          name: clampText(name, 40),
-        },
-        screen: "checkin",
-        toast: null,
-      })),
+      if(!nextEmail){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), status: "error", error: "Enter your email.", sentTo: "" },
+        }));
+        return;
+      }
 
-    logout: () =>
-      setState(s => ({
+      if(!isSupabaseConfigured){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), status: "error", error: "Supabase is not configured (missing env vars).", sentTo: "" },
+        }));
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      if(!supabase){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), status: "error", error: "Supabase client unavailable.", sentTo: "" },
+        }));
+        return;
+      }
+
+      setState((s) => ({
         ...s,
         auth: {
+          ...(s.auth || {}),
+          rememberMe: nextRememberMe,
+          username: clampText(nextEmail, 120),
+          status: "sending",
+          error: "",
+          sentTo: "",
+        },
+        profile: nextName.trim()
+          ? { ...(s.profile || {}), name: clampText(nextName, 40) }
+          : s.profile,
+      }));
+
+      try {
+        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+        const { error } = await supabase.auth.signInWithOtp({
+          email: nextEmail,
+          options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+        });
+
+        if(error){
+          setState((s) => ({
+            ...s,
+            auth: { ...(s.auth || {}), status: "error", error: error.message || "Could not send link.", sentTo: "" },
+          }));
+          return;
+        }
+
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), status: "sent", sentTo: nextEmail, error: "" },
+        }));
+      } catch {
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), status: "error", error: "Could not send link.", sentTo: "" },
+        }));
+      }
+    },
+
+    logout: async () => {
+      const supabase = getSupabaseClient();
+      try {
+        await supabase?.auth?.signOut?.();
+      } catch {
+        // ignore
+      }
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
           signedIn: false,
           username: s?.auth?.rememberMe !== false ? (s?.auth?.username || "") : "",
-          rememberMe: s?.auth?.rememberMe !== false,
+          status: "idle",
+          sentTo: "",
+          error: "",
           view: "signin",
         },
         toast: null,
         screen: "checkin",
-      })),
+      }));
+    },
 
     go: (screen) =>
       setState(s => {

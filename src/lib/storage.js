@@ -23,14 +23,11 @@ export function saveState(state) {
   // Toasts are ephemeral UI; don't persist them.
   const { toast: _toast, paywall: _paywall, ...rest } = state || {};
 
-  const rememberMe = rest?.auth?.rememberMe !== false;
-  if(rest?.auth && typeof rest.auth === "object" && !Array.isArray(rest.auth) && !rememberMe){
-    rest.auth = {
-      ...rest.auth,
-      signedIn: false,
-      username: "",
-      rememberMe: false,
-    };
+  if(rest?.auth && typeof rest.auth === "object" && !Array.isArray(rest.auth)){
+    const rememberMe = rest.auth.rememberMe !== false;
+    const view = rest.auth.view === "signup" ? "signup" : "signin";
+    const username = rememberMe ? String(rest.auth.username || "") : "";
+    rest.auth = { view, rememberMe, username };
   }
 
   localStorage.setItem(KEY, JSON.stringify(rest));
