@@ -5,8 +5,11 @@ import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } f
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
-import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj } from "../lib/noteMemory";
+import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj, extractThemes } from "../lib/noteMemory";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
+import { ensureProfile } from "../lib/profileApi";
+import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
+import { listNoteMemory as listNoteMemoryRemote, createNoteMemory as createNoteMemoryRemote, updateNoteMemory as updateNoteMemoryRemote } from "../lib/noteMemoryApi";
 
 const SCHEMA_VERSION = 8;
 
@@ -18,6 +21,125 @@ const AI_DAILY_NOTE_VERSION = 2;
 
 const EVENT_DAYS_TO_KEEP = 90;
 const NOTE_MEMORY_MAX = 30;
+
+function clamp(n, min, max){
+  return Math.max(min, Math.min(max, n));
+}
+
+function toMs(iso){
+  if(!iso || typeof iso !== "string") return 0;
+  const t = Date.parse(iso);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function weeklyRowToLocal(row){
+  const metrics = row?.metrics && typeof row.metrics === "object" && !Array.isArray(row.metrics) ? row.metrics : {};
+  const updatedAtMs = toMs(row?.updated_at) || toMs(row?.created_at) || 0;
+  return {
+    weekStart: typeof row?.week_start === "string" ? row.week_start : "",
+    presence: Number(metrics.presence) || 0,
+    completions: Number(metrics.completions) || 0,
+    avgPace: typeof row?.pace === "string" ? row.pace : null,
+    avgPaceIndex: typeof metrics.avgPaceIndex === "number" && Number.isFinite(metrics.avgPaceIndex)
+      ? clamp(Math.round(metrics.avgPaceIndex), 0, 5)
+      : null,
+    weekType: typeof row?.archetype === "string" && row.archetype ? row.archetype : "Gentle Week",
+    momentum: clamp(Number(metrics.momentum) || 0, 0, 100),
+    weekNote: typeof row?.summary === "string" ? row.summary : "",
+    weekNoteUpdatedAt: updatedAtMs,
+  };
+}
+
+function mergeWeeklySummaries(localSummaries, remoteRows){
+  const local = Array.isArray(localSummaries) ? localSummaries : [];
+  const remote = Array.isArray(remoteRows) ? remoteRows : [];
+
+  const byWeek = new Map();
+  for(const s of local){
+    if(s && typeof s.weekStart === "string" && s.weekStart) byWeek.set(s.weekStart, s);
+  }
+
+  for(const r of remote){
+    const nextLocal = weeklyRowToLocal(r);
+    if(!nextLocal.weekStart) continue;
+    const prev = byWeek.get(nextLocal.weekStart);
+
+    if(!prev){
+      byWeek.set(nextLocal.weekStart, nextLocal);
+      continue;
+    }
+
+    // Prefer the newest weekly note; keep other computed fields merged.
+    const prevNoteAt = Number(prev.weekNoteUpdatedAt) || 0;
+    const nextNoteAt = Number(nextLocal.weekNoteUpdatedAt) || 0;
+    const keepPrevNote = prevNoteAt && prevNoteAt > nextNoteAt;
+
+    byWeek.set(nextLocal.weekStart, {
+      ...prev,
+      ...nextLocal,
+      ...(keepPrevNote ? { weekNote: prev.weekNote, weekNoteUpdatedAt: prevNoteAt } : null),
+    });
+  }
+
+  return Array.from(byWeek.values()).filter((s) => s && typeof s.weekStart === "string" && s.weekStart);
+}
+
+function toDbWeeklySummary({ userId, localSummary }){
+  const s = localSummary && typeof localSummary === "object" ? localSummary : {};
+  const weekStart = typeof s.weekStart === "string" ? s.weekStart : "";
+  if(!userId || !weekStart) return null;
+
+  const metrics = {
+    presence: Number(s.presence) || 0,
+    completions: Number(s.completions) || 0,
+    momentum: Number(s.momentum) || 0,
+    avgPaceIndex: typeof s.avgPaceIndex === "number" && Number.isFinite(s.avgPaceIndex) ? s.avgPaceIndex : null,
+  };
+
+  return {
+    userId,
+    weekStart,
+    pace: typeof s.avgPace === "string" ? s.avgPace : null,
+    archetype: typeof s.weekType === "string" ? s.weekType : null,
+    summary: typeof s.weekNote === "string" ? s.weekNote : "",
+    metrics,
+  };
+}
+
+function noteRowsToLocal(noteRows, maxNotes){
+  const rows = Array.isArray(noteRows) ? noteRows : [];
+  const byDate = new Map();
+
+  for(const r of rows){
+    const note = typeof r?.note === "string" ? r.note.trim().slice(0, 200) : "";
+    if(!note) continue;
+
+    const stamp = typeof r?.last_used_at === "string" && r.last_used_at ? r.last_used_at : (typeof r?.created_at === "string" ? r.created_at : "");
+    const ms = toMs(stamp) || toMs(r?.updated_at) || 0;
+    const date = stamp ? String(stamp).slice(0, 10) : "";
+    if(!date) continue;
+
+    const entry = {
+      id: r?.id,
+      date,
+      text: note,
+      themes: extractThemes(note),
+      ts: ms || Date.now(),
+    };
+
+    const prev = byDate.get(date);
+    if(!prev || (Number(prev.ts) || 0) <= (Number(entry.ts) || 0)){
+      byDate.set(date, entry);
+    }
+  }
+
+  const list = Array.from(byDate.values())
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+
+  const cap = typeof maxNotes === "number" ? maxNotes : NOTE_MEMORY_MAX;
+  const trimmed = list.length > cap ? list.slice(list.length - cap) : list;
+  return { notes: trimmed };
+}
 
 const DEFAULT_CHECKIN = {
   mood: "okay",
@@ -382,17 +504,64 @@ export function useAttuneStore(){
     const supabase = getSupabaseClient();
     if(!supabase) return;
 
+    async function syncFromSupabase({ userId, canSyncNoteMemory }){
+      if(!userId) return;
+      try {
+        const remoteWeekly = await listWeeklySummariesRemote(userId);
+        if(Array.isArray(remoteWeekly)){
+          setState((s) => ({
+            ...s,
+            weeklySummaries: mergeWeeklySummaries(s.weeklySummaries, remoteWeekly),
+          }));
+        }
+      } catch {
+        // ignore
+      }
+
+      if(!canSyncNoteMemory) return;
+      try {
+        const remoteNotes = await listNoteMemoryRemote(userId);
+        setState((s) => ({
+          ...s,
+          noteMemory: noteRowsToLocal(remoteNotes, NOTE_MEMORY_MAX),
+        }));
+      } catch {
+        // ignore
+      }
+    }
+
     let unsub = null;
     (async () => {
       try {
         const { data } = await supabase.auth.getSession();
         const session = data?.session || null;
         const email = session?.user?.email ? String(session.user.email) : "";
+        const userId = session?.user?.id ? String(session.user.id) : "";
+
+        if(userId){
+          // Create the profiles row on first sign-in (idempotent).
+          // Name comes from the local signup field if provided.
+          try {
+            await ensureProfile({
+              userId,
+              email,
+              name: stateRef.current?.profile?.name,
+            });
+          } catch {
+            // Ignore; app can still run even if profile upsert fails.
+          }
+        }
+
+        // Pull weekly summaries + (Plus) note memory into local state.
+        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
+        syncFromSupabase({ userId, canSyncNoteMemory });
+
         setState((s) => ({
           ...s,
           auth: {
             ...(s.auth || {}),
             signedIn: !!session,
+            userId,
             username: email || (s?.auth?.username || ""),
             status: "idle",
             error: "",
@@ -405,11 +574,27 @@ export function useAttuneStore(){
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       const email = session?.user?.email ? String(session.user.email) : "";
+      const userId = session?.user?.id ? String(session.user.id) : "";
+
+      if(userId){
+        // Ensure profile exists whenever a new session is established.
+        // Fire-and-forget to avoid blocking UI.
+        ensureProfile({
+          userId,
+          email,
+          name: stateRef.current?.profile?.name,
+        }).catch(() => {});
+
+        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
+        syncFromSupabase({ userId, canSyncNoteMemory });
+      }
+
       setState((s) => ({
         ...s,
         auth: {
           ...(s.auth || {}),
           signedIn: !!session,
+          userId,
           username: email || (s?.auth?.username || ""),
           status: "idle",
           error: "",
@@ -533,54 +718,97 @@ export function useAttuneStore(){
       }));
     },
 
-    go: (screen) =>
-      setState(s => {
-        if(screen === "wheel"){
-          const options = s.options?.length
-            ? s.options
-            : suggestActivities(s.checkin, s.level);
+    go: (screen) => {
+      const current = stateRef.current;
+      if(screen !== "wheel"){
+        setState((s) => ({ ...s, screen, toast: null }));
+        return;
+      }
 
-          const next = {
-            ...s,
-            screen: "wheel",
-            options,
-            toast: null,
-            // Treat entering the Wheel from Check-in as completing today’s check-in.
-            checkedInToday: s.screen === "checkin" ? true : s.checkedInToday,
-          };
+      const options = current.options?.length
+        ? current.options
+        : suggestActivities(current.checkin, current.level);
 
-          if(s.screen === "checkin"){
-            const note = typeof s.checkin?.note === "string" ? s.checkin.note.trim().slice(0, 200) : "";
-            let withEvents = recordEventOnState(
-              next,
-              "checkinSaved",
-              {
-                mood: s.checkin?.mood,
-                energy: s.checkin?.energy,
-                body: s.checkin?.body,
-                pace: s.level,
-                ...(note ? { note } : {}),
-              },
-              { maxDays: EVENT_DAYS_TO_KEEP }
-            );
+      const nextBase = {
+        ...current,
+        screen: "wheel",
+        options,
+        toast: null,
+        checkedInToday: current.screen === "checkin" ? true : current.checkedInToday,
+      };
 
-            // Plus: store note memory historically.
-            const isPlus = s?.profile?.plan === "plus";
-            if(isPlus && note){
-              withEvents = {
-                ...withEvents,
-                noteMemory: addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX),
-              };
-            }
+      let next = nextBase;
+      let latestRemembered = null;
 
-            return withEvents;
+      if(current.screen === "checkin"){
+        const note = typeof current.checkin?.note === "string" ? current.checkin.note.trim().slice(0, 200) : "";
+        let withEvents = recordEventOnState(
+          nextBase,
+          "checkinSaved",
+          {
+            mood: current.checkin?.mood,
+            energy: current.checkin?.energy,
+            body: current.checkin?.body,
+            pace: current.level,
+            ...(note ? { note } : {}),
+          },
+          { maxDays: EVENT_DAYS_TO_KEEP }
+        );
+
+        const isPlus = current?.profile?.plan === "plus";
+        if(isPlus && note){
+          const prevNotes = Array.isArray(withEvents?.noteMemory?.notes) ? withEvents.noteMemory.notes : [];
+          const prevLast = prevNotes.length ? prevNotes[prevNotes.length - 1] : null;
+
+          let nextNoteMemory = addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX);
+
+          // Preserve remote id if we overwrote today's note.
+          const nextNotes = Array.isArray(nextNoteMemory?.notes) ? nextNoteMemory.notes : [];
+          const nextLast = nextNotes.length ? nextNotes[nextNotes.length - 1] : null;
+          if(prevLast && nextLast && prevLast.date === nextLast.date && prevLast.id){
+            nextNoteMemory = {
+              ...nextNoteMemory,
+              notes: [...nextNotes.slice(0, -1), { ...nextLast, id: prevLast.id }],
+            };
           }
 
-          return next;
+          latestRemembered = Array.isArray(nextNoteMemory?.notes) && nextNoteMemory.notes.length
+            ? nextNoteMemory.notes[nextNoteMemory.notes.length - 1]
+            : null;
+
+          withEvents = { ...withEvents, noteMemory: nextNoteMemory };
         }
 
-        return { ...s, screen, toast: null };
-      }),
+        next = withEvents;
+      }
+
+      setState(next);
+
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      const canSyncNoteMemory = current?.profile?.plan === "plus";
+
+      if(userId && canSyncNoteMemory && latestRemembered && typeof latestRemembered.text === "string"){
+        const lastUsedAt = latestRemembered.ts ? new Date(latestRemembered.ts).toISOString() : new Date().toISOString();
+
+        if(latestRemembered.id){
+          updateNoteMemoryRemote(latestRemembered.id, { note: latestRemembered.text, lastUsedAt }).catch(() => {});
+        }else{
+          createNoteMemoryRemote({ userId, note: latestRemembered.text, lastUsedAt })
+            .then((row) => {
+              if(!row?.id) return;
+              setState((s) => {
+                const notes = Array.isArray(s?.noteMemory?.notes) ? s.noteMemory.notes : [];
+                if(!notes.length) return s;
+                const last = notes[notes.length - 1];
+                if(!last || last.date !== latestRemembered.date || last.text !== latestRemembered.text) return s;
+                const patched = { ...last, id: row.id };
+                return { ...s, noteMemory: { ...(s.noteMemory || {}), notes: [...notes.slice(0, -1), patched] } };
+              });
+            })
+            .catch(() => {});
+        }
+      }
+    },
 
     setCheckin: (patch) =>
       setState(s => {
@@ -969,50 +1197,65 @@ export function useAttuneStore(){
         toast: { text: "Signed out. This device is cleared.", good: false, screen: "checkin" },
       })),
 
-    saveWeeklyNote: (weekStart, text) =>
-      setState((s) => {
-        const startKey = typeof weekStart === "string" ? weekStart : "";
-        if(!startKey) return s;
+    saveWeeklyNote: (weekStart, text) => {
+      const current = stateRef.current;
+      const startKey = typeof weekStart === "string" ? weekStart : "";
+      if(!startKey) return;
 
-        const NOTE_CHAR_LIMIT = 500;
-        const input = typeof text === "string" ? text : "";
-        const nextText = input.length > NOTE_CHAR_LIMIT ? input.slice(0, NOTE_CHAR_LIMIT) : input;
-        const nowMs = Date.now();
+      const NOTE_CHAR_LIMIT = 500;
+      const input = typeof text === "string" ? text : "";
+      const nextText = input.length > NOTE_CHAR_LIMIT ? input.slice(0, NOTE_CHAR_LIMIT) : input;
+      const nowMs = Date.now();
 
-        // Ensure the weekly summary row exists (and is reasonably fresh) before attaching a note.
-        const weekRecords = buildWeekRecordsFromHistory(s.history, startKey).map((d) => {
-          if(d.date !== s.today) return d;
-          return {
-            ...d,
-            checkedIn: !!s.checkedInToday,
-            level: s.level,
-            tasksAdded: s.myDay?.length || 0,
-            tasksDone: s.myDay?.filter((t) => t.done).length || 0,
-          };
-        });
-        const computed = computeWeekSummaryFromWeekRecords(weekRecords, startKey);
-        let weeklySummaries = computed ? upsertWeeklySummary(s.weeklySummaries, computed, 52) : (Array.isArray(s.weeklySummaries) ? s.weeklySummaries : []);
+      // Compute the updated weeklySummaries list.
+      const weekRecords = buildWeekRecordsFromHistory(current.history, startKey).map((d) => {
+        if(d.date !== current.today) return d;
+        return {
+          ...d,
+          checkedIn: !!current.checkedInToday,
+          level: current.level,
+          tasksAdded: current.myDay?.length || 0,
+          tasksDone: current.myDay?.filter((t) => t.done).length || 0,
+        };
+      });
+      const computed = computeWeekSummaryFromWeekRecords(weekRecords, startKey);
+      let weeklySummaries = computed ? upsertWeeklySummary(current.weeklySummaries, computed, 52) : (Array.isArray(current.weeklySummaries) ? current.weeklySummaries : []);
 
-        const list = weeklySummaries.slice();
-        const idx = list.findIndex((w) => w?.weekStart === startKey);
-        if(idx < 0) return s;
+      const list = weeklySummaries.slice();
+      const idx = list.findIndex((w) => w?.weekStart === startKey);
+      if(idx < 0) return;
 
-        const trimmed = nextText.trim();
-        if(!trimmed){
-          const prev = list[idx];
-          if(!prev?.weekNote && !prev?.weekNoteUpdatedAt) return { ...s, weeklySummaries, toast: { text: "Note cleared.", good: true, screen: s.screen } };
+      let toastText = "Saved.";
+
+      const trimmed = nextText.trim();
+      if(!trimmed){
+        const prev = list[idx];
+        toastText = "Note cleared.";
+        if(prev?.weekNote || prev?.weekNoteUpdatedAt){
           const { weekNote: _weekNote, weekNoteUpdatedAt: _weekNoteUpdatedAt, ...rest } = prev || {};
           list[idx] = { ...rest };
-          return { ...s, weeklySummaries: list, toast: { text: "Note cleared.", good: true, screen: s.screen } };
         }
-
+      }else{
         const prev = list[idx];
         const unchanged = prev?.weekNote === nextText;
-        if(unchanged) return { ...s, weeklySummaries, toast: { text: "Saved.", good: true, screen: s.screen } };
+        if(!unchanged) list[idx] = { ...prev, weekNote: nextText, weekNoteUpdatedAt: nowMs };
+      }
 
-        list[idx] = { ...prev, weekNote: nextText, weekNoteUpdatedAt: nowMs };
-        return { ...s, weeklySummaries: list, toast: { text: "Saved.", good: true, screen: s.screen } };
-      }),
+      const nextState = {
+        ...current,
+        weeklySummaries: list,
+        toast: { text: toastText, good: true, screen: current.screen },
+      };
+
+      setState(nextState);
+
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(userId){
+        const localSummary = list[idx];
+        const payload = toDbWeeklySummary({ userId, localSummary });
+        if(payload) upsertWeeklySummaryRemote(payload).catch(() => {});
+      }
+    },
 
     toggleDone: (id, done) =>
       setState(s => {
@@ -1061,40 +1304,54 @@ export function useAttuneStore(){
         dailyMessage: dailyMessageFromCheckin(s.checkin, s.level)
       })),
 
-    endDay: () =>
-      setState(s => {
-        const doneCount = s.myDay.filter(x=>x.done).length;
+    endDay: () => {
+      const current = stateRef.current;
+      const doneCount = current.myDay.filter(x=>x.done).length;
 
-        let toast;
-        if(s.myDay.length === 0){
-          toast = { text: ENCOURAGE_EMPTY[Math.floor(Math.random()*ENCOURAGE_EMPTY.length)], good: false, screen: s.screen };
-        }else if(doneCount === 0){
-          toast = { text: "That’s okay. Choosing was still care. Tomorrow we go gently again.", good: false, screen: s.screen };
-        }else{
-          toast = { text: "You did what you could today. That matters.", good: true, screen: s.screen };
-        }
+      let toast;
+      if(current.myDay.length === 0){
+        toast = { text: ENCOURAGE_EMPTY[Math.floor(Math.random()*ENCOURAGE_EMPTY.length)], good: false, screen: current.screen };
+      }else if(doneCount === 0){
+        toast = { text: "That’s okay. Choosing was still care. Tomorrow we go gently again.", good: false, screen: current.screen };
+      }else{
+        toast = { text: "You did what you could today. That matters.", good: true, screen: current.screen };
+      }
 
-        const rolled = rollDayToHistory(s);
+      const rolled = rollDayToHistory(current);
 
         // Snapshot/update weekly summary for this week.
-        const weekStart = weekStartMondayKey(rolled.today);
-        let weeklySummaries = rolled.weeklySummaries;
-        if(weekStart){
-          const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
-          const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
-          if(summary) weeklySummaries = upsertWeeklySummary(weeklySummaries, summary, 52);
-        }
+      const weekStart = weekStartMondayKey(rolled.today);
+      let weeklySummaries = rolled.weeklySummaries;
+      let computedSummary = null;
+      if(weekStart){
+        const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
+        computedSummary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
+        if(computedSummary) weeklySummaries = upsertWeeklySummary(weeklySummaries, computedSummary, 52);
+      }
 
-        return {
-          ...rolled,
-          weeklySummaries,
-          options: [],
-          boardAssigned: [],
-          myDay: [],
-          currentSpin: null,
-          toast
-        };
-      }),
+      const nextState = {
+        ...rolled,
+        weeklySummaries,
+        options: [],
+        boardAssigned: [],
+        myDay: [],
+        currentSpin: null,
+        toast,
+      };
+
+      setState(nextState);
+
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(userId && computedSummary && weekStart){
+        // If a note exists locally for this week, include it.
+        const existing = Array.isArray(nextState.weeklySummaries)
+          ? nextState.weeklySummaries.find((w) => w?.weekStart === weekStart)
+          : null;
+
+        const payload = toDbWeeklySummary({ userId, localSummary: existing || computedSummary });
+        if(payload) upsertWeeklySummaryRemote(payload).catch(() => {});
+      }
+    },
 
     clearToast: () => setState(s => ({...s, toast: null})),
 
