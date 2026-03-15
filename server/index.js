@@ -2,10 +2,36 @@ import "dotenv/config";
 
 import express from "express";
 import OpenAI from "openai";
+import { createClient } from "@supabase/supabase-js";
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+const supabaseAuth = SUPABASE_URL && (SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY)
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
+
+// Used for writing ai_usage rows (RLS is intentionally restrictive there).
+const supabaseAdmin = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+      },
+    })
+  : null;
 
 const TRUST_PROXY = String(process.env.TRUST_PROXY || "").trim() === "1";
 const DEFAULT_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"];
@@ -108,6 +134,58 @@ const limitNote = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
 });
+
+function getBearerToken(req) {
+  const header = req.headers?.authorization;
+  if (typeof header !== "string") return "";
+  const m = header.match(/^Bearer\s+(.+)$/i);
+  return m ? String(m[1] || "").trim() : "";
+}
+
+async function requireAuthedUser(req, res) {
+  const token = getBearerToken(req);
+  if (!token) {
+    res.status(401).json({ error: "missing_bearer_token" });
+    return null;
+  }
+
+  if (!supabaseAuth) {
+    res.status(503).json({ error: "supabase_auth_not_configured" });
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabaseAuth.auth.getUser(token);
+    if (error || !data?.user?.id) {
+      res.status(401).json({ error: "invalid_token" });
+      return null;
+    }
+    return data.user;
+  } catch {
+    res.status(401).json({ error: "invalid_token" });
+    return null;
+  }
+}
+
+async function recordAiUsage({ userId, kind, success, errorCode, meta }) {
+  if (!supabaseAdmin) return;
+  if (!userId || typeof userId !== "string") return;
+
+  const payload = {
+    user_id: userId,
+    kind: typeof kind === "string" && kind ? kind : "unknown",
+    model: MODEL,
+    success: success !== false,
+    error_code: typeof errorCode === "string" ? errorCode : null,
+    meta: meta && typeof meta === "object" ? meta : {},
+  };
+
+  try {
+    await supabaseAdmin.from("ai_usage").insert(payload);
+  } catch {
+    // Ignore usage logging failures.
+  }
+}
 
 const forbiddenFragments = [
   "suicide",
@@ -718,6 +796,14 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
 
 app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, res) => {
   try {
+    const authedUser = await requireAuthedUser(req, res);
+    if (!authedUser) return;
+
+    if (!supabaseAdmin) {
+      res.status(503).json({ error: "supabase_admin_not_configured" });
+      return;
+    }
+
     if (!OPENAI_API_KEY) {
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
       return;
@@ -734,9 +820,15 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const body = clampString(checkin.body, 16) || "manageable";
     const note = clampString(checkin.note, 200);
 
-    const cacheKey = JSON.stringify({ kind: "board", level, moodWords, mood, energy, body, note });
+    const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note });
     const cached = boardCache.get(cacheKey);
     if (cached) {
+      recordAiUsage({
+        userId: authedUser.id,
+        kind: "generate_board",
+        success: true,
+        meta: { cached: true },
+      }).catch(() => {});
       res.json(cached);
       return;
     }
@@ -779,7 +871,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Align minutes to intensity: low ~1-10, medium ~8-20, high ~15-45. " +
       "Rationales must be neutral and not presume loneliness/anxiety/etc unless the user explicitly said it.";
 
-    const user = {
+    const userPayload = {
       checkin: {
         moodWords,
         mood,
@@ -823,11 +915,18 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
 
     const generated = await generateBoardWithRetries(client, {
       system,
-      userPayload: user,
+      userPayload,
       model: MODEL,
     });
 
     if (!generated.ok) {
+      recordAiUsage({
+        userId: authedUser.id,
+        kind: "generate_board",
+        success: false,
+        errorCode: generated.error || "invalid_board",
+        meta: { cached: false },
+      }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid board" });
       return;
     }
@@ -842,6 +941,13 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       },
     };
 
+    recordAiUsage({
+      userId: authedUser.id,
+      kind: "generate_board",
+      success: true,
+      meta: { cached: false },
+    }).catch(() => {});
+
     boardCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
     res.json(payload);
   } catch {
@@ -851,6 +957,14 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
 
 app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) => {
   try {
+    const authedUser = await requireAuthedUser(req, res);
+    if (!authedUser) return;
+
+    if (!supabaseAdmin) {
+      res.status(503).json({ error: "supabase_admin_not_configured" });
+      return;
+    }
+
     if (!OPENAI_API_KEY) {
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
       return;
@@ -866,9 +980,15 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     const body = clampString(checkin.body, 16) || "manageable";
     const note = clampString(checkin.note, 200);
 
-    const cacheKey = JSON.stringify({ kind: "note", level, today, moodWords, mood, energy, body, note });
+    const cacheKey = JSON.stringify({ kind: "note", userId: authedUser.id, level, today, moodWords, mood, energy, body, note });
     const cached = noteCache.get(cacheKey);
     if (cached) {
+      recordAiUsage({
+        userId: authedUser.id,
+        kind: "daily_note",
+        success: true,
+        meta: { cached: true },
+      }).catch(() => {});
       res.json(cached);
       return;
     }
@@ -889,7 +1009,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       "Keep it practical and supportive; not inspirational fluff. " +
       "Avoid awkward phrases like 'gentle task'. Prefer 'small step', 'low-effort', or 'doable'.";
 
-    const user = {
+    const userPayload = {
       today,
       theme,
       checkin: {
@@ -927,11 +1047,18 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
 
     const generated = await generateDailyNoteWithRetries(client, {
       system,
-      userPayload: user,
+      userPayload,
       model: MODEL,
     });
 
     if (!generated.ok) {
+      recordAiUsage({
+        userId: authedUser.id,
+        kind: "daily_note",
+        success: false,
+        errorCode: generated.error || "invalid_note",
+        meta: { cached: false },
+      }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid note" });
       return;
     }
@@ -940,6 +1067,14 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       note: generated.note,
       meta: { model: MODEL, createdAt: new Date().toISOString(), cached: false },
     };
+
+    recordAiUsage({
+      userId: authedUser.id,
+      kind: "daily_note",
+      success: true,
+      meta: { cached: false },
+    }).catch(() => {});
+
     noteCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
     res.json(payload);
   } catch {

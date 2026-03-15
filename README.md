@@ -9,6 +9,7 @@ This is implemented as a small local API server (so your OpenAI key is never shi
 ### Setup
 
 - Copy [.env.example](.env.example) to `.env` and set `OPENAI_API_KEY`.
+- If you want AI usage tied to a signed-in Supabase user, also set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and optionally `SUPABASE_ANON_KEY`).
 - Install deps: `npm install`
 - Run both servers: `npm run dev:all`
 

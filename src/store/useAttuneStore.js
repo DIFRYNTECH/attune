@@ -32,6 +32,18 @@ function toMs(iso){
   return Number.isFinite(t) ? t : 0;
 }
 
+async function getSupabaseAccessToken(){
+  const supabase = getSupabaseClient();
+  if(!supabase) return "";
+  try {
+    const { data } = await supabase.auth.getSession();
+    const token = data?.session?.access_token;
+    return typeof token === "string" ? token : "";
+  } catch {
+    return "";
+  }
+}
+
 function weeklyRowToLocal(row){
   const metrics = row?.metrics && typeof row.metrics === "object" && !Array.isArray(row.metrics) ? row.metrics : {};
   const updatedAtMs = toMs(row?.updated_at) || toMs(row?.created_at) || 0;
@@ -889,10 +901,14 @@ export function useAttuneStore(){
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        const token = await getSupabaseAccessToken();
         const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
         const resp = await fetch("/api/generate-board", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           signal: controller.signal,
           body: JSON.stringify({ checkin: checkinForAi, level }),
         });
@@ -990,10 +1006,14 @@ export function useAttuneStore(){
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
 
       try {
+        const token = await getSupabaseAccessToken();
         const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
         const resp = await fetch("/api/daily-note", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
           signal: controller.signal,
           body: JSON.stringify({ checkin: checkinForAi, level, today: t }),
         });
