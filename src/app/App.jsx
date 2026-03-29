@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
 import ActivityPicker from "../screens/ActivityPicker.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
@@ -115,10 +116,8 @@ export default function App() {
   const showToast = signedIn && !!(state.toast && state.toast.screen === screen);
   const wrapClassName = "wrap" + (showToast ? " toastOn" : "");
 
-  useEffect(() => {
-    const theme = state?.profile?.theme === "dark" ? "dark" : "light";
-    document.documentElement.dataset.theme = theme;
-  }, [state?.profile?.theme]);
+  // App-level init: theme, Capacitor deep links, status bar, splash.
+  useAppInit({ theme: state?.profile?.theme });
 
   useEffect(() => {
     if (!showToast) return;

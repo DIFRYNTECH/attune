@@ -70,6 +70,9 @@ export default function Today({ state, actions }) {
 						</button>
 					</div>
 				)}
+				{aiNote?.status === "error" && !!aiNote?.error && (
+					<div className="sub" style={{ marginTop: 8 }}>{aiNote.error}</div>
+				)}
 				{recentThemes.length > 0 && (
 					<div className="miniPills" aria-label="Recent themes">
 						<div className="miniPill">🧠 Lately: {latelyText}</div>

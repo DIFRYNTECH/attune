@@ -1,9 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { getAuthRedirectUrl } from "../lib/supabase";
+import { getPlatform, isNativePlatform } from "../lib/platform";
+
 export default function Login({ state, actions }) {
   const [username, setUsername] = useState(() => String(state?.auth?.username || ""));
   const [rememberMe, setRememberMe] = useState(() => state?.auth?.rememberMe !== false);
   const usernameRef = useRef(null);
+  const authRedirectUrl = getAuthRedirectUrl();
+  const platform = getPlatform();
+  const nativePlatform = isNativePlatform();
 
   useEffect(() => {
     // Focus the first field when entering the login screen.
@@ -79,6 +85,18 @@ export default function Login({ state, actions }) {
               We’ll email you a magic link.
             </div>
           )}
+
+          <div className="loginHint" role="note" style={{ fontSize: 11, opacity: 0.8 }}>
+            Auth debug: platform={platform} native={String(nativePlatform)} redirect={authRedirectUrl || "none"}
+          </div>
+
+          <div className="loginHint" role="note" style={{ fontSize: 11, opacity: 0.8 }}>
+            Last send redirect: {state?.auth?.debugLastSendRedirect || "none"}
+          </div>
+
+          <div className="loginHint" role="note" style={{ fontSize: 11, opacity: 0.8 }}>
+            Last send URL: {state?.auth?.debugLastSendUrl || "none"}
+          </div>
 
           <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
             Send link

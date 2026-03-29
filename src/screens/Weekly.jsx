@@ -528,7 +528,7 @@ export default function Weekly({ state, actions }) {
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
             <div className="resultTitle">Attune Plus</div>
             <InfoTip label="What does Plus unlock?">
-              Unlock patterns and a multi-week view. Everything stays local to this device.
+              Unlock patterns and a multi-week view. Weekly insights live on this device first, and signed-in accounts can also sync weekly summaries.
             </InfoTip>
           </div>
 
@@ -623,7 +623,8 @@ export default function Weekly({ state, actions }) {
                   Past weeks
                 </div>
                 <InfoTip label="About Past weeks">
-                  See 4-12 weeks at a glance, with low-pressure comparisons. This list is saved locally on this device.
+                  See 4-12 weeks at a glance, with low-pressure comparisons. It lives on this device first, and signed-in accounts can also sync
+                  weekly summaries.
                 </InfoTip>
               </div>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>

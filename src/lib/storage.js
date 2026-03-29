@@ -1,3 +1,5 @@
+import { storageService } from "./storageService";
+
 const KEY = "attune_v0_state";
 
 export function todayKey(d = new Date()) {
@@ -12,7 +14,7 @@ export function todayKey(d = new Date()) {
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = storageService.get(KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -30,5 +32,5 @@ export function saveState(state) {
     rest.auth = { view, rememberMe, username };
   }
 
-  localStorage.setItem(KEY, JSON.stringify(rest));
+  storageService.set(KEY, JSON.stringify(rest));
 }

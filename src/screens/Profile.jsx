@@ -236,8 +236,8 @@ export default function Profile({ state, actions }) {
                 Plus helps Attune understand your rhythms and offer better suggestions, without turning your day into a checklist.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                Everything stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly insights
-                (exact score, patterns, and past weeks).
+                Day-to-day planning stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly
+                insights. If you sign in, Attune can also sync weekly summaries, note history, and billing state tied to your account.
               </div>
               <div style={{ fontSize: 12, color: "var(--muted)" }}>Billing and restore purchases are coming later.</div>
             </div>
@@ -252,7 +252,7 @@ export default function Profile({ state, actions }) {
               <b>Exports</b> to download your local data.
             </li>
             <li>
-              <b>Note memory</b> from your check-in note (saved locally).
+              <b>Note memory</b> from your check-in note (on-device first, with account sync when signed in).
             </li>
             <li>
               <b>Smarter picking</b> that adapts to what you complete/skip.
@@ -267,7 +267,7 @@ export default function Profile({ state, actions }) {
               Billing: <span>coming soon</span>
             </div>
             <div>
-              Purchases are saved locally on this device.
+              When billing launches, purchases will be linked to your account.
             </div>
           </div>
 
@@ -421,7 +421,7 @@ export default function Profile({ state, actions }) {
           title="Note memory"
           helper={
             canUseMemory
-              ? "Attune Plus remembers your check-in notes over time (stored locally on this device)."
+              ? "Attune Plus remembers your check-in notes over time. They stay on this device first and can sync to your account when you're signed in."
               : "Free plan doesn’t keep historical note memory."
           }
           helperLabel="Note memory info"
@@ -495,7 +495,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Account"
-          helper="This is a placeholder sign-in for early builds. We’ll replace it with real sign-in + sync later."
+          helper="Magic-link sign-in can sync weekly summaries and note history. Server-backed billing will replace the local Plus preview later."
           helperLabel="Account info"
         >
           <div className="settingsActions">
@@ -531,7 +531,8 @@ export default function Profile({ state, actions }) {
           <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear device confirmation">
             <div className="modalTitle">Clear Attune data from this device?</div>
             <div className="modalBody">
-              This removes your Attune data stored locally on this device (including history and preferences). You can’t undo this.
+              This removes the Attune data stored on this device (including history, preferences, and local note memory). If you sign in again,
+              synced weekly summaries and note history can come back from your account. You can’t undo the local clear.
             </div>
             <div className="modalActions">
               <button type="button" className="btn small ghost" onClick={() => setConfirmOpen(false)}>
@@ -564,7 +565,8 @@ export default function Profile({ state, actions }) {
           <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear note memory confirmation">
             <div className="modalTitle">Clear note history?</div>
             <div className="modalBody">
-              This removes your saved check-in notes (Plus memory) stored locally on this device. You can’t undo this.
+              This removes your saved check-in notes from this device. If you are signed in, Attune will also try to clear the synced note history
+              in your account. You can’t undo this.
             </div>
             <div className="modalActions">
               <button type="button" className="btn small ghost" onClick={() => setClearMemoryOpen(false)}>

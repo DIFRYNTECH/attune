@@ -85,7 +85,7 @@ export default function PaywallSheet({ state, actions }) {
               <b style={{ color: "var(--ink)" }}>Exports</b>: download your local data.
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Note memory</b>: your optional note becomes local memory.
+              <b style={{ color: "var(--ink)" }}>Note memory</b>: your optional note becomes memory you can keep on-device and sync when signed in.
             </div>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
               <b style={{ color: "var(--ink)" }}>Smarter picking</b>: avoids repeats you skip and leans toward what you complete.
@@ -99,7 +99,7 @@ export default function PaywallSheet({ state, actions }) {
             Yearly price: <b style={{ color: "var(--ink)" }}>$-/year</b> (placeholder)
           </div>
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
-            Restore purchases: coming later.
+            Restore purchases and real account billing are coming later.
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
-import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabase";
+import { getSupabaseClient, isSupabaseConfigured, getAuthRedirectUrl, AUTH_REQUEST_DEBUG_EVENT } from "../lib/supabase";
+import { AUTH_CALLBACK_ERROR_EVENT } from "../lib/mobile";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
@@ -9,7 +10,7 @@ import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearN
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
 import { ensureProfile } from "../lib/profileApi";
 import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
-import { listNoteMemory as listNoteMemoryRemote, createNoteMemory as createNoteMemoryRemote, updateNoteMemory as updateNoteMemoryRemote } from "../lib/noteMemoryApi";
+import { deleteAllNoteMemory as deleteAllNoteMemoryRemote, listNoteMemory as listNoteMemoryRemote, upsertNoteMemory as upsertNoteMemoryRemote } from "../lib/noteMemoryApi";
 
 const SCHEMA_VERSION = 8;
 
@@ -41,6 +42,43 @@ async function getSupabaseAccessToken(){
     return typeof token === "string" ? token : "";
   } catch {
     return "";
+  }
+}
+
+async function readApiErrorCode(resp){
+  let errorCode = `http_${resp?.status || 0}`;
+  try {
+    const data = await resp.json();
+    if(typeof data?.error === "string" && data.error) errorCode = data.error;
+  } catch {
+    // Ignore non-JSON error bodies.
+  }
+  return errorCode;
+}
+
+function getAiBoardErrorMessage(errorCode){
+  switch(String(errorCode || "")){
+    case "ai_daily_limit_reached":
+      return "AI limit reached for today. Using built-in suggestions.";
+    case "ai_monthly_limit_reached":
+      return "AI limit reached for this month. Using built-in suggestions.";
+    case "rate_limited":
+      return "Too many AI requests right now. Using built-in suggestions.";
+    default:
+      return "Using built-in suggestions.";
+  }
+}
+
+function getAiDailyNoteErrorMessage(errorCode){
+  switch(String(errorCode || "")){
+    case "ai_daily_limit_reached":
+      return "AI note limit reached for today. Showing your on-device note.";
+    case "ai_monthly_limit_reached":
+      return "AI note limit reached for this month. Showing your on-device note.";
+    case "rate_limited":
+      return "Too many AI requests right now. Showing your on-device note.";
+    default:
+      return "";
   }
 }
 
@@ -118,39 +156,89 @@ function toDbWeeklySummary({ userId, localSummary }){
   };
 }
 
-function noteRowsToLocal(noteRows, maxNotes){
-  const rows = Array.isArray(noteRows) ? noteRows : [];
+function normalizeThemesArray(input){
+  if(!Array.isArray(input)) return [];
+  return [...new Set(
+    input
+      .filter((theme) => typeof theme === "string")
+      .map((theme) => theme.trim().toLowerCase())
+      .filter(Boolean)
+  )].slice(0, 2);
+}
+
+function noteRowToLocal(row){
+  const date = typeof row?.note_date === "string" ? row.note_date : "";
+  const text = typeof row?.note === "string" ? row.note.trim().slice(0, 200) : "";
+  if(!date || !text) return null;
+
+  const themes = normalizeThemesArray(row?.themes);
+  const ts = toMs(row?.last_used_at) || toMs(row?.updated_at) || toMs(row?.created_at) || Date.now();
+
+  return {
+    date,
+    text,
+    themes: themes.length ? themes : extractThemes(text),
+    ts,
+  };
+}
+
+function mergeNoteMemory(localNoteMemory, remoteRows, maxNotes){
+  const localNotes = Array.isArray(localNoteMemory?.notes) ? localNoteMemory.notes : [];
+  const rows = Array.isArray(remoteRows) ? remoteRows : [];
   const byDate = new Map();
 
-  for(const r of rows){
-    const note = typeof r?.note === "string" ? r.note.trim().slice(0, 200) : "";
-    if(!note) continue;
+  for(const note of localNotes){
+    if(note && typeof note.date === "string" && note.date) byDate.set(note.date, note);
+  }
 
-    const stamp = typeof r?.last_used_at === "string" && r.last_used_at ? r.last_used_at : (typeof r?.created_at === "string" ? r.created_at : "");
-    const ms = toMs(stamp) || toMs(r?.updated_at) || 0;
-    const date = stamp ? String(stamp).slice(0, 10) : "";
-    if(!date) continue;
+  for(const row of rows){
+    const nextLocal = noteRowToLocal(row);
+    if(!nextLocal) continue;
 
-    const entry = {
-      id: r?.id,
-      date,
-      text: note,
-      themes: extractThemes(note),
-      ts: ms || Date.now(),
-    };
-
-    const prev = byDate.get(date);
-    if(!prev || (Number(prev.ts) || 0) <= (Number(entry.ts) || 0)){
-      byDate.set(date, entry);
+    const prev = byDate.get(nextLocal.date);
+    if(!prev || (Number(prev.ts) || 0) <= (Number(nextLocal.ts) || 0)){
+      byDate.set(nextLocal.date, nextLocal);
     }
   }
 
-  const list = Array.from(byDate.values())
-    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
-
   const cap = typeof maxNotes === "number" ? maxNotes : NOTE_MEMORY_MAX;
-  const trimmed = list.length > cap ? list.slice(list.length - cap) : list;
+  const notes = Array.from(byDate.values())
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const trimmed = notes.length > cap ? notes.slice(notes.length - cap) : notes;
+
   return { notes: trimmed };
+}
+
+function toDbNoteMemory({ userId, localNote }){
+  const note = localNote && typeof localNote === "object" ? localNote : {};
+  const noteDate = typeof note.date === "string" ? note.date : "";
+  const text = typeof note.text === "string" ? note.text.trim().slice(0, 200) : "";
+  if(!userId || !noteDate || !text) return null;
+
+  return {
+    userId,
+    noteDate,
+    note: text,
+    themes: normalizeThemesArray(note.themes),
+    lastUsedAt: Number(note.ts) ? new Date(note.ts).toISOString() : new Date().toISOString(),
+  };
+}
+
+async function syncNoteMemoryEntryRemote(userId, localNote){
+  const payload = toDbNoteMemory({ userId, localNote });
+  if(!payload) return null;
+  return upsertNoteMemoryRemote(payload);
+}
+
+async function syncAllLocalNoteMemoryRemote(userId, noteMemory){
+  const notes = Array.isArray(noteMemory?.notes) ? noteMemory.notes : [];
+  if(!userId || !notes.length) return;
+
+  await Promise.all(
+    notes.map((note) =>
+      syncNoteMemoryEntryRemote(userId, note).catch(() => null)
+    )
+  );
 }
 
 const DEFAULT_CHECKIN = {
@@ -180,6 +268,7 @@ function defaultState(){
       status: "idle", // idle | sending | sent | error
       sentTo: "",
       error: "",
+      debugLastSendRedirect: "",
     },
     today: todayKey(),
     checkedInToday: false,
@@ -227,6 +316,14 @@ function defaultState(){
 }
 
 function checkinSignature(checkin, level, useNoteForAi){
+        setState((s) => ({
+          ...s,
+          auth: {
+            ...(s.auth || {}),
+            debugLastSendRedirect: redirectTo || "",
+          },
+        }));
+
   const mood = typeof checkin?.mood === "string" ? checkin.mood : "";
   const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords.slice(0,2) : [];
   const energy = typeof checkin?.energy === "string" ? checkin.energy : "";
@@ -516,6 +613,41 @@ export function useAttuneStore(){
     const supabase = getSupabaseClient();
     if(!supabase) return;
 
+    const handleAuthCallbackError = (event) => {
+      const message = typeof event?.detail?.message === "string" && event.detail.message.trim()
+        ? event.detail.message.trim()
+        : "We couldn't complete sign-in. Try requesting a new magic link.";
+
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
+          signedIn: false,
+          status: "error",
+          error: message,
+        },
+      }));
+    };
+
+    const handleAuthRequestDebug = (event) => {
+      const redirectTo = typeof event?.detail?.redirectTo === "string" ? event.detail.redirectTo : "";
+      const url = typeof event?.detail?.url === "string" ? event.detail.url : "";
+
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
+          debugLastSendRedirect: redirectTo,
+          debugLastSendUrl: url,
+        },
+      }));
+    };
+
+    if (typeof window !== "undefined") {
+      window.addEventListener(AUTH_CALLBACK_ERROR_EVENT, handleAuthCallbackError);
+      window.addEventListener(AUTH_REQUEST_DEBUG_EVENT, handleAuthRequestDebug);
+    }
+
     async function syncFromSupabase({ userId, canSyncNoteMemory }){
       if(!userId) return;
       try {
@@ -533,10 +665,14 @@ export function useAttuneStore(){
       if(!canSyncNoteMemory) return;
       try {
         const remoteNotes = await listNoteMemoryRemote(userId);
+        const mergedNoteMemory = mergeNoteMemory(stateRef.current?.noteMemory, remoteNotes, NOTE_MEMORY_MAX);
+
         setState((s) => ({
           ...s,
-          noteMemory: noteRowsToLocal(remoteNotes, NOTE_MEMORY_MAX),
+          noteMemory: mergedNoteMemory,
         }));
+
+        syncAllLocalNoteMemoryRemote(userId, mergedNoteMemory).catch(() => {});
       } catch {
         // ignore
       }
@@ -564,7 +700,7 @@ export function useAttuneStore(){
           }
         }
 
-        // Pull weekly summaries + (Plus) note memory into local state.
+        // Pull weekly summaries + (Plus) note history into local state for signed-in users.
         const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
         syncFromSupabase({ userId, canSyncNoteMemory });
 
@@ -617,6 +753,10 @@ export function useAttuneStore(){
     unsub = data?.subscription?.unsubscribe || null;
 
     return () => {
+      if (typeof window !== "undefined") {
+        window.removeEventListener(AUTH_CALLBACK_ERROR_EVENT, handleAuthCallbackError);
+        window.removeEventListener(AUTH_REQUEST_DEBUG_EVENT, handleAuthRequestDebug);
+      }
       try { unsub?.(); } catch { /* noop */ }
     };
   }, []);
@@ -681,7 +821,7 @@ export function useAttuneStore(){
       }));
 
       try {
-        const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/` : undefined;
+        const redirectTo = getAuthRedirectUrl();
         const { error } = await supabase.auth.signInWithOtp({
           email: nextEmail,
           options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
@@ -769,26 +909,15 @@ export function useAttuneStore(){
 
         const isPlus = current?.profile?.plan === "plus";
         if(isPlus && note){
-          const prevNotes = Array.isArray(withEvents?.noteMemory?.notes) ? withEvents.noteMemory.notes : [];
-          const prevLast = prevNotes.length ? prevNotes[prevNotes.length - 1] : null;
-
-          let nextNoteMemory = addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX);
-
-          // Preserve remote id if we overwrote today's note.
-          const nextNotes = Array.isArray(nextNoteMemory?.notes) ? nextNoteMemory.notes : [];
-          const nextLast = nextNotes.length ? nextNotes[nextNotes.length - 1] : null;
-          if(prevLast && nextLast && prevLast.date === nextLast.date && prevLast.id){
-            nextNoteMemory = {
-              ...nextNoteMemory,
-              notes: [...nextNotes.slice(0, -1), { ...nextLast, id: prevLast.id }],
-            };
-          }
-
+          const nextNoteMemory = addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX);
           latestRemembered = Array.isArray(nextNoteMemory?.notes) && nextNoteMemory.notes.length
             ? nextNoteMemory.notes[nextNoteMemory.notes.length - 1]
             : null;
 
-          withEvents = { ...withEvents, noteMemory: nextNoteMemory };
+          withEvents = {
+            ...withEvents,
+            noteMemory: nextNoteMemory,
+          };
         }
 
         next = withEvents;
@@ -798,27 +927,8 @@ export function useAttuneStore(){
 
       const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
       const canSyncNoteMemory = current?.profile?.plan === "plus";
-
-      if(userId && canSyncNoteMemory && latestRemembered && typeof latestRemembered.text === "string"){
-        const lastUsedAt = latestRemembered.ts ? new Date(latestRemembered.ts).toISOString() : new Date().toISOString();
-
-        if(latestRemembered.id){
-          updateNoteMemoryRemote(latestRemembered.id, { note: latestRemembered.text, lastUsedAt }).catch(() => {});
-        }else{
-          createNoteMemoryRemote({ userId, note: latestRemembered.text, lastUsedAt })
-            .then((row) => {
-              if(!row?.id) return;
-              setState((s) => {
-                const notes = Array.isArray(s?.noteMemory?.notes) ? s.noteMemory.notes : [];
-                if(!notes.length) return s;
-                const last = notes[notes.length - 1];
-                if(!last || last.date !== latestRemembered.date || last.text !== latestRemembered.text) return s;
-                const patched = { ...last, id: row.id };
-                return { ...s, noteMemory: { ...(s.noteMemory || {}), notes: [...notes.slice(0, -1), patched] } };
-              });
-            })
-            .catch(() => {});
-        }
+      if(userId && canSyncNoteMemory && latestRemembered){
+        syncNoteMemoryEntryRemote(userId, latestRemembered).catch(() => {});
       }
     },
 
@@ -914,7 +1024,7 @@ export function useAttuneStore(){
         });
 
         if(!resp.ok){
-          throw new Error(`http_${resp.status}`);
+          throw new Error(await readApiErrorCode(resp));
         }
 
         const data = await resp.json();
@@ -951,7 +1061,7 @@ export function useAttuneStore(){
         const message =
           err && typeof err === "object" && (err.name === "AbortError" || String(err.message || "").includes("aborted"))
             ? "AI took too long. Using built-in suggestions."
-            : "Using built-in suggestions.";
+            : getAiBoardErrorMessage(err?.message);
 
         setState(s => {
           const liveSig = checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi);
@@ -1019,7 +1129,7 @@ export function useAttuneStore(){
         });
 
         if(!resp.ok){
-          throw new Error(`http_${resp.status}`);
+          throw new Error(await readApiErrorCode(resp));
         }
 
         const data = await resp.json();
@@ -1027,6 +1137,7 @@ export function useAttuneStore(){
         const title = typeof note?.title === "string" ? note.title.trim() : "";
         const body = typeof note?.body === "string" ? note.body.trim() : "";
         const focus = typeof note?.focus === "string" ? note.focus.trim() : "";
+        const noteTextForSync = typeof checkin?.note === "string" ? checkin.note.trim().slice(0, 200) : "";
         const themes = Array.isArray(note?.themes)
           ? note.themes
               .filter((x) => typeof x === "string")
@@ -1045,8 +1156,7 @@ export function useAttuneStore(){
 
           // If Plus + note is stored, enrich remembered note themes using AI.
           const isPlus = s?.profile?.plan === "plus";
-          const noteText = typeof s.checkin?.note === "string" ? s.checkin.note.trim().slice(0, 200) : "";
-          const shouldApplyThemes = isPlus && s.profile?.useNoteForAi !== false && noteText && themes.length > 0;
+          const shouldApplyThemes = isPlus && s.profile?.useNoteForAi !== false && noteTextForSync && themes.length > 0;
           const nextNoteMemory = shouldApplyThemes
             ? applyThemesToRememberedNote(s.noteMemory, { date: t, themes })
             : s.noteMemory;
@@ -1057,8 +1167,24 @@ export function useAttuneStore(){
             aiDailyNote: { status: "ready", today: t, sig, title, body, focus, themes, error: "" },
           };
         });
-      } catch {
+
+        const currentUserId = typeof stateRef.current?.auth?.userId === "string" ? stateRef.current.auth.userId : "";
+        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
+        if(currentUserId && canSyncNoteMemory && noteTextForSync && themes.length > 0){
+          syncNoteMemoryEntryRemote(currentUserId, {
+            date: t,
+            text: noteTextForSync,
+            themes,
+            ts: Date.now(),
+          }).catch(() => {});
+        }
+      } catch (err) {
         if(requestId !== aiNoteReqRef.current.requestId) return;
+
+        const message =
+          err && typeof err === "object" && (err.name === "AbortError" || String(err.message || "").includes("aborted"))
+            ? ""
+            : getAiDailyNoteErrorMessage(err?.message);
 
         setState(s => {
           const liveSig = dailyNoteSignature(s.checkin, s.level, s.profile?.useNoteForAi, t);
@@ -1067,7 +1193,7 @@ export function useAttuneStore(){
           // Silent fallback: keep local dailyMessage visible.
           return {
             ...s,
-            aiDailyNote: { ...s.aiDailyNote, status: "error", today: t, sig, title: "", body: "", focus: "", themes: [], error: "" },
+            aiDailyNote: { ...s.aiDailyNote, status: "error", today: t, sig, title: "", body: "", focus: "", themes: [], error: message },
           };
         });
       } finally {
@@ -1193,7 +1319,10 @@ export function useAttuneStore(){
         return { ...s, profile };
       }),
 
-    setPlan: (nextPlan) =>
+    setPlan: (nextPlan) => {
+      const current = stateRef.current;
+      const plan = nextPlan === "plus" ? "plus" : "free";
+
       setState(s => {
         const plan = nextPlan === "plus" ? "plus" : "free";
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), plan };
@@ -1202,14 +1331,57 @@ export function useAttuneStore(){
         const noteMemory = plan === "plus" ? s.noteMemory : clearNoteMemoryObj(s.noteMemory);
         const paywall = plan === "plus" ? null : s.paywall;
         return { ...s, profile, noteMemory, paywall };
-      }),
+      });
 
-    clearNoteMemory: () =>
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(plan === "plus" && userId){
+        listNoteMemoryRemote(userId)
+          .then((remoteNotes) => {
+            const mergedNoteMemory = mergeNoteMemory(current?.noteMemory, remoteNotes, NOTE_MEMORY_MAX);
+            setState((s) => ({ ...s, noteMemory: mergedNoteMemory }));
+            return syncAllLocalNoteMemoryRemote(userId, mergedNoteMemory);
+          })
+          .catch(() => {});
+      }
+    },
+
+    clearNoteMemory: () => {
+      const current = stateRef.current;
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      const canSyncNoteMemory = current?.profile?.plan === "plus";
+
       setState(s => ({
         ...s,
         noteMemory: clearNoteMemoryObj(s.noteMemory),
-        toast: { text: "Cleared note memory on this device.", good: true, screen: s.screen },
-      })),
+        toast: {
+          text: userId && canSyncNoteMemory
+            ? "Cleared note memory on this device. Clearing synced notes..."
+            : "Cleared note memory on this device.",
+          good: true,
+          screen: s.screen,
+        },
+      }));
+
+      if(userId && canSyncNoteMemory){
+        deleteAllNoteMemoryRemote(userId)
+          .then(() => {
+            setState((s) => ({
+              ...s,
+              toast: { text: "Cleared synced note history.", good: true, screen: s.screen },
+            }));
+          })
+          .catch(() => {
+            setState((s) => ({
+              ...s,
+              toast: {
+                text: "Cleared note memory on this device, but synced notes could not be cleared.",
+                good: false,
+                screen: s.screen,
+              },
+            }));
+          });
+      }
+    },
 
     clearDeviceData: () =>
       setState(() => ({

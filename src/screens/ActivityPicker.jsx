@@ -13,7 +13,7 @@ export default function ActivityPicker({ state, actions }) {
     aiStatus === "loading"
       ? "Personalizing 15 options…"
       : aiStatus === "error"
-        ? "Using built-in suggestions for now."
+        ? (state.ai?.error || "Using built-in suggestions for now.")
         : aiStatus === "ready"
           ? "Personalized from your check-in."
           : "";

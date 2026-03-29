@@ -187,6 +187,202 @@ async function recordAiUsage({ userId, kind, success, errorCode, meta }) {
   }
 }
 
+const DEFAULT_PLAN_LIMITS = {
+  free: { daily: 20, monthly: null },
+  plus: { daily: 200, monthly: null },
+};
+
+function normalizePlanId(planId) {
+  return planId === "plus" ? "plus" : "free";
+}
+
+function hasPlusEntitlement(entitlement) {
+  if (normalizePlanId(entitlement?.plan_id) !== "plus") return false;
+
+  const status = String(entitlement?.status || "").toLowerCase();
+  if (status === "active" || status === "grace") return true;
+  if (status !== "canceled") return false;
+
+  const currentPeriodEndMs = Date.parse(String(entitlement?.current_period_end || ""));
+  return Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs >= Date.now();
+}
+
+function startOfUtcDay(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+
+function startOfUtcMonth(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function addUtcDays(date, days) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
+}
+
+function addUtcMonths(date, months) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
+}
+
+async function getUserAiContext(userId) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+
+  const [profileResult, entitlementResult] = await Promise.all([
+    supabaseAdmin
+      .from("profiles")
+      .select("use_note_for_ai")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("user_entitlements")
+      .select("plan_id, status, current_period_end")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (profileResult.error) throw new Error("profile_lookup_failed");
+  if (entitlementResult.error) throw new Error("entitlement_lookup_failed");
+
+  const requestedPlanId = hasPlusEntitlement(entitlementResult.data) ? "plus" : "free";
+  const { data: planRow, error: planError } = await supabaseAdmin
+    .from("plan_catalog")
+    .select("plan_id, ai_daily_request_limit, ai_monthly_request_limit, is_active")
+    .eq("plan_id", requestedPlanId)
+    .maybeSingle();
+
+  if (planError) throw new Error("plan_lookup_failed");
+
+  const planIsUsable =
+    !!planRow &&
+    planRow.is_active !== false &&
+    normalizePlanId(planRow.plan_id) === requestedPlanId;
+  const resolvedPlanId = planIsUsable ? requestedPlanId : "free";
+  const defaults = DEFAULT_PLAN_LIMITS[resolvedPlanId];
+
+  return {
+    useNoteForAi: profileResult.data?.use_note_for_ai !== false,
+    planId: resolvedPlanId,
+    dailyLimit:
+      planIsUsable && Number.isInteger(planRow.ai_daily_request_limit)
+        ? planRow.ai_daily_request_limit
+        : defaults.daily,
+    monthlyLimit:
+      planIsUsable &&
+      (planRow.ai_monthly_request_limit === null || Number.isInteger(planRow.ai_monthly_request_limit))
+        ? planRow.ai_monthly_request_limit
+        : defaults.monthly,
+  };
+}
+
+async function countBillableAiUsageSince(userId, sinceIso) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+
+  const rpcResult = await supabaseAdmin.rpc("count_billable_ai_usage", {
+    p_user_id: userId,
+    p_since: sinceIso,
+  });
+
+  if (!rpcResult.error) {
+    return Number(rpcResult.data) || 0;
+  }
+
+  const fallbackResult = await supabaseAdmin
+    .from("ai_usage")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("success", true)
+    .gte("occurred_at", sinceIso);
+
+  if (fallbackResult.error) throw new Error("quota_lookup_failed");
+  return Number(fallbackResult.count) || 0;
+}
+
+async function getAiQuotaState({ userId, dailyLimit, monthlyLimit }) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+
+  const now = new Date();
+  const dayStart = startOfUtcDay(now);
+  const monthStart = startOfUtcMonth(now);
+
+  const dailyQuery = Number.isInteger(dailyLimit)
+    ? countBillableAiUsageSince(userId, dayStart.toISOString())
+    : Promise.resolve(0);
+
+  const monthlyQuery = Number.isInteger(monthlyLimit)
+    ? countBillableAiUsageSince(userId, monthStart.toISOString())
+    : Promise.resolve(0);
+
+  const [dailyUsed, monthlyUsed] = await Promise.all([dailyQuery, monthlyQuery]);
+
+  if (Number.isInteger(dailyLimit) && dailyUsed >= dailyLimit) {
+    return {
+      allowed: false,
+      error: "ai_daily_limit_reached",
+      period: "day",
+      limit: dailyLimit,
+      used: dailyUsed,
+      resetAt: addUtcDays(dayStart, 1).toISOString(),
+      dailyUsed,
+      monthlyUsed,
+    };
+  }
+
+  if (Number.isInteger(monthlyLimit) && monthlyUsed >= monthlyLimit) {
+    return {
+      allowed: false,
+      error: "ai_monthly_limit_reached",
+      period: "month",
+      limit: monthlyLimit,
+      used: monthlyUsed,
+      resetAt: addUtcMonths(monthStart, 1).toISOString(),
+      dailyUsed,
+      monthlyUsed,
+    };
+  }
+
+  return {
+    allowed: true,
+    dailyUsed,
+    monthlyUsed,
+  };
+}
+
+async function rejectForQuota(res, { userId, kind, planId, quota }) {
+  await recordAiUsage({
+    userId,
+    kind,
+    success: false,
+    errorCode: quota.error,
+    meta: {
+      cached: false,
+      planId,
+      dailyUsed: quota.dailyUsed,
+      monthlyUsed: quota.monthlyUsed,
+      limit: quota.limit,
+      period: quota.period,
+    },
+  });
+
+  res.status(429).json({
+    error: quota.error,
+    planId,
+    period: quota.period,
+    limit: quota.limit,
+    used: quota.used,
+    remaining: 0,
+    resetAt: quota.resetAt,
+  });
+}
+
+function isRecoverableAiLookupError(errorCode) {
+  return [
+    "supabase_admin_not_configured",
+    "profile_lookup_failed",
+    "entitlement_lookup_failed",
+    "plan_lookup_failed",
+    "quota_lookup_failed",
+  ].includes(String(errorCode || ""));
+}
+
 const forbiddenFragments = [
   "suicide",
   "self-harm",
@@ -813,23 +1009,33 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const allowedLevels = new Set(["rest", "gentle", "light", "steady", "capable", "brave"]);
     const levelRaw = (clampString(req.body?.level, 24) || "gentle").toLowerCase();
     const level = allowedLevels.has(levelRaw) ? levelRaw : "gentle";
+    const aiContext = await getUserAiContext(authedUser.id);
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
-    const note = clampString(checkin.note, 200);
+    const note = aiContext.useNoteForAi ? clampString(checkin.note, 200) : "";
 
     const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note });
     const cached = boardCache.get(cacheKey);
     if (cached) {
-      recordAiUsage({
+      res.json(cached);
+      return;
+    }
+
+    const quota = await getAiQuotaState({
+      userId: authedUser.id,
+      dailyLimit: aiContext.dailyLimit,
+      monthlyLimit: aiContext.monthlyLimit,
+    });
+    if (!quota.allowed) {
+      await rejectForQuota(res, {
         userId: authedUser.id,
         kind: "generate_board",
-        success: true,
-        meta: { cached: true },
-      }).catch(() => {});
-      res.json(cached);
+        planId: aiContext.planId,
+        quota,
+      });
       return;
     }
 
@@ -925,7 +1131,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         kind: "generate_board",
         success: false,
         errorCode: generated.error || "invalid_board",
-        meta: { cached: false },
+        meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
       }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid board" });
       return;
@@ -945,12 +1151,17 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       userId: authedUser.id,
       kind: "generate_board",
       success: true,
-      meta: { cached: false },
+      meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
     }).catch(() => {});
 
     boardCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
     res.json(payload);
-  } catch {
+  } catch (err) {
+    const errorCode = String(err?.message || "");
+    if (isRecoverableAiLookupError(errorCode)) {
+      res.status(503).json({ error: errorCode });
+      return;
+    }
     res.status(500).json({ error: "Failed to generate board" });
   }
 });
@@ -973,23 +1184,33 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
     const level = clampString(req.body?.level, 24) || "gentle";
     const today = clampString(req.body?.today, 20) || "";
+    const aiContext = await getUserAiContext(authedUser.id);
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
-    const note = clampString(checkin.note, 200);
+    const note = aiContext.useNoteForAi ? clampString(checkin.note, 200) : "";
 
     const cacheKey = JSON.stringify({ kind: "note", userId: authedUser.id, level, today, moodWords, mood, energy, body, note });
     const cached = noteCache.get(cacheKey);
     if (cached) {
-      recordAiUsage({
+      res.json(cached);
+      return;
+    }
+
+    const quota = await getAiQuotaState({
+      userId: authedUser.id,
+      dailyLimit: aiContext.dailyLimit,
+      monthlyLimit: aiContext.monthlyLimit,
+    });
+    if (!quota.allowed) {
+      await rejectForQuota(res, {
         userId: authedUser.id,
         kind: "daily_note",
-        success: true,
-        meta: { cached: true },
-      }).catch(() => {});
-      res.json(cached);
+        planId: aiContext.planId,
+        quota,
+      });
       return;
     }
 
@@ -1057,7 +1278,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
         kind: "daily_note",
         success: false,
         errorCode: generated.error || "invalid_note",
-        meta: { cached: false },
+        meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
       }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid note" });
       return;
@@ -1072,12 +1293,17 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       userId: authedUser.id,
       kind: "daily_note",
       success: true,
-      meta: { cached: false },
+      meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
     }).catch(() => {});
 
     noteCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
     res.json(payload);
-  } catch {
+  } catch (err) {
+    const errorCode = String(err?.message || "");
+    if (isRecoverableAiLookupError(errorCode)) {
+      res.status(503).json({ error: errorCode });
+      return;
+    }
     res.status(500).json({ error: "Failed to generate daily note" });
   }
 });
