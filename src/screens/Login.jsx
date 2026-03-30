@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 export default function Login({ state, actions }) {
+  const OTP_LENGTH = 8;
   const [username, setUsername] = useState(() => String(state?.auth?.username || ""));
   const [otpCode, setOtpCode] = useState(() => String(state?.auth?.otpCode || ""));
   const [rememberMe, setRememberMe] = useState(() => state?.auth?.rememberMe !== false);
@@ -27,7 +28,7 @@ export default function Login({ state, actions }) {
   }, [state?.auth?.otpCode]);
 
   const canSubmit = useMemo(() => {
-    if(authStep === "verify") return otpCode.trim().length >= 6;
+    if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
     return username.trim().length > 0;
   }, [authStep, otpCode, username]);
 
@@ -87,7 +88,7 @@ export default function Login({ state, actions }) {
           ) : (
             <>
               <div className="loginHint" role="status">
-                Enter the 6-digit code we sent to {sentTo || username}.
+                Enter the {OTP_LENGTH}-digit code we sent to {sentTo || username}.
               </div>
 
               <label className="field">
@@ -96,8 +97,8 @@ export default function Login({ state, actions }) {
                   ref={codeRef}
                   className="input"
                   value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, 6))}
-                  placeholder="123456"
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, OTP_LENGTH))}
+                  placeholder="12345678"
                   autoComplete="one-time-code"
                   inputMode="numeric"
                 />
@@ -132,7 +133,7 @@ export default function Login({ state, actions }) {
             </div>
           ) : state?.auth?.status === "sent" ? (
             <div className="loginHint" role="status">
-              Check your email for a 6-digit code.
+              Check your email for an {OTP_LENGTH}-digit code.
             </div>
           ) : state?.auth?.status === "verifying" ? (
             <div className="loginHint" role="status">
