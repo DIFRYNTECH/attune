@@ -805,6 +805,7 @@ export function useAttuneStore(){
       const nextEmail = String(email || "").trim().toLowerCase();
       const nextRememberMe = typeof rememberMe === "boolean" ? rememberMe : (stateRef.current?.auth?.rememberMe !== false);
       const nextName = typeof name === "string" ? name : "";
+      const authView = stateRef.current?.auth?.view === "signup" ? "signup" : "signin";
 
       if(!nextEmail){
         setState((s) => ({
@@ -852,7 +853,7 @@ export function useAttuneStore(){
         const { error } = await supabase.auth.signInWithOtp({
           email: nextEmail,
           options: {
-            shouldCreateUser: true,
+            shouldCreateUser: authView === "signup",
           },
         });
 
@@ -879,6 +880,7 @@ export function useAttuneStore(){
     verifyEmailOtp: async ({ email, code } = {}) => {
       const nextEmail = String(email || stateRef.current?.auth?.sentTo || stateRef.current?.auth?.username || "").trim().toLowerCase();
       const nextCode = String(code || "").trim();
+      const authView = stateRef.current?.auth?.view === "signup" ? "signup" : "signin";
 
       if(!nextEmail){
         setState((s) => ({
@@ -927,13 +929,28 @@ export function useAttuneStore(){
       }));
 
       try {
-        const { error } = await supabase.auth.verifyOtp({
-          email: nextEmail,
-          token: nextCode,
-          type: "email",
-        });
+        const verificationTypes = authView === "signup"
+          ? ["signup", "email"]
+          : ["email", "signup"];
 
-        if(error){
+        let verificationError = null;
+
+        for (const verificationType of verificationTypes) {
+          const { error } = await supabase.auth.verifyOtp({
+            email: nextEmail,
+            token: nextCode,
+            type: verificationType,
+          });
+
+          if (!error) {
+            verificationError = null;
+            break;
+          }
+
+          verificationError = error;
+        }
+
+        if(verificationError){
           setState((s) => ({
             ...s,
             auth: {
@@ -942,7 +959,7 @@ export function useAttuneStore(){
               status: "error",
               sentTo: nextEmail,
               otpCode: nextCode,
-              error: error.message || "Could not verify code.",
+              error: verificationError.message || "Could not verify code.",
             },
           }));
         }
