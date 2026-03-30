@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
-import { getSupabaseClient, isSupabaseConfigured, getAuthRedirectUrl, AUTH_REQUEST_DEBUG_EVENT } from "../lib/supabase";
+import { getSupabaseClient, isSupabaseConfigured, AUTH_REQUEST_DEBUG_EVENT } from "../lib/supabase";
 import { AUTH_CALLBACK_ERROR_EVENT } from "../lib/mobile";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
@@ -265,10 +265,13 @@ function defaultState(){
       username: "",
       rememberMe: true,
       view: "signin", // 'signin' | 'signup'
-      status: "idle", // idle | sending | sent | error
+      step: "request", // request | verify
+      status: "idle", // idle | sending | sent | verifying | error
       sentTo: "",
+      otpCode: "",
       error: "",
       debugLastSendRedirect: "",
+      debugLastSendUrl: "",
     },
     today: todayKey(),
     checkedInToday: false,
@@ -316,14 +319,6 @@ function defaultState(){
 }
 
 function checkinSignature(checkin, level, useNoteForAi){
-        setState((s) => ({
-          ...s,
-          auth: {
-            ...(s.auth || {}),
-            debugLastSendRedirect: redirectTo || "",
-          },
-        }));
-
   const mood = typeof checkin?.mood === "string" ? checkin.mood : "";
   const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords.slice(0,2) : [];
   const energy = typeof checkin?.energy === "string" ? checkin.energy : "";
@@ -387,7 +382,19 @@ function normalizeLoadedState(loaded){
 
   // Auth (added later): keep it optional + safe.
   if(!next.auth || typeof next.auth !== "object" || Array.isArray(next.auth)){
-    next.auth = { signedIn: false, username: "", rememberMe: true, view: "signin", status: "idle", sentTo: "", error: "" };
+    next.auth = {
+      signedIn: false,
+      username: "",
+      rememberMe: true,
+      view: "signin",
+      step: "request",
+      status: "idle",
+      sentTo: "",
+      otpCode: "",
+      error: "",
+      debugLastSendRedirect: "",
+      debugLastSendUrl: "",
+    };
   }
   if(typeof next.auth.signedIn !== "boolean") next.auth.signedIn = false;
   if(typeof next.auth.username !== "string") next.auth.username = "";
@@ -395,11 +402,16 @@ function normalizeLoadedState(loaded){
   if(typeof next.auth.rememberMe !== "boolean") next.auth.rememberMe = true;
   if(typeof next.auth.view !== "string") next.auth.view = "signin";
   if(next.auth.view !== "signin" && next.auth.view !== "signup") next.auth.view = "signin";
+  if(typeof next.auth.step !== "string") next.auth.step = "request";
+  if(!["request","verify"].includes(next.auth.step)) next.auth.step = "request";
 
   if(typeof next.auth.status !== "string") next.auth.status = "idle";
-  if(!["idle","sending","sent","error"].includes(next.auth.status)) next.auth.status = "idle";
+  if(!["idle","sending","sent","verifying","error"].includes(next.auth.status)) next.auth.status = "idle";
   if(typeof next.auth.sentTo !== "string") next.auth.sentTo = "";
+  if(typeof next.auth.otpCode !== "string") next.auth.otpCode = "";
   if(typeof next.auth.error !== "string") next.auth.error = "";
+  if(typeof next.auth.debugLastSendRedirect !== "string") next.auth.debugLastSendRedirect = "";
+  if(typeof next.auth.debugLastSendUrl !== "string") next.auth.debugLastSendUrl = "";
 
   if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
   next.weeklySummaries = next.weeklySummaries
@@ -616,13 +628,14 @@ export function useAttuneStore(){
     const handleAuthCallbackError = (event) => {
       const message = typeof event?.detail?.message === "string" && event.detail.message.trim()
         ? event.detail.message.trim()
-        : "We couldn't complete sign-in. Try requesting a new magic link.";
+        : "We couldn't complete sign-in. Try requesting a new code.";
 
       setState((s) => ({
         ...s,
         auth: {
           ...(s.auth || {}),
           signedIn: false,
+          step: "request",
           status: "error",
           error: message,
         },
@@ -711,7 +724,10 @@ export function useAttuneStore(){
             signedIn: !!session,
             userId,
             username: email || (s?.auth?.username || ""),
+            step: "request",
             status: "idle",
+            sentTo: "",
+            otpCode: "",
             error: "",
           },
         }));
@@ -744,7 +760,10 @@ export function useAttuneStore(){
           signedIn: !!session,
           userId,
           username: email || (s?.auth?.username || ""),
+          step: "request",
           status: "idle",
+          sentTo: "",
+          otpCode: "",
           error: "",
         },
         screen: session ? (s.screen || "checkin") : "checkin",
@@ -770,12 +789,19 @@ export function useAttuneStore(){
         const v = view === "signup" ? "signup" : "signin";
         return {
           ...s,
-          auth: { ...(s.auth || {}), view: v },
+          auth: {
+            ...(s.auth || {}),
+            view: v,
+            step: "request",
+            status: "idle",
+            otpCode: "",
+            error: "",
+          },
           toast: null,
         };
       }),
 
-    sendMagicLink: async ({ email, rememberMe, name } = {}) => {
+    requestEmailOtp: async ({ email, rememberMe, name } = {}) => {
       const nextEmail = String(email || "").trim().toLowerCase();
       const nextRememberMe = typeof rememberMe === "boolean" ? rememberMe : (stateRef.current?.auth?.rememberMe !== false);
       const nextName = typeof name === "string" ? name : "";
@@ -783,7 +809,7 @@ export function useAttuneStore(){
       if(!nextEmail){
         setState((s) => ({
           ...s,
-          auth: { ...(s.auth || {}), status: "error", error: "Enter your email.", sentTo: "" },
+          auth: { ...(s.auth || {}), step: "request", status: "error", error: "Enter your email.", sentTo: "", otpCode: "" },
         }));
         return;
       }
@@ -791,7 +817,7 @@ export function useAttuneStore(){
       if(!isSupabaseConfigured){
         setState((s) => ({
           ...s,
-          auth: { ...(s.auth || {}), status: "error", error: "Supabase is not configured (missing env vars).", sentTo: "" },
+          auth: { ...(s.auth || {}), step: "request", status: "error", error: "Supabase is not configured (missing env vars).", sentTo: "", otpCode: "" },
         }));
         return;
       }
@@ -800,7 +826,7 @@ export function useAttuneStore(){
       if(!supabase){
         setState((s) => ({
           ...s,
-          auth: { ...(s.auth || {}), status: "error", error: "Supabase client unavailable.", sentTo: "" },
+          auth: { ...(s.auth || {}), step: "request", status: "error", error: "Supabase client unavailable.", sentTo: "", otpCode: "" },
         }));
         return;
       }
@@ -811,9 +837,11 @@ export function useAttuneStore(){
           ...(s.auth || {}),
           rememberMe: nextRememberMe,
           username: clampText(nextEmail, 120),
+          step: "request",
           status: "sending",
           error: "",
           sentTo: "",
+          otpCode: "",
         },
         profile: nextName.trim()
           ? { ...(s.profile || {}), name: clampText(nextName, 40) }
@@ -821,31 +849,134 @@ export function useAttuneStore(){
       }));
 
       try {
-        const redirectTo = getAuthRedirectUrl();
         const { error } = await supabase.auth.signInWithOtp({
           email: nextEmail,
-          options: redirectTo ? { emailRedirectTo: redirectTo } : undefined,
+          options: {
+            shouldCreateUser: true,
+          },
         });
 
         if(error){
           setState((s) => ({
             ...s,
-            auth: { ...(s.auth || {}), status: "error", error: error.message || "Could not send link.", sentTo: "" },
+            auth: { ...(s.auth || {}), step: "request", status: "error", error: error.message || "Could not send code.", sentTo: "", otpCode: "" },
           }));
           return;
         }
 
         setState((s) => ({
           ...s,
-          auth: { ...(s.auth || {}), status: "sent", sentTo: nextEmail, error: "" },
+          auth: { ...(s.auth || {}), step: "verify", status: "sent", sentTo: nextEmail, error: "", otpCode: "" },
         }));
       } catch {
         setState((s) => ({
           ...s,
-          auth: { ...(s.auth || {}), status: "error", error: "Could not send link.", sentTo: "" },
+          auth: { ...(s.auth || {}), step: "request", status: "error", error: "Could not send code.", sentTo: "", otpCode: "" },
         }));
       }
     },
+
+    verifyEmailOtp: async ({ email, code } = {}) => {
+      const nextEmail = String(email || stateRef.current?.auth?.sentTo || stateRef.current?.auth?.username || "").trim().toLowerCase();
+      const nextCode = String(code || "").trim();
+
+      if(!nextEmail){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), step: "request", status: "error", error: "Enter your email first.", sentTo: "", otpCode: "" },
+        }));
+        return;
+      }
+
+      if(!nextCode){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), step: "verify", status: "error", error: "Enter the code from your email.", sentTo: nextEmail, otpCode: "" },
+        }));
+        return;
+      }
+
+      if(!isSupabaseConfigured){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), step: "verify", status: "error", error: "Supabase is not configured (missing env vars).", sentTo: nextEmail, otpCode: nextCode },
+        }));
+        return;
+      }
+
+      const supabase = getSupabaseClient();
+      if(!supabase){
+        setState((s) => ({
+          ...s,
+          auth: { ...(s.auth || {}), step: "verify", status: "error", error: "Supabase client unavailable.", sentTo: nextEmail, otpCode: nextCode },
+        }));
+        return;
+      }
+
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
+          username: clampText(nextEmail, 120),
+          step: "verify",
+          status: "verifying",
+          sentTo: nextEmail,
+          otpCode: nextCode,
+          error: "",
+        },
+      }));
+
+      try {
+        const { error } = await supabase.auth.verifyOtp({
+          email: nextEmail,
+          token: nextCode,
+          type: "email",
+        });
+
+        if(error){
+          setState((s) => ({
+            ...s,
+            auth: {
+              ...(s.auth || {}),
+              step: "verify",
+              status: "error",
+              sentTo: nextEmail,
+              otpCode: nextCode,
+              error: error.message || "Could not verify code.",
+            },
+          }));
+        }
+      } catch {
+        setState((s) => ({
+          ...s,
+          auth: {
+            ...(s.auth || {}),
+            step: "verify",
+            status: "error",
+            sentTo: nextEmail,
+            otpCode: nextCode,
+            error: "Could not verify code.",
+          },
+        }));
+      }
+    },
+
+    sendMagicLink: async ({ email, rememberMe, name } = {}) => {
+      await actionsRef.current?.requestEmailOtp?.({ email, rememberMe, name });
+    },
+
+    resetEmailOtp: () =>
+      setState((s) => ({
+        ...s,
+        auth: {
+          ...(s.auth || {}),
+          step: "request",
+          status: "idle",
+          sentTo: "",
+          otpCode: "",
+          error: "",
+        },
+      })),
 
     logout: async () => {
       const supabase = getSupabaseClient();
@@ -860,8 +991,10 @@ export function useAttuneStore(){
           ...(s.auth || {}),
           signedIn: false,
           username: s?.auth?.rememberMe !== false ? (s?.auth?.username || "") : "",
+          step: "request",
           status: "idle",
           sentTo: "",
+          otpCode: "",
           error: "",
           view: "signin",
         },
@@ -1584,6 +1717,9 @@ export function useAttuneStore(){
         toast: { text: "Reset done. Fresh start, gently.", good: false, screen: s.screen }
       })),
   }), []);
+
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
 
   // Dev-only: make it easy to inspect state/actions in the console.
   useEffect(() => {
