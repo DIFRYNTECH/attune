@@ -4,7 +4,7 @@
 
 Attune can optionally generate a fresh 15-tile Activity Picker board on each check-in, using your check-in signals (mood, energy, body, pace, note).
 
-This is implemented as a small local API server (so your OpenAI key is never shipped to the browser) with Vite proxying `/api/*` to it.
+This is implemented as a small API layer (so your OpenAI key is never shipped to the browser). In local development, Vite proxies `/api/*` to the local Node server. In production, the same Express app can run behind a Vercel serverless function.
 
 ### Setup
 
@@ -12,6 +12,13 @@ This is implemented as a small local API server (so your OpenAI key is never shi
 - If you want AI usage tied to a signed-in Supabase user, also set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` (and optionally `SUPABASE_ANON_KEY`).
 - Install deps: `npm install`
 - Run both servers: `npm run dev:all`
+
+### Production AI API on Vercel
+
+- Add `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `SUPABASE_ANON_KEY` to the Vercel project environment.
+- Add `ALLOWED_ORIGINS=https://your-domain.example` so the API accepts browser calls from the live site.
+- Set `TRUST_PROXY=1` on Vercel so request IP handling is correct.
+- If using Upstash for durable rate limiting, also set `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`.
 
 If the AI endpoint is unavailable, the app automatically falls back to the built-in task list.
 

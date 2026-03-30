@@ -2,6 +2,8 @@ import "dotenv/config";
 
 import express from "express";
 import OpenAI from "openai";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
 
 const PORT = Number(process.env.PORT || 8787);
@@ -11,6 +13,12 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const upstashRedis = UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN
+  ? Redis.fromEnv()
+  : null;
 
 const supabaseAuth = SUPABASE_URL && (SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY, {
@@ -65,7 +73,16 @@ function enforceAllowedOrigin(req, res, next) {
   res.status(403).json({ error: "forbidden_origin" });
 }
 
-function makeRateLimiter({ windowMs, max, keyPrefix }) {
+function getClientIp(req) {
+  const forwardedFor = req.headers?.["x-forwarded-for"];
+  if (typeof forwardedFor === "string" && forwardedFor.trim()) {
+    const firstIp = forwardedFor.split(",")[0]?.trim();
+    if (firstIp) return firstIp;
+  }
+  return req.ip || "unknown";
+}
+
+function makeMemoryRateLimiter({ windowMs, max, keyPrefix }) {
   const hits = new Map();
   const cleanupEveryMs = Math.max(10_000, Math.floor(windowMs / 2));
   let lastCleanup = 0;
@@ -82,7 +99,7 @@ function makeRateLimiter({ windowMs, max, keyPrefix }) {
     const now = Date.now();
     cleanup(now);
 
-    const ip = req.ip || "unknown";
+    const ip = getClientIp(req);
     const key = `${keyPrefix}:${ip}`;
     const cur = hits.get(key);
     if (!cur || cur.resetAt <= now) {
@@ -97,6 +114,51 @@ function makeRateLimiter({ windowMs, max, keyPrefix }) {
       return res.status(429).json({ error: "rate_limited" });
     }
     next();
+  };
+}
+
+function formatRateLimitWindow(windowMs) {
+  const totalSeconds = Math.max(1, Math.ceil(windowMs / 1000));
+  if (totalSeconds % 86_400 === 0) return `${totalSeconds / 86_400} d`;
+  if (totalSeconds % 3_600 === 0) return `${totalSeconds / 3_600} h`;
+  if (totalSeconds % 60 === 0) return `${totalSeconds / 60} m`;
+  return `${totalSeconds} s`;
+}
+
+function makeRateLimiter({ windowMs, max, keyPrefix }) {
+  const memoryFallback = makeMemoryRateLimiter({ windowMs, max, keyPrefix });
+
+  if (!upstashRedis) return memoryFallback;
+
+  const ratelimit = new Ratelimit({
+    redis: upstashRedis,
+    limiter: Ratelimit.slidingWindow(max, formatRateLimitWindow(windowMs)),
+    prefix: `attune:${keyPrefix}`,
+    analytics: false,
+  });
+
+  return async (req, res, next) => {
+    try {
+      const ip = getClientIp(req);
+      const { success, limit, remaining, reset } = await ratelimit.limit(ip);
+
+      res.setHeader("X-RateLimit-Limit", String(limit));
+      res.setHeader("X-RateLimit-Remaining", String(Math.max(0, remaining)));
+      if (reset) {
+        res.setHeader("X-RateLimit-Reset", String(Math.ceil(reset / 1000)));
+      }
+
+      if (!success) {
+        const retryAfter = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 1000)) : 60;
+        res.setHeader("Retry-After", String(retryAfter));
+        res.status(429).json({ error: "rate_limited" });
+        return;
+      }
+
+      next();
+    } catch {
+      memoryFallback(req, res, next);
+    }
   };
 }
 
@@ -1308,6 +1370,10 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`AI API listening on http://localhost:${PORT}`);
-});
+if (process.env.VERCEL !== "1") {
+  app.listen(PORT, () => {
+    console.log(`AI API listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
