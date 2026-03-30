@@ -930,8 +930,8 @@ export function useAttuneStore(){
 
       try {
         const verificationTypes = authView === "signup"
-          ? ["signup", "email"]
-          : ["email", "signup"];
+          ? ["signup", "magiclink", "email"]
+          : ["magiclink", "email", "signup"];
 
         let verificationError = null;
 
