@@ -1137,16 +1137,73 @@
     .emojiFallback{display:block; line-height:1;}
 
     /* Activity Picker: tile board */
-    .boardWrap{margin-top:12px;}
+    .boardWrap{margin-top:12px; position:relative;}
     .boardTop{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
     .boardTitle{font-weight:900; letter-spacing:-.2px;}
     .boardRight{display:flex; align-items:center; gap:10px; margin-left:auto;}
     .boardMeta{font-size:12px; color:var(--muted); font-weight:800;}
+    .boardWrap.loading .boardTop,
+    .boardWrap.loading .boardGrid{
+      opacity:.42;
+      filter: blur(1.5px);
+      transition: opacity .18s ease, filter .18s ease;
+    }
     @media (max-width: 520px){
       .boardMeta{display:none;}
       .boardTile{min-height:84px;}
       .boardGrid{align-content: stretch; grid-auto-rows: minmax(84px, 1fr);}
       .boardTile{height:100%;}
+    }
+    .boardLoadingOverlay{
+      position:absolute;
+      inset:0;
+      z-index:6;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+    }
+    .boardLoadingCard{
+      width:min(360px, 100%);
+      padding:16px 18px;
+      border-radius:20px;
+      border:1px solid rgba(79,109,245,.12);
+      background: color-mix(in srgb, var(--card98) 90%, white 10%);
+      box-shadow: 0 18px 40px rgba(25,35,68,.08);
+      backdrop-filter: blur(14px);
+      text-align:center;
+    }
+    .boardLoadingPulse{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      margin-bottom:12px;
+    }
+    .boardLoadingPulse span{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      background: linear-gradient(135deg, rgba(79,109,245,.72), rgba(139,92,246,.55));
+      box-shadow: 0 8px 18px rgba(79,109,245,.16);
+      animation: boardLoaderPulse 1.5s ease-in-out infinite;
+    }
+    .boardLoadingPulse span:nth-child(2){animation-delay:.16s;}
+    .boardLoadingPulse span:nth-child(3){animation-delay:.32s;}
+    .boardLoadingTitle{
+      font-size:15px;
+      font-weight:950;
+      letter-spacing:-.2px;
+      color:var(--ink);
+    }
+    .boardLoadingText{
+      margin-top:8px;
+      font-size:13px;
+      line-height:1.45;
+      color:var(--muted);
+    }
+    @keyframes boardLoaderPulse{
+      0%, 80%, 100%{transform: translateY(0) scale(.92); opacity:.42;}
+      40%{transform: translateY(-2px) scale(1); opacity:1;}
     }
     .boardGrid{
       display:grid;
@@ -1243,6 +1300,7 @@
       cursor: not-allowed;
     }
     .boardTile.disabled:active{transform:none}
+    .boardTop .btn[disabled]{opacity:.55; cursor:not-allowed;}
 
     /* Minimal modal */
     .modalOverlay{

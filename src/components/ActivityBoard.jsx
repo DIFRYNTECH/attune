@@ -41,7 +41,7 @@ function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
   return list;
 }
 
-export default function ActivityBoard({ state: stateProp, actions: actionsProp }) {
+export default function ActivityBoard({ state: stateProp, actions: actionsProp, loading = false }) {
   const store = useAttuneStore();
   const state = stateProp || store.state;
   const actions = actionsProp || store.actions;
@@ -180,6 +180,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
   }, [boardAssigned, takenTexts]);
 
   const onAdd = (idx) => {
+    if (loading) return;
+
     const opt = boardAssigned[idx];
     if (!opt?.text) return;
 
@@ -231,7 +233,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
   };
 
   return (
-    <div className="boardWrap">
+    <div className={"boardWrap" + (loading ? " loading" : "")} aria-busy={loading ? "true" : undefined}>
       <div className="boardTop">
         <div className="boardTitle">Pick a tile</div>
 
@@ -240,11 +242,27 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
             {pickedCount}/{effectiveCap} picked
             {effectiveCap < HARD_CAP ? "" : " (max 10)"}
           </div>
-          <button type="button" className="btn small ghost" onClick={clearBoard}>
+          <button type="button" className="btn small ghost" onClick={clearBoard} disabled={loading}>
             Clear board
           </button>
         </div>
       </div>
+
+      {loading && (
+        <div className="boardLoadingOverlay" role="status" aria-live="polite" aria-label="Preparing your activity board">
+          <div className="boardLoadingCard">
+            <div className="boardLoadingPulse" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <div className="boardLoadingTitle">Personalizing your board</div>
+            <div className="boardLoadingText">
+              Holding the tiles for a moment while Attune matches your check-in to calmer, more relevant options.
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmOpen && (
         <div
@@ -291,7 +309,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
           const isRevealed = isTaken || (!atHardCap && revealed[idx]);
 
           // Disable placeholders always; disable everything else at hard cap unless already taken.
-          const isDisabled = isPlaceholder || (atHardCap && !isTaken);
+          const isDisabled = loading || isPlaceholder || (atHardCap && !isTaken);
 
           return (
             <button
@@ -305,6 +323,9 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp }
               }
               onClick={() => {
                 if (isDisabled) {
+                  if (loading) {
+                    return;
+                  }
                   if (isPlaceholder) {
                     actions.setToast?.("No more options on this board.", false);
                     return;

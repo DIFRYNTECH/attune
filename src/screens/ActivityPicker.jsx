@@ -9,9 +9,10 @@ export default function ActivityPicker({ state, actions }) {
   }, []);
 
   const aiStatus = state.ai?.status;
+  const boardLoading = aiStatus === "loading";
   const statusLine =
-    aiStatus === "loading"
-      ? "Personalizing 15 options…"
+    boardLoading
+      ? "Building a calm board from your check-in…"
       : aiStatus === "error"
         ? (state.ai?.error || "Using built-in suggestions for now.")
         : aiStatus === "ready"
@@ -26,7 +27,7 @@ export default function ActivityPicker({ state, actions }) {
           A small, doable option, based on how you feel today.
           {statusLine ? ` ${statusLine}` : ""}
         </div>
-        <ActivityBoard state={state} actions={actions} />
+        <ActivityBoard state={state} actions={actions} loading={boardLoading} />
       </div>
     </>
   );
