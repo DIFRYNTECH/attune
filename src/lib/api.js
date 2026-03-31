@@ -7,9 +7,7 @@ function normalizeBaseUrl(value) {
   return trimmed.replace(/\/+$/, "");
 }
 
-const nativeApiBaseUrl = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_PUBLIC_APP_URL,
-);
+const nativeApiBaseUrl = normalizeBaseUrl(__ATTUNE_API_BASE_URL__);
 
 export function getApiUrl(path) {
   const nextPath = typeof path === "string" ? path.trim() : "";
