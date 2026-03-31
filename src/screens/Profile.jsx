@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { summarizeRecentThemes } from "../lib/noteMemory";
 import InfoTip from "../components/InfoTip";
 
 function SettingToggleRow({ title, description, checked, onChange, disabled = false, locked = false, onLockedClick, id }) {
@@ -233,10 +232,6 @@ export default function Profile({ state, actions }) {
   const canUseMemory = !!state?.entitlements?.noteMemory;
   const isPlus = !!state?.entitlements?.isPlus;
   const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
-  const recentThemes = summarizeRecentThemes(state?.noteMemory, 10);
-  const recentNotes = (Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes : [])
-    .slice(-10)
-    .reverse();
 
   const doExport = () => {
     if(!isPlus){
@@ -402,7 +397,7 @@ export default function Profile({ state, actions }) {
               className="btn ghost dangerGhost"
               onClick={() => setConfirmOpen(true)}
             >
-              Clear Attune data from this device
+              Reset local Attune data
             </button>
           </div>
         </SettingsSection>
@@ -445,42 +440,7 @@ export default function Profile({ state, actions }) {
             >
               Clear note history
             </button>
-            <div style={{ fontSize: 12, color: "var(--muted)", alignSelf: "center" }}>
-              {canUseMemory ? `${noteCount} saved` : "0 saved"}
-            </div>
           </div>
-
-          {canUseMemory && noteCount > 0 && recentThemes.length > 0 && (
-            <div style={{ marginTop: 10, fontSize: 12, color: "var(--muted)" }}>
-              <strong style={{ color: "var(--ink)" }}>Lately:</strong> {recentThemes.join(" · ")}
-            </div>
-          )}
-
-          {canUseMemory && noteCount > 0 && (
-            <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 6 }}>
-                Recent notes
-              </div>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {recentNotes.map((n, idx) => (
-                  <li
-                    key={`${n?.date ?? "unknown"}-${idx}`}
-                    style={{
-                      marginBottom: 6,
-                      whiteSpace: "normal",
-                      overflowWrap: "anywhere",
-                      wordBreak: "break-word",
-                    }}
-                  >
-                    <span style={{ opacity: 0.8 }}>{n?.date ?? ""}</span>
-                    {": "}
-                    <span style={{ whiteSpace: "normal" }}>{String(n?.text ?? "").trim() || "(empty)"}</span>
-                    {Array.isArray(n?.themes) && n.themes.length > 0 ? ` (${n.themes.join(", ")})` : ""}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </SettingsSection>
 
         <SettingsSection
@@ -519,10 +479,10 @@ export default function Profile({ state, actions }) {
           }}
         >
           <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear device confirmation">
-            <div className="modalTitle">Clear Attune data from this device?</div>
+            <div className="modalTitle">Reset local Attune data?</div>
             <div className="modalBody">
-              This removes the Attune data stored on this device (including history, preferences, and local note memory). If you sign in again,
-              synced weekly summaries and note history can come back from your account. You can’t undo the local clear.
+              This resets the Attune data stored on this device, including history, preferences, and local note memory. If you sign in again,
+              synced weekly summaries and note history can come back from your account. This does not delete your account.
             </div>
             <div className="modalActions">
               <button type="button" className="btn small ghost" onClick={() => setConfirmOpen(false)}>
@@ -537,7 +497,7 @@ export default function Profile({ state, actions }) {
                 }}
                 style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
               >
-                Clear Attune data
+                Reset local data
               </button>
             </div>
           </div>
