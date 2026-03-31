@@ -11,6 +11,7 @@ import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertW
 import { ensureProfile } from "../lib/profileApi";
 import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
 import { deleteAllNoteMemory as deleteAllNoteMemoryRemote, listNoteMemory as listNoteMemoryRemote, upsertNoteMemory as upsertNoteMemoryRemote } from "../lib/noteMemoryApi";
+import { getApiUrl } from "../lib/api";
 
 const SCHEMA_VERSION = 8;
 
@@ -1137,7 +1138,7 @@ export function useAttuneStore(){
       try {
         const token = await getSupabaseAccessToken();
         const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
-        const resp = await fetch("/api/generate-board", {
+        const resp = await fetch(getApiUrl("/api/generate-board"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1242,7 +1243,7 @@ export function useAttuneStore(){
       try {
         const token = await getSupabaseAccessToken();
         const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
-        const resp = await fetch("/api/daily-note", {
+        const resp = await fetch(getApiUrl("/api/daily-note"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -1,3 +1,5 @@
+import { getApiUrl } from "./api";
+
 let installed = false;
 const recentErrorTs = new Map();
 const DEDUPE_WINDOW_MS = 30_000;
@@ -29,13 +31,13 @@ function postClientError(payload) {
   if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
     try {
       const blob = new Blob([body], { type: "application/json" });
-      if (navigator.sendBeacon("/api/client-error", blob)) return;
+      if (navigator.sendBeacon(getApiUrl("/api/client-error"), blob)) return;
     } catch {
       // fall through to fetch
     }
   }
 
-  fetch("/api/client-error", {
+  fetch(getApiUrl("/api/client-error"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
