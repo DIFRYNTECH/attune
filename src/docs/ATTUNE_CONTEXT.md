@@ -1,5 +1,7 @@
 # Attune - Context & Direction
 
+Historical note: this file keeps the original product framing and some early implementation notes. For the current production-oriented stack, use [architecture/README.md](architecture/README.md).
+
 ## What Attune is
 Attune is a gentle daily companion.
 It does not fix, push, optimise, shame, or pressure.
@@ -46,9 +48,9 @@ The user can always choose rest.
 ## App structure (current)
 - Web app first (mobile-first)
 - React + Vite
-- Local state (localStorage)
-- Optional backend for AI board generation (Node/Express)
-- No accounts yet
+- Local-first state (localStorage + Supabase-backed account sync)
+- Vercel-hosted API for AI endpoints (Express app exported as serverless entrypoint)
+- Supabase email OTP auth + remote sync for profile, weekly summaries, and note memory
 
 AI board generation (optional):
 - On entering the Activity Picker, Attune can generate a fresh 15-tile board from the user’s Check-in (mood/energy/body/pace + optional note)
@@ -85,6 +87,7 @@ Local dev:
 ### State + persistence
 - Store: `src/store/useAttuneStore.js`
 	- Local-first state persisted to localStorage
+	- Signed-in state can sync profile, weekly summaries, and note memory through Supabase
 	- Schema migration via `schemaVersion`
 	- Toast is ephemeral (not persisted)
 - Storage helpers: `src/lib/storage.js`
@@ -107,6 +110,7 @@ Local dev:
 - `npm run api`: API server only
 - `npm run dev:all`: runs both (via concurrently)
 - Env vars (server):
+	- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
 	- `OPENAI_API_KEY` (required to enable AI)
 	- `OPENAI_MODEL` (default: `gpt-4o-mini`)
 	- `PORT` (default: 8787)
@@ -143,9 +147,9 @@ Current behavior highlights:
 	- Week range shown via a calendar-triggered info modal
 	- Weekly note persists per calendar week
 - Profile
-	- Local-only name + email
-	- Export data (JSON)
-	- “Sign out” clears device data
+	- Account profile + preferences
+	- Export local data snapshot (JSON)
+	- Sign out ends the current session on this device
 	- Toggle for whether the optional Check-in note is sent to AI
 
 ## Mobile-first rules
@@ -161,7 +165,8 @@ Current behavior highlights:
 - Bottom nav + safe-area handling in place
 - Activity Picker board behavior + persistence in place
 - Weekly reflection is calendar-week based and non-graded
-- Profile is local-only (no auth) with export + device-clear sign out
+- Supabase email OTP auth, hosted callbacks, and Capacitor deep-link support are live
+- Profile is local-first with account sync for signed-in users
 - Optional AI board generation with strict JSON + safety guardrails + fallback
 
 ## Current goal

@@ -18,4 +18,6 @@ Use these older files as historical context, not the primary source of truth for
 - [ATTUNE_ROADMAP.md](ATTUNE_ROADMAP.md)
 - [ATTUNE_DESIGN_RULES.md](ATTUNE_DESIGN_RULES.md)
 
+These historical files have been lightly refreshed so they no longer contradict the current auth and deployment model, but the architecture pack remains canonical.
+
 The architecture pack under [architecture/README.md](architecture/README.md) reflects the current production-oriented Attune setup: React + Vite frontend, Vercel-hosted API, Supabase auth/data, Upstash rate limiting, OpenAI-backed AI endpoints, and Capacitor Android support.

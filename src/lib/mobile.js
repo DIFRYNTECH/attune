@@ -2,7 +2,7 @@
  * Mobile-specific helpers for Capacitor.
  *
  * Handles:
- *  - Deep-link listener (magic-link callback on Android/iOS)
+ *  - Deep-link listener (hosted/custom auth callback on Android/iOS)
  *  - Status bar / safe-area setup
  *  - Keyboard behaviour tweaks
  *  - Splash screen dismiss
@@ -28,7 +28,7 @@ function emitAuthCallbackError(message) {
       detail: {
         message: typeof message === "string" && message.trim()
           ? message.trim()
-          : "We couldn't complete sign-in. Try requesting a new magic link.",
+          : "We couldn't complete sign-in. Try requesting a new code.",
       },
     }),
   );
@@ -84,7 +84,7 @@ export async function initMobile() {
   if (mobileInitPromise) return mobileInitPromise;
 
   mobileInitPromise = (async () => {
-    // --- Deep-link listener (magic-link auth redirect) ---
+    // --- Deep-link listener (hosted or custom-scheme auth redirect) ---
     try {
       const { App: CapApp } = await import("@capacitor/app");
 

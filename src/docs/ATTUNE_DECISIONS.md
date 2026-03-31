@@ -1,14 +1,16 @@
-## Local-first state (no accounts)
+Historical note: these are preserved product and architecture decisions from earlier phases. Where a decision has evolved, this file now notes the current live stance and points to the architecture pack as the source of truth.
+
+## Local-first state with optional account sync
 
 ### Decision
-Attune is local-first: user state is stored in localStorage with light schema migration. There are no accounts yet.
+Attune is local-first: user state is stored in localStorage with light schema migration, and signed-in users can sync supported data through Supabase.
 
 ### Why
 - The app must feel lightweight and private by default.
 - Users should be able to use Attune without signing up.
 
 ### Notes
-- “Sign out” means “clear this device’s data”.
+- Sign out ends the session on the current device.
 - Export provides a calm escape hatch: users can download JSON.
 
 ---
@@ -55,13 +57,17 @@ Weekly reflection is based on the current calendar week (Mon → Sun), and weekl
 
 ---
 
-## Profile is UI-only (for now)
+## Profile supports accounts and preferences
 
 ### Decision
-Profile exists as a local-only UI placeholder (no real authentication yet).
+Profile is the account and preferences surface for the live app.
 
 ### Why
-- It lets us design the “account surface” without building auth too early.
+- It keeps sync, plan state, and preferences in one calm place without turning the app into an account-first experience.
+
+### Notes
+- Supabase email OTP is the current auth flow.
+- Local export still exists for user-controlled snapshots.
 
 ---
 

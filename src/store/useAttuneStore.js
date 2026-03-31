@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
-import { getSupabaseClient, isSupabaseConfigured, AUTH_REQUEST_DEBUG_EVENT } from "../lib/supabase";
+import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabase";
 import { AUTH_CALLBACK_ERROR_EVENT } from "../lib/mobile";
 import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
@@ -270,8 +270,6 @@ function defaultState(){
       sentTo: "",
       otpCode: "",
       error: "",
-      debugLastSendRedirect: "",
-      debugLastSendUrl: "",
     },
     today: todayKey(),
     checkedInToday: false,
@@ -392,8 +390,6 @@ function normalizeLoadedState(loaded){
       sentTo: "",
       otpCode: "",
       error: "",
-      debugLastSendRedirect: "",
-      debugLastSendUrl: "",
     };
   }
   if(typeof next.auth.signedIn !== "boolean") next.auth.signedIn = false;
@@ -410,8 +406,6 @@ function normalizeLoadedState(loaded){
   if(typeof next.auth.sentTo !== "string") next.auth.sentTo = "";
   if(typeof next.auth.otpCode !== "string") next.auth.otpCode = "";
   if(typeof next.auth.error !== "string") next.auth.error = "";
-  if(typeof next.auth.debugLastSendRedirect !== "string") next.auth.debugLastSendRedirect = "";
-  if(typeof next.auth.debugLastSendUrl !== "string") next.auth.debugLastSendUrl = "";
 
   if(!Array.isArray(next.weeklySummaries)) next.weeklySummaries = [];
   next.weeklySummaries = next.weeklySummaries
@@ -620,7 +614,7 @@ export function useAttuneStore(){
     saveState(state);
   }, [state]);
 
-  // Supabase auth bootstrap + listener (magic-link)
+  // Supabase auth bootstrap + listener
   useEffect(() => {
     const supabase = getSupabaseClient();
     if(!supabase) return;
@@ -642,23 +636,8 @@ export function useAttuneStore(){
       }));
     };
 
-    const handleAuthRequestDebug = (event) => {
-      const redirectTo = typeof event?.detail?.redirectTo === "string" ? event.detail.redirectTo : "";
-      const url = typeof event?.detail?.url === "string" ? event.detail.url : "";
-
-      setState((s) => ({
-        ...s,
-        auth: {
-          ...(s.auth || {}),
-          debugLastSendRedirect: redirectTo,
-          debugLastSendUrl: url,
-        },
-      }));
-    };
-
     if (typeof window !== "undefined") {
       window.addEventListener(AUTH_CALLBACK_ERROR_EVENT, handleAuthCallbackError);
-      window.addEventListener(AUTH_REQUEST_DEBUG_EVENT, handleAuthRequestDebug);
     }
 
     async function syncFromSupabase({ userId, canSyncNoteMemory }){
@@ -774,7 +753,6 @@ export function useAttuneStore(){
     return () => {
       if (typeof window !== "undefined") {
         window.removeEventListener(AUTH_CALLBACK_ERROR_EVENT, handleAuthCallbackError);
-        window.removeEventListener(AUTH_REQUEST_DEBUG_EVENT, handleAuthRequestDebug);
       }
       try { unsub?.(); } catch { /* noop */ }
     };
@@ -976,10 +954,6 @@ export function useAttuneStore(){
           },
         }));
       }
-    },
-
-    sendMagicLink: async ({ email, rememberMe, name } = {}) => {
-      await actionsRef.current?.requestEmailOtp?.({ email, rememberMe, name });
     },
 
     resetEmailOtp: () =>

@@ -19,14 +19,6 @@ export default function Login({ state, actions }) {
     usernameRef.current?.focus?.();
   }, [authStep]);
 
-  useEffect(() => {
-    setUsername(String(state?.auth?.username || ""));
-  }, [state?.auth?.username]);
-
-  useEffect(() => {
-    setOtpCode(String(state?.auth?.otpCode || ""));
-  }, [state?.auth?.otpCode]);
-
   const canSubmit = useMemo(() => {
     if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
     return username.trim().length > 0;
@@ -148,10 +140,6 @@ export default function Login({ state, actions }) {
               {authStep === "verify" ? "Enter the code from your email to finish signing in." : "We’ll email you a one-time code."}
             </div>
           )}
-
-          <div className="loginHint" role="note" style={{ fontSize: 11, opacity: 0.8 }}>
-            Last OTP request URL: {state?.auth?.debugLastSendUrl || "none"}
-          </div>
 
           <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
             {authStep === "verify" ? "Verify code" : "Send code"}

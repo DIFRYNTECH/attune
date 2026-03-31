@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 export default function Signup({ state, actions }) {
   const OTP_LENGTH = 8;
   const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => String(state?.auth?.username || ""));
   const [otpCode, setOtpCode] = useState(() => String(state?.auth?.otpCode || ""));
   const [rememberMe, setRememberMe] = useState(() => state?.auth?.rememberMe !== false);
   const nameRef = useRef(null);
@@ -19,14 +19,6 @@ export default function Signup({ state, actions }) {
 
     nameRef.current?.focus?.();
   }, [authStep]);
-
-  useEffect(() => {
-    setUsername(String(state?.auth?.username || ""));
-  }, [state?.auth?.username]);
-
-  useEffect(() => {
-    setOtpCode(String(state?.auth?.otpCode || ""));
-  }, [state?.auth?.otpCode]);
 
   const canSubmit = useMemo(() => {
     if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
@@ -163,10 +155,6 @@ export default function Signup({ state, actions }) {
               {authStep === "verify" ? "Enter the code from your email to finish creating your account." : "We’ll email you a one-time code."}
             </div>
           )}
-
-          <div className="loginHint" role="note" style={{ fontSize: 11, opacity: 0.8 }}>
-            Last OTP request URL: {state?.auth?.debugLastSendUrl || "none"}
-          </div>
 
           <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
             {authStep === "verify" ? "Verify code" : "Send code"}

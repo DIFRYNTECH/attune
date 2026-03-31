@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
 import InfoTip from "../components/InfoTip";
 
@@ -62,72 +62,11 @@ function downloadJson(filename, data) {
   URL.revokeObjectURL(url);
 }
 
-export default function Profile({ state, actions }) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
-  const [signOutOpen, setSignOutOpen] = useState(false);
-
-  const profileName = state.profile?.name || "";
-  const profileEmail = state.profile?.email || "";
-  const signedInUser = String(state?.auth?.username || "").trim();
-  const useNoteForAi = state.profile?.useNoteForAi !== false;
-  const theme = state.profile?.theme === "dark" ? "dark" : "light";
-
+function ProfileIdentitySection({ profileName, profileEmail, actions }) {
   const [draftName, setDraftName] = useState(profileName);
   const [draftEmail, setDraftEmail] = useState(profileEmail);
   const [nameError, setNameError] = useState("");
   const [emailError, setEmailError] = useState("");
-
-  useEffect(() => {
-    setDraftName(profileName);
-    setDraftEmail(profileEmail);
-    setNameError("");
-    setEmailError("");
-  }, [profileName, profileEmail]);
-  const canUseMemory = !!state?.entitlements?.noteMemory;
-  const isPlus = !!state?.entitlements?.isPlus;
-  const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
-  const recentThemes = summarizeRecentThemes(state?.noteMemory, 10);
-  const recentNotes = (Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes : [])
-    .slice(-10)
-    .reverse();
-
-  const exportPayload = useMemo(() => {
-    // Keep export calm + explicit: local-only data snapshot.
-    const { toast: _toast, ...rest } = state || {};
-    return rest;
-  }, [state]);
-
-  const exportNoteMemoryPayload = useMemo(() => {
-    return {
-      kind: "attune-note-memory",
-      exportedAt: new Date().toISOString(),
-      noteMemory: state?.noteMemory || { notes: [] },
-    };
-  }, [state?.noteMemory]);
-
-  const doExport = () => {
-    if(!isPlus){
-      actions?.openPaywall?.("plus", "profile");
-      return;
-    }
-    const d = new Date();
-    const stamp = d.toISOString().slice(0, 10);
-    downloadJson(`attune-${stamp}.json`, exportPayload);
-    actions?.setToast?.("Exported a copy of your data.", true);
-  };
-
-  const doExportNoteMemory = () => {
-    if(!isPlus || !canUseMemory){
-      actions?.openPaywall?.("noteMemory", "profile");
-      return;
-    }
-    if(noteCount === 0) return;
-    const d = new Date();
-    const stamp = d.toISOString().slice(0, 10);
-    downloadJson(`attune-note-memory-${stamp}.json`, exportNoteMemoryPayload);
-    actions?.setToast?.("Exported your note history.", true);
-  };
 
   const commitName = () => {
     const next = String(draftName || "").trim();
@@ -160,7 +99,6 @@ export default function Profile({ state, actions }) {
       return;
     }
 
-    // Practical validation (not RFC-perfect): blocks empty domain labels like `a@.com.com`.
     const at = next.indexOf("@");
     const lastAt = next.lastIndexOf("@");
     if(at <= 0 || at !== lastAt || at === next.length - 1){
@@ -187,7 +125,6 @@ export default function Profile({ state, actions }) {
       return;
     }
 
-    // Product guard: block suspicious duplicated endings like `example.com.com`.
     if(labels.length >= 2 && labels[labels.length - 1] === labels[labels.length - 2]){
       setEmailError("Enter a valid email domain.");
       return;
@@ -213,6 +150,121 @@ export default function Profile({ state, actions }) {
 
     setEmailError("");
     if(next !== profileEmail) actions?.setProfile?.({ email: next });
+  };
+
+  return (
+    <SettingsSection title="About you" helper="Required. Saved locally on this device." helperLabel="About you info">
+      <div className="settingsFields">
+        <div>
+          <div className="fieldLabelRow">
+            <label htmlFor="profileName">Name</label>
+            <span className="fieldPill" aria-hidden="true">Required</span>
+          </div>
+          <input
+            id="profileName"
+            className={"inputCompact" + (nameError ? " inputError" : "")}
+            type="text"
+            value={draftName}
+            placeholder="Your name"
+            required
+            minLength={2}
+            aria-invalid={nameError ? "true" : "false"}
+            aria-describedby={nameError ? "profileNameError" : undefined}
+            title="Name must be 2-40 characters"
+            onChange={(e) => {
+              setDraftName(e.target.value);
+              if(nameError) setNameError("");
+            }}
+            onKeyDown={(e) => {
+              if(e.key === "Enter") e.currentTarget.blur();
+            }}
+            onBlur={commitName}
+            maxLength={40}
+            aria-label="Name"
+          />
+          {nameError ? <div id="profileNameError" className="fieldError">{nameError}</div> : null}
+        </div>
+
+        <div>
+          <div className="fieldLabelRow">
+            <label htmlFor="profileEmail">Email</label>
+            <span className="fieldPill" aria-hidden="true">Required</span>
+          </div>
+          <input
+            id="profileEmail"
+            className={"inputCompact" + (emailError ? " inputError" : "")}
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            value={draftEmail}
+            placeholder="you@example.com"
+            required
+            title="Enter a valid email (e.g. name@example.com)"
+            aria-invalid={emailError ? "true" : "false"}
+            aria-describedby={emailError ? "profileEmailError" : undefined}
+            onChange={(e) => {
+              setDraftEmail(e.target.value);
+              if(emailError) setEmailError("");
+            }}
+            onKeyDown={(e) => {
+              if(e.key === "Enter") e.currentTarget.blur();
+            }}
+            onBlur={commitEmail}
+            maxLength={120}
+            aria-label="Email"
+          />
+          {emailError ? <div id="profileEmailError" className="fieldError">{emailError}</div> : null}
+        </div>
+      </div>
+    </SettingsSection>
+  );
+}
+
+export default function Profile({ state, actions }) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
+  const [signOutOpen, setSignOutOpen] = useState(false);
+
+  const profileName = state.profile?.name || "";
+  const profileEmail = state.profile?.email || "";
+  const signedInUser = String(state?.auth?.username || "").trim();
+  const useNoteForAi = state.profile?.useNoteForAi !== false;
+  const theme = state.profile?.theme === "dark" ? "dark" : "light";
+  const canUseMemory = !!state?.entitlements?.noteMemory;
+  const isPlus = !!state?.entitlements?.isPlus;
+  const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
+  const recentThemes = summarizeRecentThemes(state?.noteMemory, 10);
+  const recentNotes = (Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes : [])
+    .slice(-10)
+    .reverse();
+
+  const doExport = () => {
+    if(!isPlus){
+      actions?.openPaywall?.("plus", "profile");
+      return;
+    }
+    const d = new Date();
+    const stamp = d.toISOString().slice(0, 10);
+    const { toast: _toast, ...exportPayload } = state || {};
+    downloadJson(`attune-${stamp}.json`, exportPayload);
+    actions?.setToast?.("Exported a copy of your data.", true);
+  };
+
+  const doExportNoteMemory = () => {
+    if(!isPlus || !canUseMemory){
+      actions?.openPaywall?.("noteMemory", "profile");
+      return;
+    }
+    if(noteCount === 0) return;
+    const d = new Date();
+    const stamp = d.toISOString().slice(0, 10);
+    const exportNoteMemoryPayload = {
+      kind: "attune-note-memory",
+      exportedAt: new Date().toISOString(),
+      noteMemory: state?.noteMemory || { notes: [] },
+    };
+    downloadJson(`attune-note-memory-${stamp}.json`, exportNoteMemoryPayload);
+    actions?.setToast?.("Exported your note history.", true);
   };
 
   return (
@@ -297,74 +349,12 @@ export default function Profile({ state, actions }) {
           </div>
         </SettingsSection>
 
-        <SettingsSection title="About you" helper="Required. Saved locally on this device." helperLabel="About you info">
-          <div className="settingsFields">
-            <div>
-              <div className="fieldLabelRow">
-                <label htmlFor="profileName">Name</label>
-                <span className="fieldPill" aria-hidden="true">Required</span>
-              </div>
-              <input
-                id="profileName"
-                className={"inputCompact" + (nameError ? " inputError" : "")}
-                type="text"
-                value={draftName}
-                placeholder="Your name"
-                required
-                minLength={2}
-                aria-invalid={nameError ? "true" : "false"}
-                aria-describedby={nameError ? "profileNameError" : undefined}
-                title="Name must be 2-40 characters"
-                onChange={(e) => {
-                  setDraftName(e.target.value);
-                  if(nameError) setNameError("");
-                }}
-                onKeyDown={(e) => {
-                  if(e.key === "Enter"){
-                    e.currentTarget.blur();
-                  }
-                }}
-                onBlur={commitName}
-                maxLength={40}
-                aria-label="Name"
-              />
-              {nameError ? <div id="profileNameError" className="fieldError">{nameError}</div> : null}
-            </div>
-
-            <div>
-              <div className="fieldLabelRow">
-                <label htmlFor="profileEmail">Email</label>
-                <span className="fieldPill" aria-hidden="true">Required</span>
-              </div>
-              <input
-                id="profileEmail"
-                className={"inputCompact" + (emailError ? " inputError" : "")}
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={draftEmail}
-                placeholder="you@example.com"
-                required
-                title="Enter a valid email (e.g. name@example.com)"
-                aria-invalid={emailError ? "true" : "false"}
-                aria-describedby={emailError ? "profileEmailError" : undefined}
-                onChange={(e) => {
-                  setDraftEmail(e.target.value);
-                  if(emailError) setEmailError("");
-                }}
-                onKeyDown={(e) => {
-                  if(e.key === "Enter"){
-                    e.currentTarget.blur();
-                  }
-                }}
-                onBlur={commitEmail}
-                maxLength={120}
-                aria-label="Email"
-              />
-              {emailError ? <div id="profileEmailError" className="fieldError">{emailError}</div> : null}
-            </div>
-          </div>
-        </SettingsSection>
+        <ProfileIdentitySection
+          key={`${profileName}\u0000${profileEmail}`}
+          profileName={profileName}
+          profileEmail={profileEmail}
+          actions={actions}
+        />
 
         <SettingsSection title="Preferences" helper="These apply only on this device." helperLabel="Preferences info">
           <SettingToggleRow
@@ -495,7 +485,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Account"
-          helper="Magic-link sign-in can sync weekly summaries and note history. Server-backed billing will replace the local Plus preview later."
+          helper="Email OTP sign-in can sync weekly summaries and note history. Server-backed billing will replace the local Plus preview later."
           helperLabel="Account info"
         >
           <div className="settingsActions">

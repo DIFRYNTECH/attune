@@ -1,5 +1,7 @@
 # Attune - Roadmap
 
+Historical note: this roadmap started during the local-first prototype phase. The live app has already moved into the Supabase/Vercel production stack described in [architecture/README.md](architecture/README.md).
+
 This roadmap prioritises emotional safety, speed, and clarity.
 Each phase should leave the app usable, even if we stop there.
 
@@ -13,8 +15,8 @@ Goal: A working skeleton that proves the concept.
 ✔ Mobile-first mindset  
 ✔ Core screens defined (+ Profile)  
 ✔ Heart & soul articulated  
-✔ Local-only persistence (no backend)  
-✔ Optional AI board generation via a small backend (fallback to built-in tasks)  
+✔ Local-first persistence  
+✔ Optional AI board generation with safe fallback to built-in tasks  
 
 Outcome:
 - Attune runs in the browser
@@ -131,12 +133,12 @@ Goal: Make Attune feel safe enough to keep.
 - Remove any sharp edges
 
 ### Trust
-- Clear “local only” messaging
+- Clear local-first + sync messaging
 - Gentle explanation of data storage
 - No dark patterns
 
 Additions completed:
-- Profile screen (local-only) with export and device-clear sign out
+- Profile screen with export, sign-in, and device session controls
 - Toasts are screen-scoped and not persisted
 
 ### Outcome
@@ -186,7 +188,7 @@ Possible paths:
 - Keep as a free companion
 - Add optional paid features
 - Wrap into native app
-- Introduce accounts/backend
+- Harden accounts/backend for broader release
 
 Decision driver:
 **Does Attune genuinely help people come back to themselves?**

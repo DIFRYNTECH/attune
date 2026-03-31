@@ -1,5 +1,7 @@
 # Attune - Design Rules (Non-Negotiables)
 
+Historical note: these rules still describe Attune's product tone, but auth and deployment details have moved on. For live implementation details, use [architecture/README.md](architecture/README.md).
+
 These rules exist to preserve Attune’s emotional safety, clarity, and calm.
 
 ---
@@ -71,7 +73,7 @@ Core screens:
 2. Activity Picker: “Here are gentle options”
 3. My Day: “2-5 small tasks, no pressure”
 4. Weekly: “A kind reflection, no scoring”
-5. Profile: “Local-only identity + preferences”
+5. Profile: “Account, sync, and preferences”
 
 ---
 
@@ -213,5 +215,5 @@ If AI personalization is enabled:
 ---
 
 ## 14) Profile trust rule
-- Profile is local-only until authentication exists
-- “Sign out” should clearly mean “clear this device’s data”
+- Profile should remain local-first even when sync exists
+- “Sign out” should clearly mean “end this device session” and should not hide what stays local
