@@ -9,6 +9,7 @@ import { createClient } from "@supabase/supabase-js";
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const openAiClient = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
@@ -579,80 +580,55 @@ function looksWeeklyReflectionTask(text) {
   return false;
 }
 
-function makeFallbackTask(text, { pace, energy, body }) {
-  const lvl = String(pace || "").toLowerCase();
-  const e = String(energy || "").toLowerCase();
-  const b = String(body || "").toLowerCase();
-  const why =
-    lvl && e && b
-      ? `Given your pace is ${lvl} with ${e} energy and ${b} body, this is a doable step for today.`
-      : "A doable step for today, with no pressure.";
-
+function makeFallbackTask(text) {
   return {
-    text,
-    minutes: 10,
-    intensity: "low",
-    category: "mind",
-    why,
+    text: clampString(text, 120),
   };
 }
 
-function fillAndSanitizeTasks(tasks, { pace, energy, body }) {
+function fillAndSanitizeTasks(tasks) {
   const safePool = [
-    { text: "Take 5 slow breaths and drop your shoulders.", minutes: 2, intensity: "low", category: "rest" },
-    { text: "Tidy one small surface for 8 minutes.", minutes: 8, intensity: "medium", category: "home" },
-    { text: "Step outside (or to a window) for 3 minutes of fresh air.", minutes: 3, intensity: "low", category: "rest" },
-    { text: "Do a gentle stretch for your neck and shoulders.", minutes: 5, intensity: "low", category: "body" },
-    { text: "Put on one song and move lightly for its length.", minutes: 4, intensity: "medium", category: "body" },
-    { text: "Write a tiny list: 2 priorities + 1 treat.", minutes: 5, intensity: "low", category: "admin" },
-    { text: "Make a simple snack and sit to eat it.", minutes: 10, intensity: "low", category: "home" },
-    { text: "Send one kind message (optional).", minutes: 3, intensity: "low", category: "connection" },
-    { text: "Set a 10-minute timer and do one calm task.", minutes: 10, intensity: "medium", category: "admin" },
-    { text: "Do a short walk in place or around the room.", minutes: 6, intensity: "medium", category: "body" },
-    { text: "Put a glass of water somewhere you'll see it.", minutes: 2, intensity: "low", category: "home" },
-    { text: "Do a quick reset: clear one small pile.", minutes: 10, intensity: "medium", category: "home" },
-    { text: "Read 2 pages of something you like.", minutes: 6, intensity: "low", category: "mind" },
-    { text: "Do a 60-second body scan: forehead, jaw, shoulders.", minutes: 2, intensity: "low", category: "rest" },
-    { text: "Pick a tiny 'future-you' setup (charger, clothes, keys).", minutes: 8, intensity: "medium", category: "admin" },
+    "Take 5 slow breaths and drop your shoulders.",
+    "Tidy one small surface for 8 minutes.",
+    "Step outside or to a window for 3 minutes of fresh air.",
+    "Do a gentle stretch for your neck and shoulders.",
+    "Put on one song and move lightly for its length.",
+    "Write a tiny list: 2 priorities and 1 treat.",
+    "Make a simple snack and sit to eat it.",
+    "Send one kind message if that feels easy.",
+    "Set a 10-minute timer and do one calm task.",
+    "Do a short walk in place or around the room.",
+    "Put a glass of water somewhere you'll see it.",
+    "Do a quick reset and clear one small pile.",
+    "Read 2 pages of something you like.",
+    "Do a 60-second body scan: forehead, jaw, shoulders.",
+    "Pick one tiny future-you setup like charger, clothes, or keys.",
   ];
 
   const out = [];
   const seen = new Set();
 
   for (const t of Array.isArray(tasks) ? tasks : []) {
-    const text = clampString(t?.text, 120);
+    const rawText = typeof t === "string" ? t : t?.text;
+    const text = clampString(rawText, 120);
     if (!text) continue;
     if (looksWeeklyReflectionTask(text)) continue;
     const k = text.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
 
-    const minutes = clampInt(t?.minutes, 1, 45, 10);
-    const intensityRaw = String(t?.intensity || "low").toLowerCase();
-    const intensity = intensityRaw === "low" || intensityRaw === "medium" || intensityRaw === "high" ? intensityRaw : "low";
-    const categoryRaw = String(t?.category || "mind").toLowerCase();
-    const allowedCategories = ["rest", "mind", "body", "home", "connection", "admin"];
-    const category = allowedCategories.includes(categoryRaw) ? categoryRaw : "mind";
-    const why = clampString(t?.why, 160) || makeFallbackTask(text, { pace, energy, body }).why;
-
-    // Only keep the keys we expect.
-    out.push({ text, minutes, intensity, category, why });
+    out.push({ text });
   }
 
   for (const s of safePool) {
     if (out.length >= 15) break;
-    const text = s.text;
+    const text = clampString(s, 120);
     if (!text) continue;
     if (looksWeeklyReflectionTask(text)) continue;
     const k = text.toLowerCase();
     if (seen.has(k)) continue;
     seen.add(k);
-    out.push({
-      ...makeFallbackTask(text, { pace, energy, body }),
-      minutes: s.minutes,
-      intensity: s.intensity,
-      category: s.category,
-    });
+    out.push(makeFallbackTask(text));
   }
 
   return out.slice(0, 15);
@@ -867,7 +843,7 @@ function containsAnyFragment(text, fragments) {
   return fragments.some((f) => f && t.includes(f));
 }
 
-function validateBoardPayload(payload, allowedContextLower, preferences, groundingFragments) {
+function validateBoardPayload(payload, allowedContextLower, groundingFragments) {
   const warnings = [];
   if (!payload || typeof payload !== "object") return { ok: false, error: "Invalid JSON" };
 
@@ -877,12 +853,6 @@ function validateBoardPayload(payload, allowedContextLower, preferences, groundi
 
   const seen = new Set();
   const tokenLists = [];
-  const categoryCounts = { rest: 0, mind: 0, body: 0, home: 0, connection: 0, admin: 0 };
-
-  const intensityCounts = { low: 0, medium: 0, high: 0 };
-
-  const maxPerCategory = 5;
-  const minDistinctCategories = 4;
   let groundedCount = 0;
   for (const task of tasks) {
     const text = clampString(task?.text, 120);
@@ -900,95 +870,30 @@ function validateBoardPayload(payload, allowedContextLower, preferences, groundi
     }
     tokenLists.push(tokens);
 
-    const minutes = task?.minutes;
-    if (typeof minutes !== "number" || !Number.isFinite(minutes) || minutes < 1 || minutes > 45) {
-      return { ok: false, error: "Each task needs minutes (1-45)" };
-    }
-
-    const intensity = task?.intensity;
-    if (intensity !== "low" && intensity !== "medium" && intensity !== "high") {
-      return { ok: false, error: "Each task needs intensity low|medium|high" };
-    }
-    intensityCounts[intensity] = (intensityCounts[intensity] || 0) + 1;
-
-    const category = task?.category;
-    const allowedCategories = ["rest", "mind", "body", "home", "connection", "admin"];
-    if (!allowedCategories.includes(category)) {
-      return { ok: false, error: "Each task needs a valid category" };
-    }
-    categoryCounts[category] = (categoryCounts[category] || 0) + 1;
-    if (categoryCounts[category] > maxPerCategory) {
-      return { ok: false, error: `Too many tasks in category '${category}'` };
-    }
-
-    const why = clampString(task?.why, 160);
-    if (!why) return { ok: false, error: "Each task needs why" };
-    if (looksUnsafe(why)) return { ok: false, error: "Unsafe rationale detected" };
-    if (looksAssumptive(why, allowedContextLower)) return { ok: false, error: "Rationale makes assumptions not in user input" };
-
-    // Grounding: prefer rationales that reference a check-in signal.
-    // Keep this soft so we don't fail the whole board after the user waits.
     if (Array.isArray(groundingFragments) && groundingFragments.length > 0) {
-      if (containsAnyFragment(why, groundingFragments)) groundedCount += 1;
+      if (containsAnyFragment(text, groundingFragments)) groundedCount += 1;
     }
-  }
-
-  const distinctCategories = Object.values(categoryCounts).filter((n) => n > 0).length;
-  if (distinctCategories < minDistinctCategories) {
-    return { ok: false, error: "Not enough variety across categories" };
   }
 
   if (Array.isArray(groundingFragments) && groundingFragments.length > 0) {
-    if (groundedCount < 10) warnings.push("Board rationales are not strongly grounded in the check-in.");
-  }
-
-  if (preferences && typeof preferences === "object") {
-    if (Number.isFinite(preferences.maxMinutes)) {
-      const maxMinutes = preferences.maxMinutes;
-      for (const t of tasks) {
-        if (typeof t?.minutes === "number" && t.minutes > maxMinutes) {
-          return { ok: false, error: "Task duration too long for today's pace" };
-        }
-      }
-    }
-
-    if (Number.isFinite(preferences.minMedium) && intensityCounts.medium < preferences.minMedium) {
-      warnings.push("Board intensity mix skews lighter than today's pace.");
-    }
-    if (Number.isFinite(preferences.minHigh) && intensityCounts.high < preferences.minHigh) {
-      warnings.push("Board has fewer high-intensity options than preferred for today's pace.");
-    }
-    if (Number.isFinite(preferences.maxHigh) && intensityCounts.high > preferences.maxHigh) {
-      return { ok: false, error: "Too many high-intensity tasks for today's pace" };
-    }
+    if (groundedCount < 8) warnings.push("Board text is only lightly grounded in the check-in.");
   }
 
   return { ok: true, warnings };
 }
 
 async function generateBoardWithRetries(client, { system, userPayload, model }) {
-  const maxAttempts = 2;
+  const maxAttempts = 1;
   let lastError = "";
   let lastWarnings = [];
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const prompt =
-      attempt === 1
-        ? userPayload
-        : {
-            ...userPayload,
-            correction:
-              "Your previous output had issues: " +
-              lastError +
-              ". Return a corrected JSON object that follows the schema exactly. Ensure variety and avoid near-duplicates and emotional assumptions.",
-          };
-
     const completion = await client.chat.completions.create({
       model,
-      temperature: attempt === 1 ? 0.6 : 0.3,
+      temperature: 0.4,
       messages: [
         { role: "system", content: system },
-        { role: "user", content: JSON.stringify(prompt) },
+        { role: "user", content: JSON.stringify(userPayload) },
       ],
       response_format: { type: "json_object" },
     });
@@ -1019,24 +924,15 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
       ].join(" ")
     ).toLowerCase();
 
-    const preferences =
-      userPayload?.preferences && typeof userPayload.preferences === "object" ? userPayload.preferences : null;
-
     const groundingFragments = Array.isArray(userPayload?.grounding?.fragments)
       ? userPayload.grounding.fragments
       : [];
 
-    // Filter out week-level journaling/reflection tasks (Weekly screen covers that)
-    // and fill any gaps with safe, today-focused fallbacks.
-    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, {
-      pace: checkin?.pace,
-      energy: checkin?.energy,
-      body: checkin?.body,
-    });
+    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks);
 
     const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
 
-    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, preferences, groundingFragments);
+    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, groundingFragments);
     if (!validated.ok) {
       lastError = validated.error || "Invalid board";
       continue;
@@ -1116,8 +1012,6 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       .slice(0, 4);
     groundingFragments.push(...noteTokens);
 
-    const client = new OpenAI({ apiKey: OPENAI_API_KEY });
-
     const system =
       "You generate a calm, emotionally-safe list of micro-activities for a wellbeing app. " +
       "Return ONLY valid JSON. No markdown. No extra keys. " +
@@ -1126,18 +1020,14 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT suggest medications, supplements, diagnoses, or treatment plans. " +
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
-      "Keep tasks small, doable, and non-punitive. " +
-      "Task text should feel like Attune, not a blunt task list: add 3-8 words of micro-context at the start that ties to a REAL check-in signal, then the action. " +
-      "Use patterns like: 'If your energy is low, …', 'With a gentle pace, …', 'If your body feels tight, …', or 'If you're feeling {moodWord}, …'. " +
-      "Do NOT add micro-context that introduces new emotional assumptions (e.g., don't say 'If you're anxious' unless the user said anxious). " +
+      "Keep tasks small, doable, varied, and non-punitive. " +
+      "Each task must be a single short line that starts with a brief grounding clause tied to a REAL check-in signal, then the action. " +
+      "Use patterns like: 'With low energy, ...', 'With a gentle pace, ...', 'If your body feels tight, ...', or 'If you're feeling {moodWord}, ...'. " +
+      "Do NOT add grounding that introduces new emotional assumptions. " +
       "Keep task text concise and within maxTextChars. " +
-      "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. " +
-      "Avoid near-duplicate tasks. Prefer variety across categories. " +
+      "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. Avoid near-duplicate tasks. " +
       "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
-      "Every task 'why' should explicitly reference at least one check-in signal (pace/energy/body/moodWords/note) using plain language (e.g., 'Given your pace is capable...' or 'With manageable body...'). " +
-      "Follow intensityMixHint as closely as possible: meet or exceed minMedium and minHigh, and do not exceed maxHigh. " +
-      "Align minutes to intensity: low ~1-10, medium ~8-20, high ~15-45. " +
-      "Rationales must be neutral and not presume loneliness/anxiety/etc unless the user explicitly said it.";
+      "Return only the 15 task strings the app needs. No explanations, labels, categories, or metadata.";
 
     const userPayload = {
       checkin: {
@@ -1150,38 +1040,25 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       },
       preferences,
       grounding: {
-        // Use these as anchors to ensure each task explains how it fits the check-in.
         fragments: groundingFragments,
       },
       taskRequirements: {
         count: 15,
-        style: "short, actionable, micro-context lead-in, matched to today's pace",
+        style: "short, actionable, grounded in today's check-in",
         maxTextChars: 120,
         avoidAssumptions: true,
         avoidNearDuplicates: true,
-        microContext: {
-          required: true,
-          rule: "Start each task with a short conditional/context clause grounded in the check-in (pace/energy/body/moodWords/note), then the action. Do not introduce new assumptions.",
-          examples: [
-            "With low energy, do a 3-minute tidy of one surface.",
-            "If your body feels tight, do a gentle neck stretch for 2 minutes.",
-            "With a gentle pace, write down one small next step.",
-          ],
-        },
-        variety: {
-          minDistinctCategories: 4,
-          maxPerCategory: 5,
-        },
-        categories: ["rest", "mind", "body", "home", "connection", "admin"],
-        intensity: ["low", "medium", "high"],
-        minutesRange: [1, 45],
-        intensityMixHint: preferences,
+        pacingHint: preferences,
+        examples: [
+          "With low energy, tidy one small surface.",
+          "If your body feels tight, do a gentle neck stretch.",
+          "With a gentle pace, write down one small next step.",
+        ],
       },
-      outputSchema:
-        "{\"tasks\":[{\"text\":string,\"minutes\":number,\"intensity\":\"low\"|\"medium\"|\"high\",\"category\":\"rest\"|\"mind\"|\"body\"|\"home\"|\"connection\"|\"admin\",\"why\":string}]}" ,
+      outputSchema: "{\"tasks\":[string]}"
     };
 
-    const generated = await generateBoardWithRetries(client, {
+    const generated = await generateBoardWithRetries(openAiClient, {
       system,
       userPayload,
       model: MODEL,

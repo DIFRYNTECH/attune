@@ -112,7 +112,7 @@ For `generate-board`, it:
 
 - requests JSON-only responses
 - filters out week-level reflection tasks
-- validates count, categories, intensity, and wording
+- validates 15 short task strings for safety, grounding, and duplicates
 - fills missing slots with safe fallbacks if needed
 
 For `daily-note`, it:
