@@ -1,5 +1,6 @@
 import "dotenv/config";
 
+import { randomUUID } from "node:crypto";
 import express from "express";
 import OpenAI from "openai";
 import { Ratelimit } from "@upstash/ratelimit";
@@ -50,8 +51,110 @@ const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
   .filter(Boolean);
 const allowedOrigins = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : DEFAULT_ALLOWED_ORIGINS;
 
+function createRequestId() {
+  try {
+    return randomUUID();
+  } catch {
+    return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+}
+
+function logEvent(level, event, payload = {}) {
+  const entry = {
+    ts: new Date().toISOString(),
+    level,
+    event,
+    ...payload,
+  };
+  const line = JSON.stringify(entry);
+
+  if (level === "error") {
+    console.error(line);
+    return;
+  }
+
+  if (level === "warn") {
+    console.warn(line);
+    return;
+  }
+
+  console.log(line);
+}
+
+function summarizeError(error) {
+  const err = error && typeof error === "object" ? error : null;
+  const stack = typeof err?.stack === "string"
+    ? err.stack.split("\n").slice(0, 6).join("\n")
+    : undefined;
+
+  return {
+    name: typeof err?.name === "string" ? err.name : undefined,
+    message: typeof err?.message === "string" ? err.message : String(error || "unknown_error"),
+    stack,
+  };
+}
+
+function getRequestLogContext(req) {
+  if (!req.attuneRequestLog) {
+    req.attuneRequestLog = {
+      requestId: createRequestId(),
+      startMs: Date.now(),
+      route: req.path,
+      userId: null,
+      errorCode: null,
+    };
+  }
+  return req.attuneRequestLog;
+}
+
+function setRequestUserId(req, userId) {
+  if (!userId || typeof userId !== "string") return;
+  getRequestLogContext(req).userId = userId;
+}
+
+function setRequestErrorCode(req, errorCode) {
+  if (!errorCode || typeof errorCode !== "string") return;
+  getRequestLogContext(req).errorCode = errorCode;
+}
+
 const app = express();
 if (TRUST_PROXY) app.set("trust proxy", 1);
+
+app.use((req, res, next) => {
+  if (!req.path.startsWith("/api/")) {
+    next();
+    return;
+  }
+
+  const context = getRequestLogContext(req);
+  res.setHeader("X-Request-Id", context.requestId);
+
+  const originalJson = res.json.bind(res);
+  res.json = (body) => {
+    let nextBody = body;
+    if (body && typeof body === "object" && !Array.isArray(body)) {
+      if (typeof body.error === "string") setRequestErrorCode(req, body.error);
+      nextBody = { ...body, requestId: context.requestId };
+    }
+    return originalJson(nextBody);
+  };
+
+  res.on("finish", () => {
+    const current = getRequestLogContext(req);
+    logEvent("info", "api_request", {
+      requestId: current.requestId,
+      method: req.method,
+      route: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - current.startMs,
+      userId: current.userId,
+      errorCode: current.errorCode,
+    });
+  });
+
+  next();
+});
+
 app.use(express.json({ limit: "64kb" }));
 
 // Basic hardening for API responses.
@@ -71,6 +174,12 @@ function enforceAllowedOrigin(req, res, next) {
   const origin = req.headers.origin;
   if (!origin) return next();
   if (allowedOrigins.includes(origin)) return next();
+  setRequestErrorCode(req, "forbidden_origin");
+  logEvent("warn", "origin_rejected", {
+    requestId: getRequestLogContext(req).requestId,
+    route: req.path,
+    origin,
+  });
   res.status(403).json({ error: "forbidden_origin" });
 }
 
@@ -112,6 +221,13 @@ function makeMemoryRateLimiter({ windowMs, max, keyPrefix }) {
     if (cur.count > max) {
       const retryAfter = Math.max(1, Math.ceil((cur.resetAt - now) / 1000));
       res.setHeader("Retry-After", String(retryAfter));
+      setRequestErrorCode(req, "rate_limited");
+      logEvent("warn", "rate_limit_rejected", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        limiter: keyPrefix,
+        retryAfter,
+      });
       return res.status(429).json({ error: "rate_limited" });
     }
     next();
@@ -152,12 +268,25 @@ function makeRateLimiter({ windowMs, max, keyPrefix }) {
       if (!success) {
         const retryAfter = reset ? Math.max(1, Math.ceil((reset - Date.now()) / 1000)) : 60;
         res.setHeader("Retry-After", String(retryAfter));
+        setRequestErrorCode(req, "rate_limited");
+        logEvent("warn", "rate_limit_rejected", {
+          requestId: getRequestLogContext(req).requestId,
+          route: req.path,
+          limiter: keyPrefix,
+          retryAfter,
+        });
         res.status(429).json({ error: "rate_limited" });
         return;
       }
 
       next();
-    } catch {
+    } catch (error) {
+      logEvent("warn", "rate_limit_fallback", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        limiter: keyPrefix,
+        error: summarizeError(error),
+      });
       memoryFallback(req, res, next);
     }
   };
@@ -193,9 +322,35 @@ const noteCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 400 });
 
 const limitBoard = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "board" });
 const limitNote = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: "note" });
+const limitClientError = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 20, keyPrefix: "client-error" });
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
+});
+
+app.post("/api/client-error", enforceAllowedOrigin, limitClientError, (req, res) => {
+  const payload = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+
+  const message = typeof payload.message === "string" ? payload.message.trim().slice(0, 300) : "client_error";
+  const stack = typeof payload.stack === "string" ? payload.stack.trim().slice(0, 2000) : undefined;
+  const source = typeof payload.source === "string" ? payload.source.trim().slice(0, 100) : "window.error";
+  const href = typeof payload.href === "string" ? payload.href.trim().slice(0, 300) : undefined;
+  const pathname = typeof payload.pathname === "string" ? payload.pathname.trim().slice(0, 200) : undefined;
+  const userAgent = typeof payload.userAgent === "string" ? payload.userAgent.trim().slice(0, 200) : undefined;
+
+  setRequestErrorCode(req, "client_runtime_error");
+  logEvent("error", "client_error", {
+    requestId: getRequestLogContext(req).requestId,
+    route: req.path,
+    source,
+    message,
+    stack,
+    href,
+    pathname,
+    userAgent,
+  });
+
+  res.status(202).json({ ok: true });
 });
 
 function getBearerToken(req) {
@@ -208,11 +363,21 @@ function getBearerToken(req) {
 async function requireAuthedUser(req, res) {
   const token = getBearerToken(req);
   if (!token) {
+    setRequestErrorCode(req, "missing_bearer_token");
+    logEvent("warn", "auth_missing_bearer_token", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+    });
     res.status(401).json({ error: "missing_bearer_token" });
     return null;
   }
 
   if (!supabaseAuth) {
+    setRequestErrorCode(req, "supabase_auth_not_configured");
+    logEvent("error", "auth_not_configured", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+    });
     res.status(503).json({ error: "supabase_auth_not_configured" });
     return null;
   }
@@ -220,11 +385,24 @@ async function requireAuthedUser(req, res) {
   try {
     const { data, error } = await supabaseAuth.auth.getUser(token);
     if (error || !data?.user?.id) {
+      setRequestErrorCode(req, "invalid_token");
+      logEvent("warn", "auth_invalid_token", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        error: summarizeError(error),
+      });
       res.status(401).json({ error: "invalid_token" });
       return null;
     }
+    setRequestUserId(req, data.user.id);
     return data.user;
-  } catch {
+  } catch (error) {
+    setRequestErrorCode(req, "invalid_token");
+    logEvent("error", "auth_lookup_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      error: summarizeError(error),
+    });
     res.status(401).json({ error: "invalid_token" });
     return null;
   }
@@ -245,8 +423,14 @@ async function recordAiUsage({ userId, kind, success, errorCode, meta }) {
 
   try {
     await supabaseAdmin.from("ai_usage").insert(payload);
-  } catch {
-    // Ignore usage logging failures.
+  } catch (error) {
+    logEvent("warn", "ai_usage_record_failed", {
+      userId,
+      kind: payload.kind,
+      success: payload.success,
+      errorCode: payload.error_code,
+      error: summarizeError(error),
+    });
   }
 }
 
@@ -409,7 +593,22 @@ async function getAiQuotaState({ userId, dailyLimit, monthlyLimit }) {
   };
 }
 
-async function rejectForQuota(res, { userId, kind, planId, quota }) {
+async function rejectForQuota(req, res, { userId, kind, planId, quota }) {
+  setRequestUserId(req, userId);
+  setRequestErrorCode(req, quota.error);
+  logEvent("warn", "ai_quota_rejected", {
+    requestId: getRequestLogContext(req).requestId,
+    route: req.path,
+    userId,
+    kind,
+    planId,
+    errorCode: quota.error,
+    period: quota.period,
+    limit: quota.limit,
+    used: quota.used,
+    resetAt: quota.resetAt,
+  });
+
   await recordAiUsage({
     userId,
     kind,
@@ -952,13 +1151,26 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
   try {
     const authedUser = await requireAuthedUser(req, res);
     if (!authedUser) return;
+    setRequestUserId(req, authedUser.id);
 
     if (!supabaseAdmin) {
+      setRequestErrorCode(req, "supabase_admin_not_configured");
+      logEvent("error", "ai_generate_board_admin_missing", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+      });
       res.status(503).json({ error: "supabase_admin_not_configured" });
       return;
     }
 
     if (!OPENAI_API_KEY) {
+      setRequestErrorCode(req, "ai_not_configured_openai_key_missing");
+      logEvent("error", "ai_generate_board_openai_missing", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+      });
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
       return;
     }
@@ -978,6 +1190,12 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note });
     const cached = boardCache.get(cacheKey);
     if (cached) {
+      logEvent("info", "ai_generate_board_cache_hit", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        planId: aiContext.planId,
+      });
       res.json(cached);
       return;
     }
@@ -988,7 +1206,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       monthlyLimit: aiContext.monthlyLimit,
     });
     if (!quota.allowed) {
-      await rejectForQuota(res, {
+      await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "generate_board",
         planId: aiContext.planId,
@@ -1065,6 +1283,14 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     });
 
     if (!generated.ok) {
+      setRequestErrorCode(req, generated.error || "invalid_board");
+      logEvent("warn", "ai_generate_board_invalid", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        errorCode: generated.error || "invalid_board",
+        planId: aiContext.planId,
+      });
       recordAiUsage({
         userId: authedUser.id,
         kind: "generate_board",
@@ -1098,9 +1324,25 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
   } catch (err) {
     const errorCode = String(err?.message || "");
     if (isRecoverableAiLookupError(errorCode)) {
+      setRequestErrorCode(req, errorCode);
+      logEvent("warn", "ai_generate_board_recoverable_error", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: getRequestLogContext(req).userId,
+        errorCode,
+        error: summarizeError(err),
+      });
       res.status(503).json({ error: errorCode });
       return;
     }
+    setRequestErrorCode(req, "generate_board_failed");
+    logEvent("error", "ai_generate_board_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: getRequestLogContext(req).userId,
+      errorCode,
+      error: summarizeError(err),
+    });
     res.status(500).json({ error: "Failed to generate board" });
   }
 });
@@ -1109,13 +1351,26 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
   try {
     const authedUser = await requireAuthedUser(req, res);
     if (!authedUser) return;
+    setRequestUserId(req, authedUser.id);
 
     if (!supabaseAdmin) {
+      setRequestErrorCode(req, "supabase_admin_not_configured");
+      logEvent("error", "ai_daily_note_admin_missing", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+      });
       res.status(503).json({ error: "supabase_admin_not_configured" });
       return;
     }
 
     if (!OPENAI_API_KEY) {
+      setRequestErrorCode(req, "ai_not_configured_openai_key_missing");
+      logEvent("error", "ai_daily_note_openai_missing", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+      });
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
       return;
     }
@@ -1134,6 +1389,12 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     const cacheKey = JSON.stringify({ kind: "note", userId: authedUser.id, level, today, moodWords, mood, energy, body, note });
     const cached = noteCache.get(cacheKey);
     if (cached) {
+      logEvent("info", "ai_daily_note_cache_hit", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        planId: aiContext.planId,
+      });
       res.json(cached);
       return;
     }
@@ -1144,7 +1405,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       monthlyLimit: aiContext.monthlyLimit,
     });
     if (!quota.allowed) {
-      await rejectForQuota(res, {
+      await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "daily_note",
         planId: aiContext.planId,
@@ -1212,6 +1473,14 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     });
 
     if (!generated.ok) {
+      setRequestErrorCode(req, generated.error || "invalid_note");
+      logEvent("warn", "ai_daily_note_invalid", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        errorCode: generated.error || "invalid_note",
+        planId: aiContext.planId,
+      });
       recordAiUsage({
         userId: authedUser.id,
         kind: "daily_note",
@@ -1240,9 +1509,25 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
   } catch (err) {
     const errorCode = String(err?.message || "");
     if (isRecoverableAiLookupError(errorCode)) {
+      setRequestErrorCode(req, errorCode);
+      logEvent("warn", "ai_daily_note_recoverable_error", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: getRequestLogContext(req).userId,
+        errorCode,
+        error: summarizeError(err),
+      });
       res.status(503).json({ error: errorCode });
       return;
     }
+    setRequestErrorCode(req, "daily_note_failed");
+    logEvent("error", "ai_daily_note_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: getRequestLogContext(req).userId,
+      errorCode,
+      error: summarizeError(err),
+    });
     res.status(500).json({ error: "Failed to generate daily note" });
   }
 });

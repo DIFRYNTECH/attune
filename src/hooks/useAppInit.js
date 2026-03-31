@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef } from "react";
+import { installClientErrorCapture } from "../lib/clientErrorCapture";
 import { initMobile, preventInputZoom } from "../lib/mobile";
 
 export function useAppInit({ theme }) {
@@ -28,6 +29,9 @@ export function useAppInit({ theme }) {
 
     // Prevent double-tap zoom on mobile inputs.
     preventInputZoom();
+
+    // Basic global runtime error capture for production diagnostics.
+    installClientErrorCapture();
   }, []);
 
   // --- Theme sync (runs whenever theme preference changes) ---
