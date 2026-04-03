@@ -1439,6 +1439,9 @@
       .modalOverlay.weekDetailsOverlay{
         align-items:center;
       }
+      .modalOverlay.modalOverlayCentered{
+        align-items:center;
+      }
       .modalCard{
         width: 100%;
         max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
