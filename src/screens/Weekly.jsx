@@ -756,7 +756,7 @@ export default function Weekly({ state, actions }) {
 
       {showWeekDetails && (
         <div
-          className="modalOverlay"
+          className="modalOverlay weekDetailsOverlay"
           role="dialog"
           aria-modal="true"
           aria-label="Week details"
