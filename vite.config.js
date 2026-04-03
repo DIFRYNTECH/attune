@@ -11,6 +11,29 @@ export default defineConfig(({ mode }) => {
   const apiBaseUrl = String(process.env.VITE_API_BASE_URL || envFromFile.VITE_API_BASE_URL || publicAppUrl || "").trim().replace(/\/+$/, "");
 
   return {
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules/react") || id.includes("node_modules/react-dom")) {
+              return "react-vendor";
+            }
+
+            if (id.includes("node_modules/@supabase/")) {
+              return "supabase-vendor";
+            }
+
+            if (id.includes("node_modules/@capacitor/") || id.includes("src/lib/mobile")) {
+              return "mobile-vendor";
+            }
+
+            if (id.includes("node_modules/fluentui-emoji")) {
+              return "emoji-assets";
+            }
+          },
+        },
+      },
+    },
     define: {
       __ATTUNE_API_BASE_URL__: JSON.stringify(apiBaseUrl),
     },

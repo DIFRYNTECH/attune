@@ -1,16 +1,17 @@
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 
 import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
-import ActivityPicker from "../screens/ActivityPicker.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
 import Login from "../screens/Login.jsx";
-import Signup from "../screens/Signup.jsx";
-import Profile from "../screens/Profile.jsx";
-import Today from "../screens/Today.jsx";
-import Weekly from "../screens/Weekly.jsx";
-import PaywallSheet from "../components/PaywallSheet.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
+
+const ActivityPicker = lazy(() => import("../screens/ActivityPicker.jsx"));
+const Signup = lazy(() => import("../screens/Signup.jsx"));
+const Profile = lazy(() => import("../screens/Profile.jsx"));
+const Today = lazy(() => import("../screens/Today.jsx"));
+const Weekly = lazy(() => import("../screens/Weekly.jsx"));
+const PaywallSheet = lazy(() => import("../components/PaywallSheet.jsx"));
 
 function renderToastText(text) {
   if (typeof text !== "string" || !text) return text;
@@ -109,6 +110,15 @@ function ScreenShell({ title, subtitle }) {
   );
 }
 
+function ScreenFallback({ label = "Loading..." }) {
+  return (
+    <div className="card" aria-busy="true" aria-live="polite">
+      <h2>{label}</h2>
+      <div className="sub">Loading this part of Attune.</div>
+    </div>
+  );
+}
+
 export default function App() {
   const { state, actions } = useAttuneStore();
   const signedIn = !!state?.auth?.signedIn;
@@ -134,7 +144,9 @@ export default function App() {
     return (
       <div className="authPage">
         {authView === "signup" ? (
-          <Signup state={state} actions={actions} />
+          <Suspense fallback={<ScreenFallback label="Opening sign up" />}>
+            <Signup state={state} actions={actions} />
+          </Suspense>
         ) : (
           <Login state={state} actions={actions} />
         )}
@@ -158,19 +170,27 @@ export default function App() {
           )}
 
           {screen === "wheel" && (
-            <ActivityPicker state={state} actions={actions} />
+            <Suspense fallback={<ScreenFallback label="Loading activity picker" />}>
+              <ActivityPicker state={state} actions={actions} />
+            </Suspense>
           )}
 
           {screen === "today" && (
-            <Today state={state} actions={actions} />
+            <Suspense fallback={<ScreenFallback label="Loading today" />}>
+              <Today state={state} actions={actions} />
+            </Suspense>
           )}
 
           {screen === "week" && (
-            <Weekly state={state} actions={actions} />
+            <Suspense fallback={<ScreenFallback label="Loading weekly" />}>
+              <Weekly state={state} actions={actions} />
+            </Suspense>
           )}
 
           {screen === "profile" && (
-            <Profile state={state} actions={actions} />
+            <Suspense fallback={<ScreenFallback label="Loading profile" />}>
+              <Profile state={state} actions={actions} />
+            </Suspense>
           )}
         </main>
 
@@ -217,7 +237,9 @@ export default function App() {
 
       <BottomNav screen={screen} setScreen={actions.go} />
 
-      <PaywallSheet state={state} actions={actions} />
+      <Suspense fallback={null}>
+        <PaywallSheet state={state} actions={actions} />
+      </Suspense>
     </div>
   );
 }
