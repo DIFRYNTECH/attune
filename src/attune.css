@@ -15,6 +15,81 @@ html {
   min-height: 100%;
 }
 
+/* Tablet and small-laptop layout pass */
+@media (max-width: 960px) {
+  .wrap {
+    max-width: 100%;
+    padding: clamp(14px, 2.2vw, 22px);
+  }
+
+  .top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 8px 0 12px;
+  }
+
+  .brand {
+    align-items: flex-start;
+  }
+
+  .nav {
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+
+  .nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav .btn {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  .grid {
+    gap: 14px;
+  }
+
+  .row {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsFields {
+    grid-template-columns: 1fr;
+  }
+
+  .side,
+  .quickStatusCard {
+    display: none;
+  }
+}
+
+@media (min-width: 521px) and (max-width: 960px) {
+  .card {
+    padding: 18px;
+  }
+
+  .moodGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 7px;
+  }
+
+  .moodBtn {
+    min-height: 58px;
+    padding: 7px 5px 6px;
+  }
+
+  .moodLabel {
+    font-size: 10.4px;
+  }
+}
+
 /* Bottom nav (mobile only) */
 .bottomNav {
   position: fixed;
