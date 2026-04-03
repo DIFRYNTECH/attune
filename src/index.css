@@ -1312,15 +1312,20 @@
       align-items:center;
       justify-content:center;
       padding: 18px 12px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       z-index: 80;
     }
     .modalCard{
       width: min(520px, 100%);
+      max-height: min(calc(100dvh - 36px), 720px);
       background: var(--card98);
       border: 1px solid var(--line);
       border-radius: 18px;
       box-shadow: var(--modalShadow);
       padding: 14px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
     .modalTitle{font-weight: 950; letter-spacing: -.2px; font-size: 14px; color: var(--ink)}
     .modalBody{margin-top: 6px; font-size: 13px; color: var(--muted); line-height: 1.35;}
@@ -1403,6 +1408,16 @@
     .weekActivitiesList{margin-top:12px; display:grid; gap:10px;}
     .weekActivitiesEmpty{font-size:13px; color:var(--muted); line-height:1.35;}
     .weekActivitiesEmptyTip{margin-top:6px;}
+    .weekActivitiesModal{
+      display:flex;
+      flex-direction:column;
+      gap:0;
+    }
+    .weekActivitiesModal .weekActivitiesList{
+      min-height:0;
+      overflow-y:auto;
+      padding-right:4px;
+    }
     .weekActivitiesDayCard{
       border:1px solid var(--line);
       border-radius:14px;
@@ -1413,8 +1428,27 @@
     .weekActivitiesDow{font-size:12px; font-weight:950; color:var(--muted);}
     .weekActivitiesDate{font-size:12px; color:var(--muted);}
     .weekActivitiesItems{margin-top:8px; display:grid; gap:6px;}
-    .weekActivitiesItem{font-size:13px; font-weight:800; color:var(--ink); line-height:1.25;}
+    .weekActivitiesItem{font-size:13px; font-weight:800; color:var(--ink); line-height:1.35; overflow-wrap:anywhere;}
     .weekActivitiesNone{margin-top:8px; font-size:12px; color:var(--muted);}
+
+    @media (max-width: 520px){
+      .modalOverlay{
+        align-items:flex-start;
+        padding: 10px 8px max(10px, env(safe-area-inset-bottom));
+      }
+      .modalCard{
+        width: 100%;
+        max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
+        border-radius: 16px;
+      }
+      .weekActivitiesModal .modalActions{
+        position: sticky;
+        bottom: 0;
+        padding-top: 10px;
+        padding-bottom: max(2px, env(safe-area-inset-bottom));
+        background: linear-gradient(180deg, rgba(0,0,0,0), var(--card98) 24%);
+      }
+    }
 
     html[data-theme="light"] .modalCard.weekActivitiesModal{
       background:
