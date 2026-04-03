@@ -6,6 +6,14 @@ import OpenAI from "openai";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
+import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
+import {
+  ensurePaddlePortalConfigured,
+  ensurePaddleWebhookConfigured,
+  getPaddleBillingConfig,
+  paddleApiFetch,
+  verifyPaddleWebhookSignature,
+} from "./lib/paddleBilling.js";
 
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -159,6 +167,27 @@ app.use((req, res, next) => {
   });
 
   next();
+});
+
+app.post("/api/billing/paddle/webhook", express.raw({ type: "application/json" }), async (req, res) => {
+  try {
+    const signature = typeof req.headers["paddle-signature"] === "string" ? req.headers["paddle-signature"] : "";
+    ensurePaddleWebhookConfigured();
+    verifyPaddleWebhookSignature(req.body, signature);
+    const event = JSON.parse(req.body.toString("utf8"));
+    await handlePaddleWebhookEvent(event);
+    res.json({ received: true });
+  } catch (error) {
+    const errorCode = typeof error?.code === "string" ? error.code : "paddle_webhook_invalid";
+    setRequestErrorCode(req, errorCode);
+    logEvent("error", "paddle_webhook_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      errorCode,
+      error: summarizeError(error),
+    });
+    res.status(400).json({ error: errorCode });
+  }
 });
 
 app.use(express.json({ limit: "64kb" }));
@@ -351,6 +380,7 @@ const noteCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 400 });
 const limitBoard = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "board" });
 const limitNote = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: "note" });
 const limitClientError = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 20, keyPrefix: "client-error" });
+const limitBilling = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "billing" });
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true });
@@ -379,6 +409,485 @@ app.post("/api/client-error", enforceAllowedOrigin, limitClientError, (req, res)
   });
 
   res.status(202).json({ ok: true });
+});
+
+async function getUserEntitlementState(userId) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+
+  const [entitlementResult, purchaseResult] = await Promise.all([
+    supabaseAdmin
+      .from("user_entitlements")
+      .select("plan_id, status, source, current_period_start, current_period_end, provider_subscription_id, provider_customer_id")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("play_store_purchases")
+      .select("product_id, status, acknowledged, current_period_end, updated_at")
+      .eq("user_id", userId)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+  ]);
+
+  if (entitlementResult.error) throw new Error("entitlement_lookup_failed");
+  if (purchaseResult.error) throw new Error("purchase_lookup_failed");
+
+  const entitlement = entitlementResult.data || {
+    plan_id: "free",
+    status: "active",
+    source: "manual",
+    current_period_start: null,
+    current_period_end: null,
+    provider_subscription_id: null,
+  };
+
+  const planId = hasPlusEntitlement(entitlement) ? "plus" : "free";
+
+  return {
+    planId,
+    status: typeof entitlement.status === "string" ? entitlement.status : "active",
+    source: typeof entitlement.source === "string" ? entitlement.source : "manual",
+    currentPeriodStart: entitlement.current_period_start || null,
+    currentPeriodEnd: entitlement.current_period_end || null,
+    providerSubscriptionId: entitlement.provider_subscription_id || null,
+    providerCustomerId: entitlement.provider_customer_id || null,
+    productId: purchaseResult.data?.product_id || null,
+    purchaseStatus: purchaseResult.data?.status || null,
+    acknowledged: purchaseResult.data?.acknowledged === true,
+    isPlus: planId === "plus",
+  };
+}
+
+function paddleSubscriptionDate(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  const ms = Date.parse(text);
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : null;
+}
+
+function mapPaddleSubscriptionStatus(subscription) {
+  const status = String(subscription?.status || "").trim().toLowerCase();
+  const currentPeriodEndMs = Date.parse(String(subscription?.current_billing_period?.ends_at || ""));
+  const activeByDate = Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs >= Date.now();
+
+  switch (status) {
+    case "active":
+    case "trialing":
+      return "active";
+    case "past_due":
+    case "paused":
+      return "past_due";
+    case "canceled":
+      return activeByDate ? "canceled" : "expired";
+    default:
+      return activeByDate ? "active" : "expired";
+  }
+}
+
+function paddleSubscriptionHasPlusPrice(subscription) {
+  const plusPriceId = getPaddleBillingConfig().plusPriceId;
+  return Array.isArray(subscription?.items)
+    ? subscription.items.some((item) => item?.price?.id === plusPriceId)
+    : false;
+}
+
+async function upsertPaddleEntitlement({ userId, customerId, subscription }) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+  if (!userId) throw new Error("paddle_user_not_found");
+
+  const status = mapPaddleSubscriptionStatus(subscription);
+  const currentPeriodEnd = paddleSubscriptionDate(subscription?.current_billing_period?.ends_at);
+  const currentPeriodEndMs = Date.parse(String(currentPeriodEnd || ""));
+  const hasActiveCanceledAccess = status === "canceled" && Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs >= Date.now();
+  const planId = paddleSubscriptionHasPlusPrice(subscription) && (status === "active" || hasActiveCanceledAccess)
+    ? "plus"
+    : "free";
+
+  const result = await supabaseAdmin
+    .from("user_entitlements")
+    .upsert({
+      user_id: userId,
+      plan_id: planId,
+      status,
+      source: "paddle",
+      provider_customer_id: customerId || null,
+      provider_subscription_id: subscription?.id || null,
+      current_period_start: paddleSubscriptionDate(subscription?.current_billing_period?.starts_at),
+      current_period_end: currentPeriodEnd,
+    }, { onConflict: "user_id" })
+    .select("user_id")
+    .single();
+
+  if (result.error) throw new Error("paddle_entitlement_upsert_failed");
+}
+
+async function setPaddleCustomerReference({ userId, customerId }) {
+  if (!supabaseAdmin || !userId || !customerId) return;
+
+  const existing = await getUserEntitlementState(userId).catch(() => null);
+  const result = await supabaseAdmin
+    .from("user_entitlements")
+    .upsert({
+      user_id: userId,
+      plan_id: existing?.planId === "plus" ? "plus" : "free",
+      status: typeof existing?.status === "string" ? existing.status : "active",
+      source: typeof existing?.source === "string" && existing.source ? existing.source : "manual",
+      provider_customer_id: customerId,
+      provider_subscription_id: existing?.providerSubscriptionId || null,
+      current_period_start: existing?.currentPeriodStart || null,
+      current_period_end: existing?.currentPeriodEnd || null,
+    }, { onConflict: "user_id" })
+    .select("user_id")
+    .single();
+
+  if (result.error) throw new Error("paddle_customer_reference_upsert_failed");
+}
+
+async function resolvePaddleUserId({ subscription, customerId }) {
+  const customDataUserId = typeof subscription?.custom_data?.userId === "string" ? subscription.custom_data.userId.trim() : "";
+  if (customDataUserId) return customDataUserId;
+  if (!supabaseAdmin) return "";
+
+  const filters = [];
+  if (subscription?.id) filters.push(`provider_subscription_id.eq.${subscription.id}`);
+  if (customerId) filters.push(`provider_customer_id.eq.${customerId}`);
+  if (!filters.length) return "";
+
+  const result = await supabaseAdmin
+    .from("user_entitlements")
+    .select("user_id")
+    .or(filters.join(","))
+    .limit(1)
+    .maybeSingle();
+
+  if (result.error) throw new Error("paddle_user_lookup_failed");
+  return typeof result.data?.user_id === "string" ? result.data.user_id : "";
+}
+
+async function findPaddleCustomerByEmail(email) {
+  const normalizedEmail = String(email || "").trim();
+  if (!normalizedEmail) return null;
+
+  const response = await paddleApiFetch("/customers", {
+    searchParams: {
+      email: normalizedEmail,
+      per_page: 50,
+    },
+  });
+
+  const customers = Array.isArray(response?.data) ? response.data : [];
+  return customers.find((customer) => String(customer?.email || "").trim().toLowerCase() === normalizedEmail.toLowerCase()) || null;
+}
+
+async function findPaddleSubscriptionForCustomer(customerId) {
+  const config = getPaddleBillingConfig();
+  if (!config.configured || !customerId) return null;
+
+  const response = await paddleApiFetch("/subscriptions", {
+    searchParams: {
+      customer_id: customerId,
+      price_id: config.plusPriceId,
+      per_page: 50,
+    },
+  });
+
+  const subscriptions = Array.isArray(response?.data) ? response.data : [];
+  const matches = subscriptions.filter((subscription) => paddleSubscriptionHasPlusPrice(subscription));
+  matches.sort((left, right) => {
+    const leftMs = Date.parse(String(left?.current_billing_period?.ends_at || left?.next_billed_at || "")) || 0;
+    const rightMs = Date.parse(String(right?.current_billing_period?.ends_at || right?.next_billed_at || "")) || 0;
+    return rightMs - leftMs;
+  });
+  return matches[0] || null;
+}
+
+async function reconcilePaddleBillingForUser({ userId, customerId, email }) {
+  const config = getPaddleBillingConfig();
+  if (!config.configured) return null;
+
+  let resolvedCustomerId = typeof customerId === "string" ? customerId.trim() : "";
+  if (!resolvedCustomerId && email) {
+    const customer = await findPaddleCustomerByEmail(email).catch(() => null);
+    resolvedCustomerId = typeof customer?.id === "string" ? customer.id : "";
+    if (resolvedCustomerId) {
+      await setPaddleCustomerReference({ userId, customerId: resolvedCustomerId }).catch(() => null);
+    }
+  }
+
+  if (!resolvedCustomerId) return null;
+
+  const subscription = await findPaddleSubscriptionForCustomer(resolvedCustomerId);
+  if (!subscription) {
+    const result = await supabaseAdmin
+      .from("user_entitlements")
+      .upsert({
+        user_id: userId,
+        plan_id: "free",
+        status: "expired",
+        source: "paddle",
+        provider_customer_id: resolvedCustomerId,
+        provider_subscription_id: null,
+        current_period_start: null,
+        current_period_end: null,
+      }, { onConflict: "user_id" })
+      .select("user_id")
+      .single();
+    if (result.error) throw new Error("paddle_entitlement_upsert_failed");
+    return null;
+  }
+
+  await upsertPaddleEntitlement({ userId, customerId: resolvedCustomerId, subscription });
+  return subscription;
+}
+
+async function handlePaddleWebhookEvent(event) {
+  switch (event?.event_type) {
+    case "subscription.created":
+    case "subscription.updated":
+    case "subscription.activated":
+    case "subscription.trialing":
+    case "subscription.past_due":
+    case "subscription.paused":
+    case "subscription.resumed":
+    case "subscription.canceled": {
+      const subscription = event?.data;
+      const customerId = typeof subscription?.customer_id === "string" ? subscription.customer_id : "";
+      const userId = await resolvePaddleUserId({ subscription, customerId });
+      if (!userId || !customerId) return;
+      await setPaddleCustomerReference({ userId, customerId }).catch(() => null);
+      await upsertPaddleEntitlement({ userId, customerId, subscription });
+      return;
+    }
+    default:
+      return;
+  }
+}
+
+async function persistVerifiedPlayPurchase({ userId, verification }) {
+  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
+
+  const existingPurchaseResult = await supabaseAdmin
+    .from("play_store_purchases")
+    .select("user_id")
+    .eq("purchase_token", verification.purchaseToken)
+    .maybeSingle();
+
+  if (existingPurchaseResult.error) throw new Error("billing_purchase_lookup_failed");
+  if (existingPurchaseResult.data?.user_id && existingPurchaseResult.data.user_id !== userId) {
+    const error = new Error("google_play_purchase_already_linked");
+    error.code = "google_play_purchase_already_linked";
+    throw error;
+  }
+
+  const entitlementPayload = {
+    user_id: userId,
+    plan_id: verification.planId,
+    status: verification.status,
+    source: "play_store",
+    provider_subscription_id: verification.providerSubscriptionId,
+    current_period_start: verification.currentPeriodStart,
+    current_period_end: verification.currentPeriodEnd,
+  };
+
+  const purchasePayload = {
+    user_id: userId,
+    package_name: verification.packageName,
+    product_id: verification.productId,
+    purchase_token: verification.purchaseToken,
+    linked_purchase_token: verification.linkedPurchaseToken,
+    order_id: verification.providerOrderId,
+    plan_id: verification.planId,
+    status: verification.status,
+    acknowledged: verification.acknowledged === true,
+    auto_renew_enabled: verification.autoRenewEnabled === true,
+    current_period_start: verification.currentPeriodStart,
+    current_period_end: verification.currentPeriodEnd,
+    latest_payload: verification.raw,
+  };
+
+  const [entitlementResult, purchaseResult] = await Promise.all([
+    supabaseAdmin
+      .from("user_entitlements")
+      .upsert(entitlementPayload, { onConflict: "user_id" })
+      .select("user_id")
+      .single(),
+    supabaseAdmin
+      .from("play_store_purchases")
+      .upsert(purchasePayload, { onConflict: "purchase_token" })
+      .select("id")
+      .single(),
+  ]);
+
+  if (entitlementResult.error) throw new Error("billing_entitlement_upsert_failed");
+  if (purchaseResult.error) throw new Error("billing_purchase_upsert_failed");
+}
+
+app.get("/api/billing/entitlements", enforceAllowedOrigin, limitBilling, async (req, res) => {
+  try {
+    const authedUser = await requireAuthedUser(req, res);
+    if (!authedUser) return;
+
+    const initialEntitlement = await getUserEntitlementState(authedUser.id);
+    if (getPaddleBillingConfig().configured) {
+      await reconcilePaddleBillingForUser({
+        userId: authedUser.id,
+        customerId: initialEntitlement.providerCustomerId,
+        email: authedUser.email || "",
+      }).catch(() => null);
+    }
+
+    const entitlement = await getUserEntitlementState(authedUser.id);
+    setRequestUserId(req, authedUser.id);
+    res.json({
+      entitlement,
+      configured: {
+        googlePlay: getGooglePlayBillingConfig().configured,
+        paddle: getPaddleBillingConfig().configured,
+        paddlePortal: getPaddleBillingConfig().portalConfigured,
+      },
+    });
+  } catch (error) {
+    setRequestUserId(req, req.attuneRequestLog?.userId || null);
+    setRequestErrorCode(req, "billing_entitlement_lookup_failed");
+    logEvent("error", "billing_entitlement_lookup_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      error: summarizeError(error),
+    });
+    res.status(500).json({ error: "billing_entitlement_lookup_failed" });
+  }
+});
+
+app.post("/api/billing/paddle/portal", enforceAllowedOrigin, limitBilling, async (req, res) => {
+  try {
+    const authedUser = await requireAuthedUser(req, res);
+    if (!authedUser) return;
+    setRequestUserId(req, authedUser.id);
+
+    ensurePaddlePortalConfigured();
+
+    const entitlement = await getUserEntitlementState(authedUser.id);
+    let customerId = typeof entitlement.providerCustomerId === "string" ? entitlement.providerCustomerId.trim() : "";
+    if (!customerId && authedUser.email) {
+      const customer = await findPaddleCustomerByEmail(authedUser.email).catch(() => null);
+      customerId = typeof customer?.id === "string" ? customer.id : "";
+      if (customerId) {
+        await setPaddleCustomerReference({ userId: authedUser.id, customerId }).catch(() => null);
+      }
+    }
+
+    if (!customerId) {
+      const error = new Error("paddle_customer_missing");
+      error.code = "paddle_customer_missing";
+      throw error;
+    }
+
+    const payload = entitlement.providerSubscriptionId
+      ? { subscription_ids: [entitlement.providerSubscriptionId] }
+      : undefined;
+    const session = await paddleApiFetch(`/customers/${customerId}/portal-sessions`, {
+      method: "POST",
+      body: payload,
+    });
+
+    res.json({ ok: true, url: session?.data?.urls?.general?.overview || session?.data?.url || null });
+  } catch (error) {
+    const errorCode = typeof error?.code === "string" ? error.code : "paddle_portal_failed";
+    setRequestErrorCode(req, errorCode);
+    logEvent("error", "paddle_portal_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: getRequestLogContext(req).userId,
+      errorCode,
+      error: summarizeError(error),
+    });
+    res.status(errorCode === "paddle_portal_not_configured" ? 503 : 400).json({ error: errorCode });
+  }
+});
+
+app.post("/api/billing/google-play/verify", enforceAllowedOrigin, limitBilling, async (req, res) => {
+  try {
+    const authedUser = await requireAuthedUser(req, res);
+    if (!authedUser) return;
+    setRequestUserId(req, authedUser.id);
+
+    const body = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
+    const purchaseToken = typeof body.purchaseToken === "string" ? body.purchaseToken.trim() : "";
+    const packageName = typeof body.packageName === "string" ? body.packageName.trim() : "";
+
+    if (!purchaseToken) {
+      setRequestErrorCode(req, "missing_purchase_token");
+      res.status(400).json({ error: "missing_purchase_token" });
+      return;
+    }
+
+    const verification = await verifyGooglePlaySubscriptionPurchase({
+      packageName,
+      purchaseToken,
+    });
+
+    if (!verification.obfuscatedExternalAccountId) {
+      const error = new Error("google_play_missing_account_binding");
+      error.code = "google_play_missing_account_binding";
+      throw error;
+    }
+
+    if (verification.obfuscatedExternalAccountId !== authedUser.id) {
+      const error = new Error("google_play_account_mismatch");
+      error.code = "google_play_account_mismatch";
+      throw error;
+    }
+
+    await persistVerifiedPlayPurchase({ userId: authedUser.id, verification });
+
+    const entitlement = await getUserEntitlementState(authedUser.id);
+
+    logEvent("info", "billing_google_play_verified", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: authedUser.id,
+      productId: verification.productId,
+      planId: verification.planId,
+      status: verification.status,
+      acknowledged: verification.acknowledged,
+    });
+
+    res.json({
+      ok: true,
+      entitlement,
+      purchase: {
+        productId: verification.productId,
+        packageName: verification.packageName,
+        purchaseToken: verification.purchaseToken,
+        acknowledged: verification.acknowledged,
+        currentPeriodEnd: verification.currentPeriodEnd,
+        status: verification.status,
+      },
+    });
+  } catch (error) {
+    const errorCode = typeof error?.code === "string" ? error.code : "google_play_verify_failed";
+    setRequestErrorCode(req, errorCode);
+    logEvent("error", "billing_google_play_verify_failed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: getRequestLogContext(req).userId,
+      errorCode,
+      error: summarizeError(error),
+    });
+
+    const status = errorCode === "google_play_not_configured"
+      ? 503
+      : errorCode === "missing_purchase_token"
+        || errorCode === "google_play_product_not_allowed"
+        || errorCode === "google_play_package_name_mismatch"
+        || errorCode === "google_play_missing_account_binding"
+        || errorCode === "google_play_account_mismatch"
+        || errorCode === "google_play_purchase_already_linked"
+        ? 400
+        : 502;
+
+    res.status(status).json({ error: errorCode });
+  }
 });
 
 function getBearerToken(req) {
@@ -482,22 +991,6 @@ function hasPlusEntitlement(entitlement) {
   return Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs >= Date.now();
 }
 
-function startOfUtcDay(date = new Date()) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
-}
-
-function startOfUtcMonth(date = new Date()) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-}
-
-function addUtcDays(date, days) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + days));
-}
-
-function addUtcMonths(date, months) {
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1));
-}
-
 async function getUserAiContext(userId) {
   if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
 
@@ -548,77 +1041,72 @@ async function getUserAiContext(userId) {
   };
 }
 
-async function countBillableAiUsageSince(userId, sinceIso) {
+async function reserveAiQuota({ userId, kind, planId, useNoteForAi, dailyLimit, monthlyLimit }) {
   if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
 
-  const rpcResult = await supabaseAdmin.rpc("count_billable_ai_usage", {
+  const rpcResult = await supabaseAdmin.rpc("reserve_ai_usage_quota", {
     p_user_id: userId,
-    p_since: sinceIso,
+    p_kind: kind,
+    p_model: MODEL,
+    p_meta: {
+      cached: false,
+      planId,
+      useNoteForAi,
+      quotaState: "reserved",
+    },
+    p_daily_limit: Number.isInteger(dailyLimit) ? dailyLimit : null,
+    p_monthly_limit: Number.isInteger(monthlyLimit) ? monthlyLimit : null,
+    p_reservation_ttl_seconds: 900,
   });
 
-  if (!rpcResult.error) {
-    return Number(rpcResult.data) || 0;
-  }
+  if (rpcResult.error) throw new Error("quota_lookup_failed");
 
-  const fallbackResult = await supabaseAdmin
-    .from("ai_usage")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .eq("success", true)
-    .gte("occurred_at", sinceIso);
-
-  if (fallbackResult.error) throw new Error("quota_lookup_failed");
-  return Number(fallbackResult.count) || 0;
-}
-
-async function getAiQuotaState({ userId, dailyLimit, monthlyLimit }) {
-  if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
-
-  const now = new Date();
-  const dayStart = startOfUtcDay(now);
-  const monthStart = startOfUtcMonth(now);
-
-  const dailyQuery = Number.isInteger(dailyLimit)
-    ? countBillableAiUsageSince(userId, dayStart.toISOString())
-    : Promise.resolve(0);
-
-  const monthlyQuery = Number.isInteger(monthlyLimit)
-    ? countBillableAiUsageSince(userId, monthStart.toISOString())
-    : Promise.resolve(0);
-
-  const [dailyUsed, monthlyUsed] = await Promise.all([dailyQuery, monthlyQuery]);
-
-  if (Number.isInteger(dailyLimit) && dailyUsed >= dailyLimit) {
-    return {
-      allowed: false,
-      error: "ai_daily_limit_reached",
-      period: "day",
-      limit: dailyLimit,
-      used: dailyUsed,
-      resetAt: addUtcDays(dayStart, 1).toISOString(),
-      dailyUsed,
-      monthlyUsed,
-    };
-  }
-
-  if (Number.isInteger(monthlyLimit) && monthlyUsed >= monthlyLimit) {
-    return {
-      allowed: false,
-      error: "ai_monthly_limit_reached",
-      period: "month",
-      limit: monthlyLimit,
-      used: monthlyUsed,
-      resetAt: addUtcMonths(monthStart, 1).toISOString(),
-      dailyUsed,
-      monthlyUsed,
-    };
-  }
+  const row = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data;
+  if (!row) throw new Error("quota_lookup_failed");
 
   return {
-    allowed: true,
-    dailyUsed,
-    monthlyUsed,
+    allowed: row.allowed === true,
+    error: typeof row.error === "string" ? row.error : "",
+    usageId: typeof row.usage_id === "string" ? row.usage_id : "",
+    dailyUsed: Number(row.daily_used) || 0,
+    monthlyUsed: Number(row.monthly_used) || 0,
+    resetAt: row.reset_at || null,
+    period: row.period || null,
+    used: row.period === "month" ? Number(row.monthly_used) || 0 : Number(row.daily_used) || 0,
+    limit: row.period === "month" ? monthlyLimit : dailyLimit,
   };
+}
+
+async function finalizeReservedAiUsage({ usageId, success, errorCode, meta }) {
+  if (!supabaseAdmin || !usageId) return;
+
+  const current = await supabaseAdmin
+    .from("ai_usage")
+    .select("meta")
+    .eq("id", usageId)
+    .maybeSingle();
+
+  if (current.error) throw new Error("ai_usage_finalize_failed");
+
+  const nextMeta = {
+    ...(current.data?.meta && typeof current.data.meta === "object" && !Array.isArray(current.data.meta) ? current.data.meta : {}),
+    ...(meta && typeof meta === "object" ? meta : {}),
+    cached: false,
+    quotaState: success ? "billed" : "released",
+  };
+
+  const result = await supabaseAdmin
+    .from("ai_usage")
+    .update({
+      success: success === true,
+      error_code: success === true ? null : (typeof errorCode === "string" ? errorCode : null),
+      meta: nextMeta,
+    })
+    .eq("id", usageId)
+    .select("id")
+    .single();
+
+  if (result.error) throw new Error("ai_usage_finalize_failed");
 }
 
 async function rejectForQuota(req, res, { userId, kind, planId, quota }) {
@@ -1228,17 +1716,20 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       return;
     }
 
-    const quota = await getAiQuotaState({
+    const quotaReservation = await reserveAiQuota({
       userId: authedUser.id,
+      kind: "generate_board",
+      planId: aiContext.planId,
+      useNoteForAi: aiContext.useNoteForAi,
       dailyLimit: aiContext.dailyLimit,
       monthlyLimit: aiContext.monthlyLimit,
     });
-    if (!quota.allowed) {
+    if (!quotaReservation.allowed) {
       await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "generate_board",
         planId: aiContext.planId,
-        quota,
+        quota: quotaReservation,
       });
       return;
     }
@@ -1319,12 +1810,11 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         errorCode: generated.error || "invalid_board",
         planId: aiContext.planId,
       });
-      recordAiUsage({
-        userId: authedUser.id,
-        kind: "generate_board",
+      finalizeReservedAiUsage({
+        usageId: quotaReservation.usageId,
         success: false,
         errorCode: generated.error || "invalid_board",
-        meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+        meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
       }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid board" });
       return;
@@ -1340,11 +1830,10 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       },
     };
 
-    recordAiUsage({
-      userId: authedUser.id,
-      kind: "generate_board",
+    finalizeReservedAiUsage({
+      usageId: quotaReservation.usageId,
       success: true,
-      meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+      meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
     }).catch(() => {});
 
     boardCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
@@ -1427,17 +1916,20 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       return;
     }
 
-    const quota = await getAiQuotaState({
+    const quotaReservation = await reserveAiQuota({
       userId: authedUser.id,
+      kind: "daily_note",
+      planId: aiContext.planId,
+      useNoteForAi: aiContext.useNoteForAi,
       dailyLimit: aiContext.dailyLimit,
       monthlyLimit: aiContext.monthlyLimit,
     });
-    if (!quota.allowed) {
+    if (!quotaReservation.allowed) {
       await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "daily_note",
         planId: aiContext.planId,
-        quota,
+        quota: quotaReservation,
       });
       return;
     }
@@ -1509,12 +2001,11 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
         errorCode: generated.error || "invalid_note",
         planId: aiContext.planId,
       });
-      recordAiUsage({
-        userId: authedUser.id,
-        kind: "daily_note",
+      finalizeReservedAiUsage({
+        usageId: quotaReservation.usageId,
         success: false,
         errorCode: generated.error || "invalid_note",
-        meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+        meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
       }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid note" });
       return;
@@ -1525,11 +2016,10 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       meta: { model: MODEL, createdAt: new Date().toISOString(), cached: false },
     };
 
-    recordAiUsage({
-      userId: authedUser.id,
-      kind: "daily_note",
+    finalizeReservedAiUsage({
+      usageId: quotaReservation.usageId,
       success: true,
-      meta: { cached: false, planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+      meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
     }).catch(() => {});
 
     noteCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });

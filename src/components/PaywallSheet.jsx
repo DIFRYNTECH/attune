@@ -1,4 +1,5 @@
 import React from "react";
+import { isNativePlatform } from "../lib/platform";
 
 function featureTitle(feature) {
   switch (feature) {
@@ -34,6 +35,14 @@ function featureBlurb(feature) {
   }
 }
 
+function getUpgradeCta(state) {
+  if (state?.billing?.syncing) return "Working...";
+  if (!state?.auth?.signedIn) return "Sign in to upgrade";
+  if (!isNativePlatform() && state?.billing?.configuredPaddle) return "Upgrade on the web";
+  if (state?.billing?.configuredGooglePlay) return "Upgrade on Google Play";
+  return "Billing not ready";
+}
+
 export default function PaywallSheet({ state, actions }) {
   const isPlus = !!state?.entitlements?.isPlus;
   const paywall = state?.paywall;
@@ -42,13 +51,15 @@ export default function PaywallSheet({ state, actions }) {
   if (!open) return null;
 
   const feature = typeof paywall?.feature === "string" ? paywall.feature : "plus";
+  const billingSyncing = state?.billing?.syncing === true;
+  const billingConfigured = isNativePlatform()
+    ? state?.billing?.configuredGooglePlay === true
+    : state?.billing?.configuredPaddle === true;
+  const signedIn = state?.auth?.signedIn === true;
 
   const onClose = () => actions?.closePaywall?.();
-  const onTryPlus = () => {
-    actions?.setPlan?.("plus");
-    actions?.closePaywall?.();
-    actions?.setToast?.("Attune Plus enabled on this device.", true);
-  };
+  const onUpgrade = () => actions?.startBillingUpgrade?.();
+  const onRestore = () => actions?.restoreBillingPurchases?.();
 
   return (
     <div
@@ -99,14 +110,27 @@ export default function PaywallSheet({ state, actions }) {
             Yearly price: <b style={{ color: "var(--ink)" }}>$-/year</b> (placeholder)
           </div>
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
-            Restore purchases and real account billing are coming later.
+            {signedIn
+              ? billingConfigured
+                ? isNativePlatform()
+                  ? "Purchases are verified against your account after Google Play checkout."
+                  : "Web checkout uses Paddle and attaches the subscription to your signed-in Attune account."
+                : isNativePlatform()
+                  ? "Google Play billing still needs server configuration before purchases can be completed."
+                  : "Web billing still needs server configuration before checkout can be completed."
+              : "Sign in first so your purchase can be linked to your Attune account."}
           </div>
         </div>
 
         <div className="modalActions" style={{ justifyContent: "space-between" }}>
-          <button type="button" className="btn" onClick={onTryPlus} style={{ fontWeight: 900 }}>
-            Try Plus on this device
+          <button type="button" className="btn" onClick={onUpgrade} style={{ fontWeight: 900 }} disabled={billingSyncing}>
+            {getUpgradeCta(state)}
           </button>
+          {isNativePlatform() ? (
+            <button type="button" className="btn ghost" onClick={onRestore} disabled={billingSyncing}>
+              Restore purchase
+            </button>
+          ) : null}
           <button type="button" className="btn ghost" onClick={onClose}>
             Not now
           </button>

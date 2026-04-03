@@ -22,6 +22,29 @@ This is implemented as a small API layer (so your OpenAI key is never shipped to
 
 If the AI endpoint is unavailable, the app automatically falls back to the built-in task list.
 
+## Web Billing
+
+Attune now supports web subscriptions through Stripe Checkout, while native Android continues to use Google Play Billing.
+
+### Required server env vars
+
+- `PUBLIC_APP_URL=https://your-domain.example`
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PLUS_PRICE_ID`
+
+### Required Stripe setup
+
+- Create a recurring price for Attune Plus and set its ID as `STRIPE_PLUS_PRICE_ID`.
+- Point a Stripe webhook endpoint at `/api/billing/stripe/webhook`.
+- Subscribe the webhook to:
+	- `checkout.session.completed`
+	- `customer.subscription.created`
+	- `customer.subscription.updated`
+	- `customer.subscription.deleted`
+
+The server updates `user_entitlements` from Stripe webhook events, and the billing status endpoint also reconciles Stripe state for signed-in web users.
+
 ## Current trust boundary and go-live recommendation
 
 For the current Attune architecture, the trust does **not** sit in the client app alone.

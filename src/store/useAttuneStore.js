@@ -12,6 +12,21 @@ import { ensureProfile } from "../lib/profileApi";
 import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
 import { deleteAllNoteMemory as deleteAllNoteMemoryRemote, listNoteMemory as listNoteMemoryRemote, upsertNoteMemory as upsertNoteMemoryRemote } from "../lib/noteMemoryApi";
 import { getApiUrl } from "../lib/api";
+import {
+  createPaddlePortalSession,
+  fetchBillingEntitlement,
+  verifyGooglePlayPurchase,
+} from "../lib/billingApi";
+import {
+  acknowledgePlayBillingPurchase,
+  getPlayBillingPackageName,
+  getPlayBillingProducts,
+  isPlayBillingSupported,
+  purchasePlayBillingSubscription,
+  restorePlayBillingPurchases,
+} from "../lib/playBilling";
+import { isPaddleCheckoutSupported, openPaddleCheckout } from "../lib/paddleCheckout";
+import { isNativePlatform } from "../lib/platform";
 
 const SCHEMA_VERSION = 8;
 
@@ -23,6 +38,114 @@ const AI_DAILY_NOTE_VERSION = 2;
 
 const EVENT_DAYS_TO_KEEP = 90;
 const NOTE_MEMORY_MAX = 30;
+
+function defaultBillingState(){
+  return {
+    planId: "free",
+    status: "active",
+    source: "manual",
+    currentPeriodStart: "",
+    currentPeriodEnd: "",
+    providerSubscriptionId: "",
+    productId: "",
+    purchaseStatus: "",
+    acknowledged: false,
+    syncing: false,
+    configuredGooglePlay: false,
+    configuredPaddle: false,
+    customerPortalAvailable: false,
+    error: "",
+    lastSyncedAt: 0,
+  };
+}
+
+function normalizeBillingState(input){
+  const next = input && typeof input === "object" && !Array.isArray(input)
+    ? { ...defaultBillingState(), ...input }
+    : defaultBillingState();
+
+  next.planId = next.planId === "plus" ? "plus" : "free";
+  next.status = typeof next.status === "string" && next.status ? next.status : "active";
+  next.source = typeof next.source === "string" && next.source ? next.source : "manual";
+  next.currentPeriodStart = typeof next.currentPeriodStart === "string" ? next.currentPeriodStart : "";
+  next.currentPeriodEnd = typeof next.currentPeriodEnd === "string" ? next.currentPeriodEnd : "";
+  next.providerSubscriptionId = typeof next.providerSubscriptionId === "string" ? next.providerSubscriptionId : "";
+  next.productId = typeof next.productId === "string" ? next.productId : "";
+  next.purchaseStatus = typeof next.purchaseStatus === "string" ? next.purchaseStatus : "";
+  next.acknowledged = next.acknowledged === true;
+  next.syncing = next.syncing === true;
+  next.configuredGooglePlay = next.configuredGooglePlay === true;
+  next.configuredPaddle = next.configuredPaddle === true;
+  next.customerPortalAvailable = next.customerPortalAvailable === true;
+  next.error = typeof next.error === "string" ? next.error : "";
+  next.lastSyncedAt = Number(next.lastSyncedAt) || 0;
+
+  return next;
+}
+
+function getBillingPlanIdFromState(state){
+  return state?.billing?.planId === "plus" ? "plus" : "free";
+}
+
+function hasVerifiedPlusNoteMemoryAccess(input){
+  const billing = normalizeBillingState(input);
+  return billing.planId === "plus" && billing.lastSyncedAt > 0 && !billing.error;
+}
+
+function applyBillingStateToLocalState(baseState, billingPatch){
+  const billing = normalizeBillingState({ ...(baseState?.billing || defaultBillingState()), ...(billingPatch || {}) });
+  const planId = billing.planId === "plus" ? "plus" : "free";
+  const profile = {
+    ...(baseState?.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }),
+    plan: planId,
+  };
+
+  if(planId !== "plus") profile.theme = "light";
+
+  return {
+    ...baseState,
+    billing,
+    profile,
+    noteMemory: planId === "plus" ? baseState.noteMemory : clearNoteMemoryObj(baseState.noteMemory),
+  };
+}
+
+function getBillingErrorMessage(errorCode){
+  switch(String(errorCode || "")){
+    case "google_play_not_configured":
+      return "Google Play billing is not configured yet.";
+    case "paddle_not_configured":
+      return "Web billing is not configured yet.";
+    case "paddle_portal_not_configured":
+      return "Billing management is not configured yet.";
+    case "paddle_customer_missing":
+      return "No web subscription was found for this account.";
+    case "play_billing_unavailable":
+      return "Google Play billing is only available inside the Android app.";
+    case "play_billing_missing_product_id":
+      return "Google Play product ID is missing.";
+    case "missing_account_id":
+      return "Sign in again before starting a purchase.";
+    case "purchase_canceled":
+      return "Purchase canceled.";
+    case "billing_not_ready":
+      return "Google Play billing is still connecting. Try again in a moment.";
+    case "google_play_verify_failed":
+      return "Google Play purchase verification failed.";
+    case "paddle_checkout_failed":
+      return "Starting web checkout failed.";
+    case "paddle_portal_failed":
+      return "Opening billing management failed.";
+    case "google_play_account_mismatch":
+      return "This Google Play purchase belongs to a different Attune account.";
+    case "google_play_missing_account_binding":
+      return "This purchase is missing the required account binding. Start the upgrade again from this account.";
+    case "google_play_purchase_already_linked":
+      return "This purchase token is already linked to another Attune account.";
+    default:
+      return "Billing is unavailable right now.";
+  }
+}
 
 function clamp(n, min, max){
   return Math.max(min, Math.min(max, n));
@@ -242,6 +365,44 @@ async function syncAllLocalNoteMemoryRemote(userId, noteMemory){
   );
 }
 
+function getPendingNoteMemoryUploads(localNoteMemory, remoteRows){
+  const localNotes = Array.isArray(localNoteMemory?.notes) ? localNoteMemory.notes : [];
+  const rows = Array.isArray(remoteRows) ? remoteRows : [];
+  const remoteByDate = new Map();
+
+  for(const row of rows){
+    const remoteNote = noteRowToLocal(row);
+    if(remoteNote?.date) remoteByDate.set(remoteNote.date, remoteNote);
+  }
+
+  return localNotes.filter((localNote) => {
+    if(!localNote || typeof localNote.date !== "string" || !localNote.date) return false;
+
+    const remoteNote = remoteByDate.get(localNote.date);
+    if(!remoteNote) return true;
+
+    const localTs = Number(localNote.ts) || 0;
+    const remoteTs = Number(remoteNote.ts) || 0;
+    if(localTs > remoteTs) return true;
+    if((localNote.text || "") !== (remoteNote.text || "")) return true;
+
+    const localThemes = normalizeThemesArray(localNote.themes).join("|");
+    const remoteThemes = normalizeThemesArray(remoteNote.themes).join("|");
+    return localThemes !== remoteThemes;
+  });
+}
+
+async function syncPendingLocalNoteMemoryRemote(userId, localNoteMemory, remoteRows){
+  const pendingNotes = getPendingNoteMemoryUploads(localNoteMemory, remoteRows);
+  if(!userId || !pendingNotes.length) return;
+
+  await Promise.all(
+    pendingNotes.map((note) =>
+      syncNoteMemoryEntryRemote(userId, note).catch(() => null)
+    )
+  );
+}
+
 const DEFAULT_CHECKIN = {
   mood: "okay",
   moodWords: ["Okay"],
@@ -286,6 +447,7 @@ function defaultState(){
     weeklySummaries: [],
     events: {},
     noteMemory: { notes: [] },
+    billing: defaultBillingState(),
     profile: {
       name: "",
       email: "",
@@ -523,8 +685,12 @@ function normalizeLoadedState(loaded){
 
   if(!next.noteMemory || typeof next.noteMemory !== "object" || Array.isArray(next.noteMemory)) next.noteMemory = { notes: [] };
   if(!Array.isArray(next.noteMemory.notes)) next.noteMemory.notes = [];
+
+  next.billing = normalizeBillingState(next.billing);
+  const normalizedPlanId = next.billing.planId === "plus" ? "plus" : "free";
+  next.profile.plan = normalizedPlanId;
   // Free plan should not keep historical note memory.
-  if(next.profile.plan !== "plus") next.noteMemory = { notes: [] };
+  if(normalizedPlanId !== "plus") next.noteMemory = { notes: [] };
   // Trim just in case older builds kept more.
   if(next.noteMemory.notes.length > NOTE_MEMORY_MAX){
     next.noteMemory.notes = next.noteMemory.notes.slice(next.noteMemory.notes.length - NOTE_MEMORY_MAX);
@@ -564,14 +730,123 @@ export function useAttuneStore(){
   const stateRef = useRef(state);
   const aiReqRef = useRef({ controller: null, requestId: 0 });
   const aiNoteReqRef = useRef({ controller: null, requestId: 0 });
+  const billingSyncRef = useRef({ userId: "", promise: null });
+  const supabaseSyncRef = useRef({ inFlightKey: "", lastCompletedKey: "", lastCompletedAt: 0 });
 
-  const plan = state?.profile?.plan === "plus" ? "plus" : "free";
+  const plan = getBillingPlanIdFromState(state);
   const entitlements = useMemo(() => getEntitlements(plan), [plan]);
   const exposedState = useMemo(() => ({ ...state, plan, entitlements }), [state, plan, entitlements]);
 
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  async function syncBillingState(forcedUserId){
+    const currentUserId = typeof forcedUserId === "string" && forcedUserId
+      ? forcedUserId
+      : typeof stateRef.current?.auth?.userId === "string"
+        ? stateRef.current.auth.userId
+        : "";
+    if(!currentUserId){
+      billingSyncRef.current = { userId: "", promise: null };
+      setState((s) => applyBillingStateToLocalState(s, {
+        ...defaultBillingState(),
+        syncing: false,
+        error: "",
+      }));
+      return normalizeBillingState(defaultBillingState());
+    }
+
+    if(billingSyncRef.current.userId === currentUserId && billingSyncRef.current.promise){
+      return billingSyncRef.current.promise;
+    }
+
+    const syncPromise = (async () => {
+      setState((s) => applyBillingStateToLocalState(s, {
+        ...s.billing,
+        syncing: true,
+        error: "",
+      }));
+
+      try {
+        const result = await fetchBillingEntitlement();
+        const entitlement = result?.entitlement && typeof result.entitlement === "object" ? result.entitlement : {};
+        const normalized = normalizeBillingState({
+          planId: entitlement.planId,
+          status: entitlement.status,
+          source: entitlement.source,
+          currentPeriodStart: entitlement.currentPeriodStart,
+          currentPeriodEnd: entitlement.currentPeriodEnd,
+          providerSubscriptionId: entitlement.providerSubscriptionId,
+          productId: entitlement.productId,
+          purchaseStatus: entitlement.purchaseStatus,
+          acknowledged: entitlement.acknowledged === true,
+          configuredGooglePlay: result?.configured?.googlePlay === true,
+          configuredPaddle: result?.configured?.paddle === true,
+          customerPortalAvailable: result?.configured?.paddlePortal === true,
+          syncing: false,
+          error: "",
+          lastSyncedAt: Date.now(),
+        });
+
+        setState((s) => applyBillingStateToLocalState(s, normalized));
+        return normalized;
+      } catch (error) {
+        const errorCode = typeof error?.message === "string" ? error.message : "billing_sync_failed";
+        setState((s) => applyBillingStateToLocalState(s, {
+          ...s.billing,
+          syncing: false,
+          error: errorCode,
+          lastSyncedAt: 0,
+        }));
+        throw error;
+      } finally {
+        if(billingSyncRef.current.userId === currentUserId && billingSyncRef.current.promise === syncPromise){
+          billingSyncRef.current = { userId: currentUserId, promise: null };
+        }
+      }
+    })();
+
+    billingSyncRef.current = { userId: currentUserId, promise: syncPromise };
+    return syncPromise;
+  }
+
+  useEffect(() => {
+    if(typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const billingStatus = url.searchParams.get("billing");
+    if(!billingStatus) return;
+
+    let toastText = "";
+    let good = false;
+    if(billingStatus === "success"){
+      toastText = "Checkout completed. Refreshing your billing state...";
+      good = true;
+      const userId = typeof stateRef.current?.auth?.userId === "string" ? stateRef.current.auth.userId : "";
+      if(userId) syncBillingState(userId).catch(() => {});
+    }else if(billingStatus === "canceled"){
+      toastText = "Checkout canceled.";
+    }else if(billingStatus === "portal"){
+      toastText = "Returned from billing management.";
+      good = true;
+      const userId = typeof stateRef.current?.auth?.userId === "string" ? stateRef.current.auth.userId : "";
+      if(userId) syncBillingState(userId).catch(() => {});
+    }
+
+    url.searchParams.delete("billing");
+    url.searchParams.delete("provider");
+    const nextSearch = url.searchParams.toString();
+    const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ""}${url.hash}`;
+    window.history.replaceState({}, document.title, nextUrl);
+
+    if(toastText){
+      setState((s) => ({
+        ...s,
+        toast: { text: toastText, good, screen: s.screen },
+      }));
+    }
+  }, []);
 
   // daily rollover
   useEffect(() => {
@@ -641,8 +916,21 @@ export function useAttuneStore(){
       window.addEventListener(AUTH_CALLBACK_ERROR_EVENT, handleAuthCallbackError);
     }
 
-    async function syncFromSupabase({ userId, canSyncNoteMemory }){
+    async function syncFromSupabase({ userId, canSyncNoteMemory, force = false }){
       if(!userId) return;
+      const syncKey = `${userId}:${canSyncNoteMemory ? "plus" : "free"}`;
+      const completedRecently = supabaseSyncRef.current.lastCompletedKey === syncKey
+        && Date.now() - (Number(supabaseSyncRef.current.lastCompletedAt) || 0) < 5000;
+      if(!force && (supabaseSyncRef.current.inFlightKey === syncKey || completedRecently)){
+        return;
+      }
+
+      supabaseSyncRef.current = {
+        inFlightKey: syncKey,
+        lastCompletedKey: supabaseSyncRef.current.lastCompletedKey,
+        lastCompletedAt: supabaseSyncRef.current.lastCompletedAt,
+      };
+
       try {
         const remoteWeekly = await listWeeklySummariesRemote(userId);
         if(Array.isArray(remoteWeekly)){
@@ -655,7 +943,16 @@ export function useAttuneStore(){
         // ignore
       }
 
-      if(!canSyncNoteMemory) return;
+      if(!canSyncNoteMemory){
+        if(supabaseSyncRef.current.inFlightKey === syncKey){
+          supabaseSyncRef.current = {
+            inFlightKey: "",
+            lastCompletedKey: syncKey,
+            lastCompletedAt: Date.now(),
+          };
+        }
+        return;
+      }
       try {
         const remoteNotes = await listNoteMemoryRemote(userId);
         const mergedNoteMemory = mergeNoteMemory(stateRef.current?.noteMemory, remoteNotes, NOTE_MEMORY_MAX);
@@ -665,9 +962,16 @@ export function useAttuneStore(){
           noteMemory: mergedNoteMemory,
         }));
 
-        syncAllLocalNoteMemoryRemote(userId, mergedNoteMemory).catch(() => {});
       } catch {
         // ignore
+      } finally {
+        if(supabaseSyncRef.current.inFlightKey === syncKey){
+          supabaseSyncRef.current = {
+            inFlightKey: "",
+            lastCompletedKey: syncKey,
+            lastCompletedAt: Date.now(),
+          };
+        }
       }
     }
 
@@ -693,10 +997,6 @@ export function useAttuneStore(){
           }
         }
 
-        // Pull weekly summaries + (Plus) note history into local state for signed-in users.
-        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
-        syncFromSupabase({ userId, canSyncNoteMemory });
-
         setState((s) => ({
           ...s,
           auth: {
@@ -711,6 +1011,9 @@ export function useAttuneStore(){
             error: "",
           },
         }));
+
+        const billingState = await syncBillingState(userId).catch(() => normalizeBillingState(defaultBillingState()));
+        syncFromSupabase({ userId, canSyncNoteMemory: hasVerifiedPlusNoteMemoryAccess(billingState), force: true });
       } catch {
         // Ignore; app can still run without auth.
       }
@@ -728,9 +1031,6 @@ export function useAttuneStore(){
           email,
           name: stateRef.current?.profile?.name,
         }).catch(() => {});
-
-        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
-        syncFromSupabase({ userId, canSyncNoteMemory });
       }
 
       setState((s) => ({
@@ -748,6 +1048,17 @@ export function useAttuneStore(){
         },
         screen: session ? (s.screen || "checkin") : "checkin",
       }));
+
+      if(userId){
+        syncBillingState(userId)
+          .then((billingState) => {
+            syncFromSupabase({ userId, canSyncNoteMemory: hasVerifiedPlusNoteMemoryAccess(billingState) });
+          })
+          .catch(() => {});
+      }else{
+        supabaseSyncRef.current = { inFlightKey: "", lastCompletedKey: "", lastCompletedAt: 0 };
+        syncBillingState("").catch(() => {});
+      }
     });
     unsub = data?.subscription?.unsubscribe || null;
 
@@ -1032,7 +1343,7 @@ export function useAttuneStore(){
           { maxDays: EVENT_DAYS_TO_KEEP }
         );
 
-        const isPlus = current?.profile?.plan === "plus";
+        const isPlus = hasVerifiedPlusNoteMemoryAccess(current?.billing);
         if(isPlus && note){
           const nextNoteMemory = addNoteToMemory(withEvents.noteMemory, { date: withEvents.today, text: note }, NOTE_MEMORY_MAX);
           latestRemembered = Array.isArray(nextNoteMemory?.notes) && nextNoteMemory.notes.length
@@ -1051,7 +1362,7 @@ export function useAttuneStore(){
       setState(next);
 
       const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
-      const canSyncNoteMemory = current?.profile?.plan === "plus";
+      const canSyncNoteMemory = hasVerifiedPlusNoteMemoryAccess(current?.billing);
       if(userId && canSyncNoteMemory && latestRemembered){
         syncNoteMemoryEntryRemote(userId, latestRemembered).catch(() => {});
       }
@@ -1280,7 +1591,7 @@ export function useAttuneStore(){
           if(s.today !== t || liveSig !== sig) return s;
 
           // If Plus + note is stored, enrich remembered note themes using AI.
-          const isPlus = s?.profile?.plan === "plus";
+          const isPlus = hasVerifiedPlusNoteMemoryAccess(s?.billing);
           const shouldApplyThemes = isPlus && s.profile?.useNoteForAi !== false && noteTextForSync && themes.length > 0;
           const nextNoteMemory = shouldApplyThemes
             ? applyThemesToRememberedNote(s.noteMemory, { date: t, themes })
@@ -1294,7 +1605,7 @@ export function useAttuneStore(){
         });
 
         const currentUserId = typeof stateRef.current?.auth?.userId === "string" ? stateRef.current.auth.userId : "";
-        const canSyncNoteMemory = stateRef.current?.profile?.plan === "plus";
+        const canSyncNoteMemory = hasVerifiedPlusNoteMemoryAccess(stateRef.current?.billing);
         if(currentUserId && canSyncNoteMemory && noteTextForSync && themes.length > 0){
           syncNoteMemoryEntryRemote(currentUserId, {
             date: t,
@@ -1407,7 +1718,7 @@ export function useAttuneStore(){
 
     openPaywall: (feature, source) =>
       setState(s => {
-        if(s?.profile?.plan === "plus") return s;
+        if(getBillingPlanIdFromState(s) === "plus") return s;
         const f = typeof feature === "string" ? feature : "plus";
         const src = typeof source === "string" ? source : "";
         return { ...s, paywall: { feature: f, source: src } };
@@ -1415,12 +1726,309 @@ export function useAttuneStore(){
 
     closePaywall: () => setState(s => ({ ...s, paywall: null })),
 
+    refreshBilling: async () => {
+      try {
+        return await syncBillingState();
+      } catch (error) {
+        const message = getBillingErrorMessage(error?.message);
+        setState((s) => ({
+          ...s,
+          toast: { text: message, good: false, screen: s.screen },
+        }));
+        throw error;
+      }
+    },
+
+    startBillingUpgrade: async () => {
+      const current = stateRef.current;
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(!userId){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Sign in before upgrading Attune.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      if(!isNativePlatform()){
+        setState((s) => applyBillingStateToLocalState(s, {
+          ...s.billing,
+          syncing: true,
+          error: "",
+        }));
+
+        try {
+          const email = typeof current?.auth?.email === "string" && current.auth.email
+            ? current.auth.email
+            : typeof current?.profile?.email === "string"
+              ? current.profile.email
+              : "";
+          const billingState = await syncBillingState(userId).catch(() => normalizeBillingState(defaultBillingState()));
+          if(!(billingState.configuredPaddle === true && isPaddleCheckoutSupported())) {
+            throw new Error("paddle_not_configured");
+          }
+
+          await openPaddleCheckout({
+            email,
+            userId,
+            onEvent: (event) => {
+              const eventName = String(event?.name || "");
+
+              if(eventName === "checkout.completed"){
+                setState((s) => ({
+                  ...s,
+                  paywall: null,
+                  toast: { text: "Checkout completed. Refreshing your billing state...", good: true, screen: s.screen },
+                }));
+
+                window.setTimeout(() => {
+                  syncBillingState(userId)
+                    .then((nextBilling) => {
+                      setState((s) => ({
+                        ...s,
+                        toast: {
+                          text: nextBilling.planId === "plus"
+                            ? "Attune Plus is now active for this account."
+                            : "Checkout completed. Billing is still syncing.",
+                          good: nextBilling.planId === "plus",
+                          screen: s.screen,
+                        },
+                      }));
+                    })
+                    .catch(() => {});
+                }, 1500);
+                return;
+              }
+
+              if(eventName === "checkout.closed"){
+                setState((s) => applyBillingStateToLocalState(s, {
+                  ...s.billing,
+                  syncing: false,
+                }));
+                return;
+              }
+
+              if(eventName === "checkout.error"){
+                setState((s) => applyBillingStateToLocalState({
+                  ...s,
+                  toast: { text: getBillingErrorMessage("paddle_checkout_failed"), good: false, screen: s.screen },
+                }, {
+                  ...s.billing,
+                  syncing: false,
+                  error: "paddle_checkout_failed",
+                }));
+              }
+            },
+          });
+          return;
+        } catch (error) {
+          const errorCode = typeof error?.message === "string" ? error.message : "paddle_checkout_failed";
+          setState((s) => applyBillingStateToLocalState({
+            ...s,
+            toast: { text: getBillingErrorMessage(errorCode), good: false, screen: s.screen },
+          }, {
+            ...s.billing,
+            syncing: false,
+            error: errorCode,
+          }));
+          return;
+        }
+      }
+
+      if(!isPlayBillingSupported()){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Google Play billing is only available inside the Android app right now.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      setState((s) => applyBillingStateToLocalState(s, {
+        ...s.billing,
+        syncing: true,
+        error: "",
+      }));
+
+      try {
+        const products = await getPlayBillingProducts();
+        if(!Array.isArray(products) || !products.length) throw new Error("play_billing_product_not_found");
+
+        const purchaseResult = await purchasePlayBillingSubscription(userId);
+        const purchases = Array.isArray(purchaseResult?.purchases) ? purchaseResult.purchases : [];
+        if(!purchases.length) throw new Error("play_billing_purchase_missing");
+
+        for(const purchase of purchases){
+          const purchaseToken = typeof purchase?.purchaseToken === "string" ? purchase.purchaseToken.trim() : "";
+          if(!purchaseToken) continue;
+
+          const verification = await verifyGooglePlayPurchase({
+            packageName: getPlayBillingPackageName(),
+            purchaseToken,
+          });
+
+          const acknowledged = purchase?.acknowledged === true || verification?.purchase?.acknowledged === true;
+          if(!acknowledged){
+            await acknowledgePlayBillingPurchase(purchaseToken).catch(() => {});
+          }
+        }
+
+        await syncBillingState(userId);
+        setState((s) => ({
+          ...s,
+          paywall: null,
+          toast: { text: "Attune Plus is now active for this account.", good: true, screen: s.screen },
+        }));
+      } catch (error) {
+        const errorCode = typeof error?.message === "string" ? error.message : "billing_purchase_failed";
+        setState((s) => applyBillingStateToLocalState({
+          ...s,
+          toast: { text: getBillingErrorMessage(errorCode), good: false, screen: s.screen },
+        }, {
+          ...s.billing,
+          syncing: false,
+          error: errorCode,
+        }));
+      }
+    },
+
+    restoreBillingPurchases: async () => {
+      const current = stateRef.current;
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(!userId){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Sign in before restoring purchases.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      if(!isNativePlatform()){
+        try {
+          const billingState = await syncBillingState(userId);
+          setState((s) => ({
+            ...s,
+            toast: {
+              text: billingState.planId === "plus"
+                ? "Refreshed your web billing state."
+                : "No active web subscription was found for this account.",
+              good: billingState.planId === "plus",
+              screen: s.screen,
+            },
+          }));
+        } catch (error) {
+          const errorCode = typeof error?.message === "string" ? error.message : "billing_restore_failed";
+          setState((s) => ({
+            ...s,
+            toast: { text: getBillingErrorMessage(errorCode), good: false, screen: s.screen },
+          }));
+        }
+        return;
+      }
+
+      if(!isPlayBillingSupported()){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Restore purchases is only available inside the Android app.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      setState((s) => applyBillingStateToLocalState(s, {
+        ...s.billing,
+        syncing: true,
+        error: "",
+      }));
+
+      try {
+        const purchases = await restorePlayBillingPurchases();
+        let verifiedCount = 0;
+        for(const purchase of purchases){
+          const purchaseToken = typeof purchase?.purchaseToken === "string" ? purchase.purchaseToken.trim() : "";
+          if(!purchaseToken) continue;
+          await verifyGooglePlayPurchase({
+            packageName: getPlayBillingPackageName(),
+            purchaseToken,
+          });
+          if(purchase?.acknowledged !== true){
+            await acknowledgePlayBillingPurchase(purchaseToken).catch(() => {});
+          }
+          verifiedCount += 1;
+        }
+
+        const billingState = await syncBillingState(userId);
+        setState((s) => ({
+          ...s,
+          toast: {
+            text: verifiedCount > 0 && billingState.planId === "plus"
+              ? "Restored your Attune Plus purchase."
+              : "No active Play purchase was found for this account.",
+            good: verifiedCount > 0 && billingState.planId === "plus",
+            screen: s.screen,
+          },
+        }));
+      } catch (error) {
+        const errorCode = typeof error?.message === "string" ? error.message : "billing_restore_failed";
+        setState((s) => applyBillingStateToLocalState({
+          ...s,
+          toast: { text: getBillingErrorMessage(errorCode), good: false, screen: s.screen },
+        }, {
+          ...s.billing,
+          syncing: false,
+          error: errorCode,
+        }));
+      }
+    },
+
+    openBillingPortal: async () => {
+      const current = stateRef.current;
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(!userId){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Sign in before managing billing.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      if(isNativePlatform()){
+        setState((s) => ({
+          ...s,
+          toast: { text: "Billing management is available on the web right now.", good: false, screen: s.screen },
+        }));
+        return;
+      }
+
+      setState((s) => applyBillingStateToLocalState(s, {
+        ...s.billing,
+        syncing: true,
+        error: "",
+      }));
+
+      try {
+        const session = await createPaddlePortalSession();
+        const url = typeof session?.url === "string" ? session.url.trim() : "";
+        if(!url) throw new Error("paddle_portal_failed");
+        window.location.assign(url);
+      } catch (error) {
+        const errorCode = typeof error?.message === "string" ? error.message : "paddle_portal_failed";
+        setState((s) => applyBillingStateToLocalState({
+          ...s,
+          toast: { text: getBillingErrorMessage(errorCode), good: false, screen: s.screen },
+        }, {
+          ...s.billing,
+          syncing: false,
+          error: errorCode,
+        }));
+      }
+    },
+
     setBoardAssigned: (boardAssigned) =>
       setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
 
     setProfile: (patch) =>
       setState(s => {
-        const nextPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+        const rawPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+        const { plan: _ignoredPlan, ...nextPatch } = rawPatch;
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
@@ -1445,35 +2053,23 @@ export function useAttuneStore(){
       }),
 
     setPlan: (nextPlan) => {
-      const current = stateRef.current;
-      const plan = nextPlan === "plus" ? "plus" : "free";
-
-      setState(s => {
-        const plan = nextPlan === "plus" ? "plus" : "free";
-        const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), plan };
-        if(plan !== "plus") profile.theme = "light";
-        // Free plan should not keep historical note memory.
-        const noteMemory = plan === "plus" ? s.noteMemory : clearNoteMemoryObj(s.noteMemory);
-        const paywall = plan === "plus" ? null : s.paywall;
-        return { ...s, profile, noteMemory, paywall };
-      });
-
-      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
-      if(plan === "plus" && userId){
-        listNoteMemoryRemote(userId)
-          .then((remoteNotes) => {
-            const mergedNoteMemory = mergeNoteMemory(current?.noteMemory, remoteNotes, NOTE_MEMORY_MAX);
-            setState((s) => ({ ...s, noteMemory: mergedNoteMemory }));
-            return syncAllLocalNoteMemoryRemote(userId, mergedNoteMemory);
-          })
-          .catch(() => {});
-      }
+      const requestedPlan = nextPlan === "plus" ? "plus" : "free";
+      setState((s) => ({
+        ...s,
+        toast: {
+          text: requestedPlan === "plus"
+            ? "Direct local plan changes are disabled. Use real billing instead."
+            : "Free plan is controlled by your verified billing state.",
+          good: false,
+          screen: s.screen,
+        },
+      }));
     },
 
     clearNoteMemory: () => {
       const current = stateRef.current;
       const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
-      const canSyncNoteMemory = current?.profile?.plan === "plus";
+      const canSyncNoteMemory = hasVerifiedPlusNoteMemoryAccess(current?.billing);
 
       setState(s => ({
         ...s,

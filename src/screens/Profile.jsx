@@ -1,5 +1,30 @@
 import { useState } from "react";
 import InfoTip from "../components/InfoTip";
+import { isNativePlatform } from "../lib/platform";
+
+function formatBillingStatus(status) {
+  switch (status) {
+    case "active":
+      return "Active";
+    case "grace":
+      return "In grace period";
+    case "past_due":
+      return "Past due";
+    case "canceled":
+      return "Canceled";
+    case "expired":
+      return "Expired";
+    default:
+      return "Free";
+  }
+}
+
+function formatBillingDate(value) {
+  if (typeof value !== "string" || !value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
 
 function SettingToggleRow({ title, description, checked, onChange, disabled = false, locked = false, onLockedClick, id }) {
   const isDisabled = !!disabled || !!locked;
@@ -232,6 +257,15 @@ export default function Profile({ state, actions }) {
   const canUseMemory = !!state?.entitlements?.noteMemory;
   const isPlus = !!state?.entitlements?.isPlus;
   const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
+  const billing = state?.billing || {};
+  const billingStatus = formatBillingStatus(billing?.status);
+  const billingRenewsOn = formatBillingDate(billing?.currentPeriodEnd);
+  const billingSyncing = billing?.syncing === true;
+  const signedIn = state?.auth?.signedIn === true;
+  const isNative = isNativePlatform();
+  const billingConfigured = isNative ? billing?.configuredGooglePlay === true : billing?.configuredPaddle === true;
+  const canUpgrade = signedIn && billingConfigured;
+  const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
 
   const doExport = () => {
     if(!isPlus){
@@ -286,7 +320,11 @@ export default function Profile({ state, actions }) {
                 Day-to-day planning stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly
                 insights. If you sign in, Attune can also sync weekly summaries, note history, and billing state tied to your account.
               </div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>Billing and restore purchases are coming later.</div>
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                {isNative
+                  ? "Google Play purchases are verified on the server and attached to your signed-in Attune account."
+                  : "Web subscriptions run through Paddle and are attached to your signed-in Attune account."}
+              </div>
             </div>
           }
           helperLabel="About Plus"
@@ -311,10 +349,18 @@ export default function Profile({ state, actions }) {
 
           <div className="settingsMeta">
             <div>
-              Billing: <span>coming soon</span>
+              Billing: <span>{billingStatus}</span>
             </div>
             <div>
-              When billing launches, purchases will be linked to your account.
+              {billingRenewsOn
+                ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
+                : billingConfigured
+                  ? isNative
+                    ? "Google Play billing is configured for this account."
+                    : "Web billing is configured for this account."
+                  : isNative
+                    ? "Google Play billing still needs server configuration."
+                    : "Web billing still needs server configuration."}
             </div>
           </div>
 
@@ -323,23 +369,43 @@ export default function Profile({ state, actions }) {
               <button
                 type="button"
                 className="btn primary"
-                onClick={() => actions?.openPaywall?.("plus", "profile")}
-                aria-label="Try Attune Plus on this device"
+                onClick={() => actions?.startBillingUpgrade?.()}
+                aria-label="Upgrade to Attune Plus"
+                disabled={billingSyncing}
+                title={!signedIn ? "Sign in before upgrading" : !billingConfigured ? isNative ? "Google Play billing is not configured yet" : "Web billing is not configured yet" : ""}
               >
-                Try Plus
+                {billingSyncing ? "Working..." : canUpgrade ? isNative ? "Upgrade on Google Play" : "Upgrade on the web" : !signedIn ? "Sign in to upgrade" : "Billing not ready"}
               </button>
-            ) : (
+            ) : null}
+            {isNative ? (
               <button
                 type="button"
                 className="btn ghost"
-                onClick={() => actions?.setPlan?.("free")}
-                aria-label="Turn off Attune Plus on this device"
+                onClick={() => actions?.restoreBillingPurchases?.()}
+                disabled={billingSyncing}
+                aria-label="Restore Attune Plus purchase"
               >
-                Turn off Plus
+                Restore purchase
               </button>
-            )}
-            <button type="button" className="btn ghost" disabled={true} aria-disabled="true" title="Coming soon">
-              Restore (coming soon)
+            ) : canOpenPortal ? (
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => actions?.openBillingPortal?.()}
+                disabled={billingSyncing}
+                aria-label="Manage web billing"
+              >
+                Manage billing
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => actions?.refreshBilling?.()}
+              disabled={billingSyncing}
+              aria-label="Refresh billing status"
+            >
+              Refresh billing
             </button>
           </div>
         </SettingsSection>
@@ -445,7 +511,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Account"
-          helper="Email OTP sign-in can sync weekly summaries and note history. Server-backed billing will replace the local Plus preview later."
+          helper="Email OTP sign-in can sync weekly summaries, note history, and verified billing state tied to your account."
           helperLabel="Account info"
         >
           <div className="settingsActions">
