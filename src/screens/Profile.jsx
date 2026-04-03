@@ -538,7 +538,7 @@ export default function Profile({ state, actions }) {
 
       {confirmOpen && (
         <div
-          className="modalOverlay"
+          className="modalOverlay modalOverlayCentered"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setConfirmOpen(false);
@@ -572,7 +572,7 @@ export default function Profile({ state, actions }) {
 
       {clearMemoryOpen && (
         <div
-          className="modalOverlay"
+          className="modalOverlay modalOverlayCentered"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setClearMemoryOpen(false);
@@ -606,7 +606,7 @@ export default function Profile({ state, actions }) {
 
       {signOutOpen && (
         <div
-          className="modalOverlay"
+          className="modalOverlay modalOverlayCentered"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) setSignOutOpen(false);
