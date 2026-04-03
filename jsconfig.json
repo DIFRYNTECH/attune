@@ -10,8 +10,6 @@
     "public",
     ".git",
     "vite.config.js",
-    "eslint.config.js",
-    "Attune.jsx",
-    "attune.html"
+    "eslint.config.js"
   ]
 }

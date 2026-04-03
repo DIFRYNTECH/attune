@@ -10,6 +10,9 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+android/**/build/
+android/.gradle/
+android/capacitor-cordova-android-plugins/build/
 
 # Vite cache
 .vite
