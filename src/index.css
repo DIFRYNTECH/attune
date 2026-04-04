@@ -61,6 +61,29 @@
 
       --myDayItemBg: var(--surface2);
 
+      --authCardBg: rgba(255,255,255,.70);
+      --authCardBorder: rgba(255,255,255,.60);
+      --authCardShadow: 0 30px 80px rgba(124,58,237,.18), 0 4px 12px rgba(0,0,0,.05);
+      --authCardInner: rgba(255,255,255,.38);
+      --authInputBg: rgba(255,255,255,.60);
+      --authInputBorder: rgba(124,58,237,.15);
+      --authSecondaryBg: rgba(255,255,255,.44);
+      --authSecondaryBorder: rgba(98,97,150,.14);
+      --authHintBg: rgba(255,255,255,.34);
+      --authHintBorder: rgba(119,109,199,.16);
+      --authCheckboxBg: rgba(255,255,255,.62);
+      --authCheckboxBorder: rgba(108,93,208,.22);
+
+      --logoTileTop: #7a68ff;
+      --logoTileBottom: #9788ff;
+      --logoTileHighlight: rgba(255,255,255,.34);
+      --logoTileSheen: rgba(255,255,255,.12);
+      --logoTileBorder: rgba(255,255,255,.46);
+      --logoTileBorderStrong: rgba(255,255,255,.30);
+      --logoTileShadow: 0 10px 18px rgba(86,72,204,.18);
+      --logoTileShadowStrong: 0 12px 24px rgba(86,72,204,.24);
+      --logoMarkColor: #ffffff;
+
       --s-1: 4px;
       --s-2: 8px;
       --s-3: 12px;
@@ -131,6 +154,29 @@
       --toastWarnText: rgba(255,244,223,.92);
 
       --myDayItemBg: rgba(29,38,69,.88);
+
+      --authCardBg: rgba(16,23,44,.62);
+      --authCardBorder: rgba(231,236,255,.10);
+      --authCardShadow: 0 22px 64px rgba(6,10,24,.48), 0 4px 12px rgba(0,0,0,.22);
+      --authCardInner: rgba(255,255,255,.04);
+      --authInputBg: rgba(25,33,62,.66);
+      --authInputBorder: rgba(145,130,255,.16);
+      --authSecondaryBg: rgba(24,31,58,.48);
+      --authSecondaryBorder: rgba(231,236,255,.10);
+      --authHintBg: rgba(24,31,58,.46);
+      --authHintBorder: rgba(145,130,255,.16);
+      --authCheckboxBg: rgba(20,27,51,.82);
+      --authCheckboxBorder: rgba(153,138,255,.24);
+
+      --logoTileTop: #5d49da;
+      --logoTileBottom: #7d69ff;
+      --logoTileHighlight: rgba(255,255,255,.16);
+      --logoTileSheen: rgba(255,255,255,.08);
+      --logoTileBorder: rgba(220,216,255,.22);
+      --logoTileBorderStrong: rgba(220,216,255,.18);
+      --logoTileShadow: 0 14px 24px rgba(5,8,24,.38);
+      --logoTileShadowStrong: 0 14px 28px rgba(5,8,24,.42);
+      --logoMarkColor: #fff8ff;
     }
 
     *{box-sizing:border-box}
@@ -213,21 +259,43 @@
       min-width:0;
     }
     .brandMark{
+      --logoMarkScale: 132%;
+      --logoMarkX: 48%;
+      --logoMarkY: 56%;
+      --logoMarkInset: 9%;
       width:46px;
       height:46px;
       border-radius:15px;
       background:
-        url("/attune-logo.svg") center/cover no-repeat,
-        radial-gradient(18px 16px at 30% 24%, rgba(255,255,255,.74), transparent 60%),
-        linear-gradient(145deg, var(--brand), #8f77ff);
-      border: 1px solid rgba(255,255,255,.54);
-      box-shadow: 0 14px 30px rgba(39,46,92,.16);
+        radial-gradient(22px 20px at 30% 24%, var(--logoTileHighlight), transparent 58%),
+        linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom));
+      border: 1px solid var(--logoTileBorder);
+      box-shadow: var(--logoTileShadow);
       position:relative;
       overflow:hidden;
       flex: 0 0 auto;
+      isolation:isolate;
     }
-    .brandMark:after{
-      content:none;
+    .brandMark::before{
+      content:"";
+      position:absolute;
+      inset: var(--logoMarkInset);
+      background: var(--logoMarkColor);
+      -webkit-mask-image: url("/attune-logo-final.svg");
+      -webkit-mask-position: var(--logoMarkX) var(--logoMarkY);
+      -webkit-mask-repeat: no-repeat;
+      -webkit-mask-size: var(--logoMarkScale);
+      mask-image: url("/attune-logo-final.svg");
+      mask-position: var(--logoMarkX) var(--logoMarkY);
+      mask-repeat: no-repeat;
+      mask-size: var(--logoMarkScale);
+    }
+    .brandMark::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      background: linear-gradient(180deg, var(--logoTileSheen), rgba(255,255,255,0) 34%);
+      pointer-events:none;
     }
     .brandText{
       min-width:0;
@@ -351,11 +419,21 @@
       align-items: stretch;
       justify-content: center;
       padding: clamp(16px, 3vw, 32px);
-      /* Uses a static file in /public.
-         Put your image at: public/auth-bg.png (or change the URL here). */
+      /* Theme-specific auth backgrounds live in /public. */
       background:
-        linear-gradient(180deg, rgba(255,255,255,.74), rgba(255,255,255,.70)),
-        url("/auth-bg.png"),
+        linear-gradient(180deg, rgba(255,255,255,.44), rgba(255,255,255,.38)),
+        url("/auth-bg-light.png"),
+          radial-gradient(520px 340px at 18% 12%, var(--brandSoft), transparent 60%),
+          radial-gradient(520px 340px at 82% 8%, color-mix(in oklab, var(--brand2) 14%, transparent), transparent 62%),
+        var(--bodyBg);
+      background-size: auto, cover, auto, auto, auto;
+      background-position: 0 0, center, 0 0, 0 0, 0 0;
+      background-repeat: no-repeat;
+    }
+    html[data-theme="dark"] .authPage{
+      background:
+        linear-gradient(180deg, rgba(11,16,32,.26), rgba(11,16,32,.22)),
+        url("/auth-bg-dark.png"),
           radial-gradient(520px 340px at 18% 12%, var(--brandSoft), transparent 60%),
           radial-gradient(520px 340px at 82% 8%, color-mix(in oklab, var(--brand2) 14%, transparent), transparent 62%),
         var(--bodyBg);
@@ -371,68 +449,106 @@
       max-width: 980px;
       margin: 0 auto;
       min-height: 100dvh;
+      padding: clamp(20px, 5vh, 44px) 0;
     }
     .loginCard{
-      width: min(520px, 100%);
+      width: min(530px, 100%);
       margin: 0 auto;
-      border-radius: 20px;
-      border: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+      position: relative;
+      overflow: hidden;
+      border-radius: 32px;
+      border: 1px solid var(--authCardBorder);
       background:
-          radial-gradient(200px 160px at 20% 0%, var(--brandSoft), transparent 60%),
-          radial-gradient(220px 160px at 90% 10%, color-mix(in oklab, var(--brand2) 12%, transparent), transparent 65%),
-        var(--card);
-      box-shadow: 0 26px 80px rgba(0,0,0,.16), 0 8px 26px rgba(0,0,0,.10);
-      padding: 22px 20px;
-      backdrop-filter: blur(10px);
+          linear-gradient(180deg, color-mix(in oklab, var(--authCardInner) 100%, transparent), transparent 28%),
+          radial-gradient(220px 180px at 16% -4%, color-mix(in oklab, var(--brandSoft) 92%, transparent), transparent 64%),
+          radial-gradient(240px 180px at 92% 0%, color-mix(in oklab, var(--brand2) 11%, transparent), transparent 70%),
+        var(--authCardBg);
+      box-shadow: var(--authCardShadow);
+      padding: 30px 24px 24px;
+      backdrop-filter: blur(24px) saturate(136%);
+      -webkit-backdrop-filter: blur(24px) saturate(136%);
+      transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease;
+      animation: authCardFloatIn .42s ease both;
+      will-change: transform, opacity;
     }
-    .loginBrand{display:flex; justify-content:center; margin-bottom: 8px;}
-    .loginBrand .brandMark{width:54px; height:54px; border-radius:18px;}
-    .loginKicker{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      margin: 0 auto 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: var(--muted);
-      background: color-mix(in oklab, var(--card) 82%, var(--bg) 18%);
-      border: 1px solid color-mix(in oklab, var(--line) 80%, transparent);
-      width: fit-content;
+    .loginCard::before{
+      content:"";
+      position:absolute;
+      inset: 1px;
+      border-radius: inherit;
+      background: linear-gradient(180deg, rgba(255,255,255,.26), rgba(255,255,255,0) 26%);
+      pointer-events:none;
+      opacity:.7;
+    }
+    html[data-theme="dark"] .loginCard::before{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 24%);
+      opacity: 1;
+    }
+    .loginHeader{
+      display:grid;
+      gap: 12px;
+      justify-items:center;
+      text-align:center;
+      margin-bottom: 20px;
+    }
+    .loginBrand{display:flex; justify-content:center; margin: 4px 0 4px;}
+    .loginBrand .brandMark{
+      --logoMarkScale: 138%;
+      --logoMarkInset: 8%;
+      width:58px;
+      height:58px;
+      border-radius: 18px;
+      border: 1px solid var(--logoTileBorderStrong);
+      box-shadow: var(--logoTileShadowStrong);
     }
     .loginCard .loginTitle{
-      margin: 0 0 6px;
-      font-size: 18px;
+      margin: 0;
+      font-size: clamp(32px, 6vw, 42px);
       font-weight: 950;
-      letter-spacing: -.25px;
-      color: var(--ink);
+      letter-spacing: -.05em;
+      line-height: .96;
+      color: color-mix(in oklab, var(--ink) 96%, var(--brand) 4%);
       text-align:center;
       display:block;
       width:100%;
+      max-width: 9.5ch;
+    }
+    .loginLead{
+      max-width: 23ch;
+      font-size: 17px;
+      font-weight: 775;
+      line-height: 1.38;
+      color: color-mix(in oklab, var(--ink) 89%, var(--brand) 11%);
     }
     .loginSub{
       text-align:center;
-      margin-bottom: 12px;
+      max-width: 30ch;
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.52;
+      color: color-mix(in oklab, var(--muted) 92%, var(--ink) 8%);
     }
-    .loginMiniTitle{
-      text-align:center;
-      font-size: 12px;
-      font-weight: 950;
-      letter-spacing: .06em;
-      text-transform: uppercase;
-      color: color-mix(in oklab, var(--muted) 86%, var(--ink) 14%);
-      margin: 2px 0 10px;
-    }
-    .loginForm{margin-top: 10px;}
+    .loginForm{margin-top: 2px;}
 
-    .field{display:grid; gap:6px; margin-top: 12px;}
+    .field{display:grid; gap:8px; margin-top: 16px;}
     .fieldLabel{
       font-size: 12px;
-      font-weight: 900;
-      letter-spacing: .15px;
-      color: var(--muted);
+      font-weight: 780;
+      letter-spacing: .01em;
+      color: color-mix(in oklab, var(--muted) 78%, var(--ink) 22%);
+    }
+    .fieldMeta{
+      margin-top: -2px;
+      font-size: 12px;
+      line-height: 1.4;
+      color: color-mix(in oklab, var(--muted) 92%, var(--ink) 8%);
+    }
+    .fieldError{
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+      color: color-mix(in oklab, var(--danger) 82%, var(--ink) 18%);
+      padding-left: 10px;
     }
     .inputRow{display:flex; gap:8px; align-items:center;}
 
@@ -470,20 +586,32 @@
       width:100%;
       flex: 1 1 auto;
       min-width: 0;
-      border: 1px solid var(--line);
-      background: color-mix(in oklab, var(--card) 86%, var(--bg) 14%);
-      border-radius: 14px;
-      padding: 10px 12px;
-      font-size: 14px;
-      font-weight: 650;
+      border: 1px solid var(--authInputBorder);
+      background: var(--authInputBg);
+      border-radius: 18px;
+      padding: 15px 16px;
+      font-size: 15px;
+      font-weight: 680;
       color: var(--ink);
       outline: none;
-      box-shadow: 0 10px 22px rgba(20,30,60,.06);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,.03), 0 10px 24px rgba(20,30,60,.05);
+      transition: border-color .2s ease, background .2s ease, box-shadow .2s ease, transform .2s ease;
     }
-    .input::placeholder{color: color-mix(in oklab, var(--muted) 72%, transparent); font-weight: 600;}
+    .input::placeholder{color: color-mix(in oklab, var(--muted) 72%, transparent); font-weight: 560;}
     .input:focus{
-      border-color: color-mix(in oklab, var(--brand) 42%, transparent);
-      box-shadow: 0 0 0 4px var(--brandSoft), 0 10px 22px rgba(20,30,60,.06);
+      border-color: #7c3aed;
+      background: color-mix(in oklab, var(--authInputBg) 92%, var(--card) 8%);
+      box-shadow: 0 0 0 3px rgba(124,58,237,.15), 0 14px 30px rgba(20,30,60,.08);
+      transform: translateY(-1px);
+    }
+    .input[aria-invalid="true"]{
+      border-color: color-mix(in oklab, var(--danger) 34%, var(--line));
+      background: color-mix(in oklab, var(--authInputBg) 90%, var(--card) 10%);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--danger) 10%, transparent), 0 12px 24px rgba(20,30,60,.05);
+    }
+    .input[aria-invalid="true"]:focus{
+      border-color: color-mix(in oklab, var(--danger) 44%, transparent);
+      box-shadow: 0 0 0 4px color-mix(in oklab, var(--danger) 14%, transparent), 0 12px 26px rgba(20,30,60,.07);
     }
 
     .loginRow{
@@ -491,22 +619,91 @@
       align-items:center;
       justify-content:space-between;
       gap: 12px;
-      margin-top: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
     }
     .remember{
+      position: relative;
       display:inline-flex;
-      align-items:center;
-      gap: 10px;
+      align-items:flex-start;
+      gap: 12px;
       font-size: 13px;
-      font-weight: 750;
-      color: var(--muted);
+      font-weight: 800;
+      color: color-mix(in oklab, var(--muted) 84%, var(--ink) 16%);
       user-select:none;
       cursor:pointer;
+      padding: 12px 14px;
+      border-radius: 18px;
+      background: color-mix(in oklab, var(--authSecondaryBg) 92%, transparent);
+      border: 1px solid color-mix(in oklab, var(--line) 72%, transparent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+      transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
     }
     .remember input{
-      width: 16px;
-      height: 16px;
-      accent-color: var(--brand);
+      position: absolute;
+      opacity: 0;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      cursor: pointer;
+    }
+    .remember:hover{
+      border-color: color-mix(in oklab, var(--brand) 18%, var(--line));
+      transform: translateY(-1px);
+    }
+    .remember:focus-within{
+      border-color: color-mix(in oklab, var(--brand) 24%, var(--line));
+      box-shadow: 0 0 0 4px var(--brandSoft), inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .rememberIndicator{
+      width: 24px;
+      height: 24px;
+      border-radius: 9px;
+      flex: 0 0 auto;
+      margin-top: 1px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--authCheckboxBg);
+      border: 1px solid var(--authCheckboxBorder);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.22);
+      transition: background .2s ease, border-color .2s ease, transform .2s ease, box-shadow .2s ease;
+    }
+    .rememberTick{
+      width: 10px;
+      height: 6px;
+      border-left: 2px solid white;
+      border-bottom: 2px solid white;
+      transform: rotate(-45deg) scale(.6);
+      transform-origin: center;
+      opacity: 0;
+      transition: transform .2s ease, opacity .2s ease;
+    }
+    .remember input:checked + .rememberIndicator{
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      border-color: transparent;
+      box-shadow: 0 12px 24px var(--brandGlow);
+    }
+    .remember input:checked + .rememberIndicator .rememberTick{
+      opacity: 1;
+      transform: rotate(-45deg) scale(1);
+    }
+    .rememberTextWrap{
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    .rememberTitle{
+      font-size: 13px;
+      font-weight: 820;
+      color: color-mix(in oklab, var(--ink) 86%, var(--muted) 14%);
+    }
+    .rememberMeta{
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+      color: color-mix(in oklab, var(--muted) 94%, var(--ink) 6%);
     }
     .loginLink{
       appearance:none;
@@ -514,12 +711,14 @@
       background:transparent;
       padding: 6px 0;
       font-size: 13px;
-      font-weight: 850;
-        color: color-mix(in oklab, var(--brand) 74%, var(--ink) 26%);
+      font-weight: 780;
+      color: color-mix(in oklab, var(--brand) 68%, var(--ink) 32%);
       cursor:pointer;
       text-decoration: none;
+      transition: color .18s ease, opacity .18s ease;
     }
     .loginLink:hover{
+      color: color-mix(in oklab, var(--brand) 82%, var(--ink) 18%);
       text-decoration: underline;
     }
     .loginLink:focus-visible{
@@ -528,29 +727,80 @@
       border-radius: 10px;
     }
     .loginHint{
-      margin-top: 8px;
-      padding: 10px 12px;
-      border-radius: 14px;
-      border: 1px solid color-mix(in oklab, var(--line) 85%, transparent);
-      background: color-mix(in oklab, var(--card) 84%, var(--bg) 16%);
-      color: var(--muted);
+      margin-top: 14px;
+      padding: 13px 15px;
+      border-radius: 18px;
+      border: 1px solid var(--authHintBorder);
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--brandSoft) 34%, var(--authHintBg) 66%), color-mix(in oklab, var(--authHintBg) 94%, transparent));
+      color: color-mix(in oklab, var(--muted) 86%, var(--ink) 14%);
       font-size: 12px;
-      line-height: 1.35;
+      line-height: 1.45;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
     }
 
     .loginSubmit{
       width: 100%;
-      margin-top: 14px;
-      padding: 11px 12px;
+      margin-top: 20px;
+      min-height: 58px;
+      padding: 15px 18px;
       font-weight: 900;
+      font-size: 16px;
+      border-radius: 20px;
+      border-color: rgba(255,255,255,.12);
+      box-shadow: 0 18px 36px var(--brandGlow);
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease, opacity .2s ease;
+    }
+    .loginSubmit:disabled{
+      opacity: 1;
+      background: color-mix(in oklab, var(--authSecondaryBg) 78%, white 22%);
+      border-color: color-mix(in oklab, var(--brand) 12%, var(--authInputBorder) 88%);
+      color: color-mix(in oklab, var(--muted) 68%, var(--brand) 32%);
+      box-shadow: none;
+      filter: none;
+    }
+    html[data-theme="dark"] .loginSubmit:disabled{
+      background: color-mix(in oklab, var(--authSecondaryBg) 86%, var(--surface2) 14%);
+      border-color: color-mix(in oklab, var(--brand) 16%, var(--authInputBorder) 84%);
+      color: color-mix(in oklab, var(--muted) 72%, var(--brand2) 28%);
+    }
+    .loginSubmit:hover:not(:disabled){
+      transform: translateY(-1px);
+      box-shadow: 0 24px 46px color-mix(in oklab, var(--brandGlow) 100%, rgba(124,58,237,.28));
+      filter: saturate(1.05);
+    }
+    .loginSubmit:active:not(:disabled){
+      transform: translateY(0) scale(.992);
+    }
+    .loginFooterRail{
+      margin-top: 16px;
+      padding-top: 8px;
+    }
+    .loginDivider{
+      display:flex;
+      align-items:center;
+      gap: 12px;
+      margin-top: 0;
+      color: color-mix(in oklab, var(--muted) 88%, var(--ink) 12%);
+      font-size: 12px;
+      font-weight: 740;
+      justify-content:center;
+    }
+    .loginDivider::before,
+    .loginDivider::after{
+      content:none;
     }
     .loginAlt{
-      margin-top: 10px;
+      margin-top: 12px;
       display:flex;
       align-items:center;
       justify-content:center;
       gap: 8px;
       font-size: 13px;
+    }
+    .loginAltStacked{
+      flex-direction: column;
     }
     .loginAltText{
       color: var(--muted);
@@ -560,17 +810,57 @@
       padding: 6px 10px;
       border-radius: 12px;
     }
+    .loginSecondaryCta{
+      width: 100%;
+      min-height: 54px;
+      border-radius: 20px;
+      border-color: rgba(124,58,237,.15);
+      background: rgba(255,255,255,.6);
+      color: color-mix(in oklab, var(--ink) 92%, var(--brand) 8%);
+      font-weight: 820;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.16), 0 10px 26px rgba(20,30,60,.05);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: transform .2s ease, border-color .2s ease, background .2s ease, box-shadow .2s ease;
+    }
+    .loginSecondaryCta:hover{
+      background: rgba(124,58,237,.05);
+      border-color: rgba(124,58,237,.15);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 14px 30px rgba(20,30,60,.07);
+      transform: translateY(-1px);
+    }
+    html[data-theme="dark"] .loginSecondaryCta{
+      background: color-mix(in oklab, var(--authSecondaryBg) 88%, transparent);
+      border-color: color-mix(in oklab, var(--brand) 18%, var(--authSecondaryBorder) 82%);
+    }
+    html[data-theme="dark"] .loginSecondaryCta:hover{
+      background: color-mix(in oklab, var(--brand) 10%, var(--authSecondaryBg) 90%);
+      border-color: color-mix(in oklab, var(--brand) 24%, var(--authSecondaryBorder) 76%);
+    }
     .loginAlt .loginLink:disabled{
       opacity: .55;
       cursor: not-allowed;
       text-decoration: none;
     }
     .loginFinePrint{
-      margin-top: 10px;
+      margin-top: 14px;
       text-align:center;
       font-size: 12px;
-      color: var(--muted);
-      line-height: 1.35;
+      color: color-mix(in oklab, var(--muted) 88%, var(--ink) 12%);
+      line-height: 1.45;
+      max-width: 28ch;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    @keyframes authCardFloatIn{
+      from{
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to{
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
     .card h2{
       margin:0 0 8px;

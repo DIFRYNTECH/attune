@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { validateEmail } from "../lib/authValidation";
 
 export default function Login({ state, actions }) {
   const OTP_LENGTH = 8;
@@ -9,6 +10,8 @@ export default function Login({ state, actions }) {
   const codeRef = useRef(null);
   const authStep = state?.auth?.step === "verify" ? "verify" : "request";
   const sentTo = String(state?.auth?.sentTo || state?.auth?.username || "");
+  const authStatus = String(state?.auth?.status || "idle");
+  const emailError = authStep === "request" ? validateEmail(username) : "";
 
   useEffect(() => {
     if(authStep === "verify"){
@@ -21,8 +24,31 @@ export default function Login({ state, actions }) {
 
   const canSubmit = useMemo(() => {
     if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
-    return username.trim().length > 0;
-  }, [authStep, otpCode, username]);
+    return !emailError;
+  }, [authStep, emailError, otpCode]);
+
+  const showVerifySubmit = authStep !== "verify" || otpCode.trim().length > 0 || authStatus === "verifying";
+
+  const authFeedback = useMemo(() => {
+    if(authStatus === "sending"){
+      return {
+        role: "status",
+        text: authStep === "verify"
+          ? `Sending a new ${OTP_LENGTH}-digit code…`
+          : "Sending code…",
+      };
+    }
+
+    if(authStatus === "verifying"){
+      return { role: "status", text: "Verifying code…" };
+    }
+
+    if(authStatus === "error" && state?.auth?.error){
+      return { role: "alert", text: state.auth.error };
+    }
+
+    return null;
+  }, [OTP_LENGTH, authStatus, authStep, state?.auth?.error]);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -31,23 +57,27 @@ export default function Login({ state, actions }) {
       return;
     }
 
+    if(emailError) return;
+
     actions?.requestEmailOtp?.({ email: username, rememberMe });
   };
 
   return (
     <div className="loginShell" aria-label="Sign in">
       <div className="card loginCard">
-        <div className="loginBrand" aria-hidden="true">
-          <div className="brandMark" />
-        </div>
+        <div className="loginHeader">
+          <div className="loginBrand" aria-hidden="true">
+            <div className="brandMark" />
+          </div>
 
-        <h2 className="loginTitle">Welcome to Attune</h2>
-        <div className="sub loginSub">
-          A planning companion that adapts to you.
-          Check in, set your pace, and shape a Day that feels possible, even on low energy days.
+          <h1 className="loginTitle">Welcome back to Attune</h1>
+          <div className="loginLead">
+            Plan around your real energy, not your ideal day.
+          </div>
+          <div className="sub loginSub">
+            Sign in with email to pick up your pace, notes, and weekly rhythm.
+          </div>
         </div>
-
-        <div className="loginMiniTitle">BUILT FOR REAL LIFE DAYS</div>
 
         <form className="loginForm" onSubmit={onSubmit}>
           {authStep === "request" ? (
@@ -56,13 +86,18 @@ export default function Login({ state, actions }) {
                 <div className="fieldLabel">Email</div>
                 <input
                   ref={usernameRef}
+                  type="email"
                   className="input"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="you@example.com"
                   autoComplete="username"
                   inputMode="email"
+                  maxLength={120}
+                  spellCheck={false}
+                  aria-invalid={emailError ? "true" : undefined}
                 />
+                {emailError ? <div className="fieldError">{emailError}</div> : null}
               </label>
 
               <div className="loginRow">
@@ -73,24 +108,27 @@ export default function Login({ state, actions }) {
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
                   />
-                  <span>Remember me</span>
+                  <span className="rememberIndicator" aria-hidden="true">
+                    <span className="rememberTick"></span>
+                  </span>
+                  <span className="rememberTextWrap">
+                    <span className="rememberTitle">Remember me</span>
+                    <span className="rememberMeta">Keep this device ready for a faster return.</span>
+                  </span>
                 </label>
               </div>
             </>
           ) : (
             <>
-              <div className="loginHint" role="status">
-                Enter the {OTP_LENGTH}-digit code we sent to {sentTo || username}.
-              </div>
-
               <label className="field">
                 <div className="fieldLabel">Email code</div>
+                <div className="fieldMeta">We sent an {OTP_LENGTH}-digit code to {sentTo || username}.</div>
                 <input
                   ref={codeRef}
                   className="input"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, OTP_LENGTH))}
-                  placeholder="12345678"
+                  placeholder="8-digit code"
                   autoComplete="one-time-code"
                   inputMode="numeric"
                 />
@@ -119,40 +157,33 @@ export default function Login({ state, actions }) {
             </>
           )}
 
-          {state?.auth?.status === "sending" ? (
-            <div className="loginHint" role="status">
-              Sending code…
+          {authFeedback ? (
+            <div className="loginHint" role={authFeedback.role}>
+              {authFeedback.text}
             </div>
-          ) : state?.auth?.status === "sent" ? (
-            <div className="loginHint" role="status">
-              Check your email for an {OTP_LENGTH}-digit code.
-            </div>
-          ) : state?.auth?.status === "verifying" ? (
-            <div className="loginHint" role="status">
-              Verifying code…
-            </div>
-          ) : state?.auth?.status === "error" && state?.auth?.error ? (
-            <div className="loginHint" role="alert">
-              {state.auth.error}
-            </div>
-          ) : (
-            <div className="loginHint" role="note">
-              {authStep === "verify" ? "Enter the code from your email to finish signing in." : "We’ll email you a one-time code."}
-            </div>
-          )}
+          ) : null}
 
-          <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
-            {authStep === "verify" ? "Verify code" : "Send code"}
-          </button>
-
-          <div className="loginAlt">
-            <span className="loginAltText">Not a member?</span>
-            <button type="button" className="loginLink" onClick={() => actions?.setAuthView?.("signup")}>
-              Sign up
+          {showVerifySubmit ? (
+            <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
+              {authStep === "verify"
+                ? (canSubmit ? "Verify and continue" : "Enter full code to continue")
+                : "Continue with email"}
             </button>
+          ) : null}
+
+          <div className="loginFooterRail">
+            <div className="loginDivider" aria-hidden="true">
+              <span>New here?</span>
+            </div>
+
+            <div className="loginAlt loginAltStacked">
+              <button type="button" className="btn ghost loginSecondaryCta" onClick={() => actions?.setAuthView?.("signup")}>
+                Create account
+              </button>
+            </div>
           </div>
 
-          <div className="loginFinePrint">No password needed.</div>
+          <div className="loginFinePrint">No password needed. We’ll email a secure one-time code.</div>
         </form>
       </div>
     </div>
