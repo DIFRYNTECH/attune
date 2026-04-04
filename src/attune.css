@@ -366,6 +366,39 @@ html {
   }
 }
 
+@media (min-width: 641px) and (max-width: 760px) {
+  .settingsSectionHead {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 8px;
+  }
+
+  .settingsSectionTitleRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    min-width: 0;
+  }
+
+  .settingsFeaturePanel {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .settingsFeatureRail {
+    gap: 10px;
+  }
+
+  .settingsFeatureStatusTop {
+    align-items: flex-start;
+  }
+
+  .settingsFeatureStatusNote {
+    max-width: none;
+  }
+}
+
 /* Bottom nav (mobile only) */
 .bottomNav {
   position: fixed;

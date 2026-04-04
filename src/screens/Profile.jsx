@@ -188,6 +188,7 @@ export default function Profile({ state, actions }) {
   const billingConfigured = isNative ? billing?.configuredGooglePlay === true : billing?.configuredPaddle === true;
   const canUpgrade = signedIn && billingConfigured;
   const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
+  const showBillingStatusPill = !isPlus || billingStatus !== "Active";
 
   const doExport = () => {
     if(!isPlus){
@@ -290,7 +291,7 @@ export default function Profile({ state, actions }) {
               <div className="settingsFeatureStatusCard">
                 <div className="settingsFeatureStatusTop">
                   <div className="settingsFeatureStatusLabel">Billing</div>
-                  <div className="settingsFeatureStatusPill">{billingStatus}</div>
+                  {showBillingStatusPill ? <div className="settingsFeatureStatusPill">{billingStatus}</div> : null}
                 </div>
                 <div className="settingsFeatureStatusNote">
                   {signedIn
