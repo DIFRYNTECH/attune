@@ -222,7 +222,7 @@ export default function Profile({ state, actions }) {
     <div className="card settingsCard">
       <div className="settingsHeader">
         <h2 className="settingsTitle">Profile</h2>
-        <div className="settingsSubtitle">Local settings for this device.</div>
+        <div className="settingsSubtitle">Settings for this device, plus your account and billing.</div>
       </div>
 
       <div className="settingsMain">
