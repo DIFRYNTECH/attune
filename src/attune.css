@@ -538,3 +538,47 @@ html {
     margin-bottom: 10px;
   }
 }
+
+/* Final medium-width override block.
+   Keep this after the base/mobile nav rules so tablet and foldable layouts win reliably. */
+@media (min-width: 641px) and (max-width: 1100px) {
+  .wrap {
+    --bottomNavSpace: 74px;
+    padding-bottom: calc(16px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
+  }
+
+  .nav,
+  .side,
+  .quickStatusCard {
+    display: none;
+  }
+
+  .bottomNav {
+    position: fixed;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: 10px;
+    width: auto;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    border: 1px solid var(--divider);
+    border-radius: 22px;
+    background: var(--card92);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 18px 40px rgba(20,30,60,.14);
+    justify-content: stretch;
+    z-index: 50;
+  }
+
+  .bottomNavBtn {
+    min-width: 0;
+    padding: 9px 6px;
+    font-size: 11px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
