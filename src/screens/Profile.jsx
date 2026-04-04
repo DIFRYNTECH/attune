@@ -88,9 +88,7 @@ function downloadJson(filename, data) {
 
 function ProfileIdentitySection({ profileName, profileEmail, actions }) {
   const [draftName, setDraftName] = useState(profileName);
-  const [draftEmail, setDraftEmail] = useState(profileEmail);
   const [nameError, setNameError] = useState("");
-  const [emailError, setEmailError] = useState("");
 
   const commitName = () => {
     const next = String(draftName || "").trim();
@@ -111,73 +109,8 @@ function ProfileIdentitySection({ profileName, profileEmail, actions }) {
     if(next !== profileName) actions?.setProfile?.({ name: next });
   };
 
-  const commitEmail = () => {
-    const next = String(draftEmail || "").trim().toLowerCase();
-    if(!next){
-      setEmailError("Email is required.");
-      setDraftEmail(profileEmail);
-      return;
-    }
-    if(next.length > 120){
-      setEmailError("Email is too long.");
-      return;
-    }
-
-    const at = next.indexOf("@");
-    const lastAt = next.lastIndexOf("@");
-    if(at <= 0 || at !== lastAt || at === next.length - 1){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    const local = next.slice(0, at);
-    const domain = next.slice(at + 1);
-
-    if(local.startsWith(".") || local.endsWith(".") || local.includes("..")){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    if(domain.startsWith(".") || domain.endsWith(".") || domain.includes("..")){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    const labels = domain.split(".");
-    if(labels.length < 2){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    if(labels.length >= 2 && labels[labels.length - 1] === labels[labels.length - 2]){
-      setEmailError("Enter a valid email domain.");
-      return;
-    }
-
-    const labelOk = (s) => {
-      if(!s) return false;
-      if(s.length > 63) return false;
-      if(s.startsWith("-") || s.endsWith("-")) return false;
-      return /^[a-z0-9-]+$/.test(s);
-    };
-
-    if(!labels.every(labelOk)){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    const tld = labels[labels.length - 1];
-    if(!/^[a-z]{2,63}$/.test(tld)){
-      setEmailError("Enter a valid email.");
-      return;
-    }
-
-    setEmailError("");
-    if(next !== profileEmail) actions?.setProfile?.({ email: next });
-  };
-
   return (
-    <SettingsSection title="About you" helper="Required. Saved locally on this device." helperLabel="About you info">
+    <SettingsSection title="About you" helper="Name is saved locally on this device. Email mirrors your signed-in account." helperLabel="About you info">
       <div className="settingsFields">
         <div>
           <div className="fieldLabelRow">
@@ -212,32 +145,21 @@ function ProfileIdentitySection({ profileName, profileEmail, actions }) {
         <div>
           <div className="fieldLabelRow">
             <label htmlFor="profileEmail">Email</label>
-            <span className="fieldPill" aria-hidden="true">Required</span>
           </div>
           <input
             id="profileEmail"
-            className={"inputCompact" + (emailError ? " inputError" : "")}
+            className="inputCompact"
             type="email"
             inputMode="email"
             autoComplete="email"
-            value={draftEmail}
+            value={profileEmail}
             placeholder="you@example.com"
-            required
-            title="Enter a valid email (e.g. name@example.com)"
-            aria-invalid={emailError ? "true" : "false"}
-            aria-describedby={emailError ? "profileEmailError" : undefined}
-            onChange={(e) => {
-              setDraftEmail(e.target.value);
-              if(emailError) setEmailError("");
-            }}
-            onKeyDown={(e) => {
-              if(e.key === "Enter") e.currentTarget.blur();
-            }}
-            onBlur={commitEmail}
+            readOnly
+            aria-readonly="true"
+            title="This email comes from your signed-in account."
             maxLength={120}
             aria-label="Email"
           />
-          {emailError ? <div id="profileEmailError" className="fieldError">{emailError}</div> : null}
         </div>
       </div>
     </SettingsSection>

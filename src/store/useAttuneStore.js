@@ -1010,6 +1010,10 @@ export function useAttuneStore(){
             otpCode: "",
             error: "",
           },
+          profile: (() => {
+            const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
+            return email ? { ...currentProfile, email } : currentProfile;
+          })(),
         }));
 
         const billingState = await syncBillingState(userId).catch(() => normalizeBillingState(defaultBillingState()));
@@ -1279,6 +1283,10 @@ export function useAttuneStore(){
           otpCode: "",
           error: "",
         },
+        profile: (() => {
+          const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
+          return email ? { ...currentProfile, email } : currentProfile;
+        })(),
       })),
 
     logout: async () => {
@@ -2028,15 +2036,14 @@ export function useAttuneStore(){
     setProfile: (patch) =>
       setState(s => {
         const rawPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
-        const { plan: _ignoredPlan, ...nextPatch } = rawPatch;
+        const { plan: _ignoredPlan, email: _ignoredEmail, ...nextPatch } = rawPatch;
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
 
-        if(typeof profile.email !== "string") profile.email = "";
-        profile.email = profile.email.trim();
-        if(profile.email.length > 120) profile.email = profile.email.slice(0, 120);
-        if(profile.email) profile.email = profile.email.toLowerCase();
+        const authEmail = typeof s?.auth?.username === "string" ? s.auth.username.trim().toLowerCase() : "";
+        if(authEmail) profile.email = authEmail;
+        else if(typeof profile.email !== "string") profile.email = "";
 
         if(typeof profile.useNoteForAi !== "boolean") profile.useNoteForAi = true;
 
