@@ -381,7 +381,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Data"
-          helper="Export is included with Attune Plus. You can always clear everything stored on this device."
+          helper="Export your data with Attune Plus. You can clear everything stored on this device at any time."
           helperLabel="Data info"
         >
           <div className="settingsSplitRow settingsSplitRowTerse">
@@ -417,8 +417,8 @@ export default function Profile({ state, actions }) {
           title="Note memory"
           helper={
             canUseMemory
-              ? "Attune Plus remembers your check-in notes over time. They stay on this device first and can sync to your account when you're signed in."
-              : "Free plan doesn’t keep historical note memory."
+              ? "Attune Plus can remember your check-in notes over time. Notes stay on this device first and can also sync to your account when you're signed in."
+              : "Note memory is available with Attune Plus."
           }
           helperLabel="Note memory info"
         >
@@ -467,7 +467,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Account"
-          helper="Email OTP sign-in can sync weekly summaries, note history, and verified billing state tied to your account."
+          helper="Signing in lets Attune sync weekly summaries, note history, and billing status with your account."
           helperLabel="Account info"
         >
           <div className="settingsSplitRow">
