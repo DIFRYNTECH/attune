@@ -71,6 +71,7 @@ export default function CheckIn({ state, actions }) {
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
+  const compactHeading = checkInHeading.length > 32;
 
   const autosizeNote = useCallback(() => {
     const el = noteRef.current;
@@ -111,9 +112,11 @@ export default function CheckIn({ state, actions }) {
   };
 
   return (
-    <div className="card checkinCard" style={{ display: 'flex', flexDirection: 'column', flex: '1' }}>
-      <h2>{checkInHeading}</h2>
-      <div className="sub">Changeable anytime.</div>
+    <div className="card checkinCard">
+      <div className="checkinIntro">
+        <h2 className={"checkinHeading" + (compactHeading ? " compact" : "")}>{checkInHeading}</h2>
+        <div className="sub checkinSub">Changeable anytime.</div>
+      </div>
 
       <div className="row">
         <div>
@@ -145,29 +148,6 @@ export default function CheckIn({ state, actions }) {
               </button>
             ))}
           </div>
-          <div className="moodSelectedRow" aria-live="polite">
-            <span className="moodSelectedKey">Selected</span>
-            {selectedMoodWords.length ? (
-              selectedMoodWords.map((label) => {
-                const meta = moodMeta(label);
-
-                return (
-                  <span key={label} className="moodBadge" data-tone={meta.tone}>
-                    <span className="moodBadgeEmoji" aria-hidden="true">
-                      <EmojiIcon
-                        id={meta.icon}
-                        size="14px"
-                        fallback={meta.emoji}
-                      />
-                    </span>
-                    <span>{meta.label}</span>
-                  </span>
-                );
-              })
-            ) : (
-              <span className="moodSelectedEmpty">None</span>
-            )}
-          </div>
         </div>
 
         <div>
@@ -198,26 +178,24 @@ export default function CheckIn({ state, actions }) {
         </select>
       </div>
 
-      <details
-        className="noteDetails"
-        style={{ marginTop: 12 }}
-      >
-        <summary className="noteSummary">Optional note (200 characters)</summary>
-        <div style={{ marginTop: 8 }}>
-          <textarea
-            className="noteInput"
-            ref={noteRef}
-            value={note}
-            maxLength={200}
-            rows={3}
-            placeholder="Anything else to know (e.g., slept great, excited, busy day, bad sleep, headache)…"
-            onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
-            onInput={autosizeNote}
-            aria-label="Optional note"
-          />
+      <div className="checkinNoteBlock" style={{ marginTop: 14 }}>
+        <div className="checkinNoteHead">
+          <label htmlFor="checkinNote">Optional note</label>
           <div className="charCount">{note.length}/200</div>
         </div>
-      </details>
+        <textarea
+          id="checkinNote"
+          className="noteInput"
+          ref={noteRef}
+          value={note}
+          maxLength={200}
+          rows={3}
+          placeholder="Anything else to know today, if it helps Attune meet you more gently."
+          onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
+          onInput={autosizeNote}
+          aria-label="Optional note"
+        />
+      </div>
 
       <div style={{ marginTop: 14 }}>
         <label>Pace for today</label>

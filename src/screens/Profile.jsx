@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import InfoTip from "../components/InfoTip";
 import { buildBackupExport, buildUserDataExport } from "../lib/exportData";
 import { isNativePlatform } from "../lib/platform";
@@ -167,6 +168,39 @@ function ProfileIdentitySection({ profileName, profileEmail, actions }) {
   );
 }
 
+function ConfirmDialog({ open, label, title, body, confirmText, onCancel, onConfirm }) {
+  if (!open || typeof document === "undefined") return null;
+
+  return createPortal(
+    <div
+      className="modalOverlay modalOverlayCentered confirmModalOverlay"
+      role="presentation"
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onCancel?.();
+      }}
+    >
+      <div className="modalCard confirmModalCard" role="dialog" aria-modal="true" aria-label={label}>
+        <div className="modalTitle">{title}</div>
+        <div className="modalBody">{body}</div>
+        <div className="modalActions">
+          <button type="button" className="btn small ghost" onClick={onCancel}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn small"
+            onClick={onConfirm}
+            style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 export default function Profile({ state, actions }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
@@ -190,6 +224,7 @@ export default function Profile({ state, actions }) {
   const canUpgrade = signedIn && billingConfigured;
   const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
   const showBillingStatusPill = !isPlus || billingStatus !== "Active";
+  const showUpgradeButton = !isPlus && canUpgrade;
 
   const doExportUserData = () => {
     if(!isPlus){
@@ -287,13 +322,11 @@ export default function Profile({ state, actions }) {
                 <div>
                   {billingRenewsOn
                     ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
-                    : billingConfigured
+                    : signedIn
                       ? isNative
-                        ? "Google Play billing is configured for this account."
-                        : "Web billing is configured for this account."
-                      : isNative
-                        ? "Google Play billing still needs server configuration."
-                        : "Web billing still needs server configuration."}
+                        ? "Purchases are linked to your signed-in Attune account."
+                        : "Subscriptions are linked to your signed-in Attune account."
+                      : "Sign in to link billing to your Attune account."}
                 </div>
               </div>
             </div>
@@ -314,16 +347,16 @@ export default function Profile({ state, actions }) {
               </div>
 
               <div className="settingsActions settingsFeatureActions">
-                {!isPlus ? (
+                {showUpgradeButton ? (
                   <button
                     type="button"
                     className="btn primary"
                     onClick={() => actions?.startBillingUpgrade?.()}
                     aria-label="Upgrade to Attune Plus"
                     disabled={billingSyncing}
-                    title={!signedIn ? "Sign in before upgrading" : !billingConfigured ? isNative ? "Google Play billing is not configured yet" : "Web billing is not configured yet" : ""}
+                    title=""
                   >
-                    {billingSyncing ? "Working..." : canUpgrade ? isNative ? "Upgrade on Google Play" : "Upgrade on the web" : !signedIn ? "Sign in to upgrade" : "Billing not ready"}
+                    {billingSyncing ? "Working..." : isNative ? "Upgrade on Google Play" : "Upgrade on the web"}
                   </button>
                 ) : null}
                 {isNative ? (
@@ -520,106 +553,44 @@ export default function Profile({ state, actions }) {
         </SettingsSection>
       </div>
 
-      {confirmOpen && (
-        <div
-          className="modalOverlay modalOverlayCentered"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setConfirmOpen(false);
-          }}
-        >
-          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear device confirmation">
-            <div className="modalTitle">Reset local Attune data?</div>
-            <div className="modalBody">
-              This resets the Attune data stored on this device, including history, preferences, and local note memory. If you sign in again,
-              synced weekly summaries and note history can come back from your account. This does not delete your account.
-            </div>
-            <div className="modalActions">
-              <button type="button" className="btn small ghost" onClick={() => setConfirmOpen(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn small"
-                onClick={() => {
-                  setConfirmOpen(false);
-                  actions?.clearDeviceData?.();
-                }}
-                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
-              >
-                Reset local data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmOpen}
+        label="Clear device confirmation"
+        title="Reset local Attune data?"
+        body="This resets the Attune data stored on this device, including history, preferences, and local note memory. If you sign in again, synced weekly summaries and note history can come back from your account. This does not delete your account."
+        confirmText="Reset local data"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          setConfirmOpen(false);
+          actions?.clearDeviceData?.();
+        }}
+      />
 
-      {clearMemoryOpen && (
-        <div
-          className="modalOverlay modalOverlayCentered"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setClearMemoryOpen(false);
-          }}
-        >
-          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Clear note memory confirmation">
-            <div className="modalTitle">Clear note history?</div>
-            <div className="modalBody">
-              This removes your saved check-in notes from this device. If you are signed in, Attune will also try to clear the synced note history
-              in your account. You can’t undo this.
-            </div>
-            <div className="modalActions">
-              <button type="button" className="btn small ghost" onClick={() => setClearMemoryOpen(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn small"
-                onClick={() => {
-                  setClearMemoryOpen(false);
-                  actions?.clearNoteMemory?.();
-                }}
-                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
-              >
-                Clear notes
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={clearMemoryOpen}
+        label="Clear note memory confirmation"
+        title="Clear note history?"
+        body="This removes your saved check-in notes from this device. If you are signed in, Attune will also try to clear the synced note history in your account. You can’t undo this."
+        confirmText="Clear notes"
+        onCancel={() => setClearMemoryOpen(false)}
+        onConfirm={() => {
+          setClearMemoryOpen(false);
+          actions?.clearNoteMemory?.();
+        }}
+      />
 
-      {signOutOpen && (
-        <div
-          className="modalOverlay modalOverlayCentered"
-          role="presentation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setSignOutOpen(false);
-          }}
-        >
-          <div className="modalCard" role="dialog" aria-modal="true" aria-label="Sign out confirmation">
-            <div className="modalTitle">Sign out of Attune?</div>
-            <div className="modalBody">
-              This signs you out on this device. Your local data will remain here unless you clear it.
-            </div>
-            <div className="modalActions">
-              <button type="button" className="btn small ghost" onClick={() => setSignOutOpen(false)}>
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="btn small"
-                onClick={() => {
-                  setSignOutOpen(false);
-                  actions?.logout?.();
-                }}
-                style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
-              >
-                Sign out
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        open={signOutOpen}
+        label="Sign out confirmation"
+        title="Sign out of Attune?"
+        body="This signs you out on this device. Your local data will remain here unless you clear it."
+        confirmText="Sign out"
+        onCancel={() => setSignOutOpen(false)}
+        onConfirm={() => {
+          setSignOutOpen(false);
+          actions?.logout?.();
+        }}
+      />
     </div>
   );
 }

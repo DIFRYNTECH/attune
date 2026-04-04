@@ -14,10 +14,11 @@ export default function BottomNav({ screen, setScreen }) {
           key={key}
           type="button"
           className={"bottomNavBtn" + (screen === key ? " active" : "")}
+          data-screen={key}
           onClick={() => setScreen(key)}
           aria-current={screen === key ? "page" : undefined}
         >
-          {label}
+          <span className="bottomNavLabel">{label}</span>
         </button>
       ))}
     </nav>

@@ -37,12 +37,12 @@ function TopNav({ screen, go, entitlements, hideNav = false }) {
     <div className="top">
       <div className="brand">
         <div className="brandMark" aria-hidden="true"></div>
-        <div>
-          <h1>
-            Attune{" "}
+        <div className="brandText">
+          <div className="brandTitleRow">
+            <h1>Attune</h1>
             <span className="versionTag">v0</span>
             {entitlements?.isPlus ? <span className="planTag">Plus</span> : null}
-          </h1>
+          </div>
           <div className="tag">
             Meet yourself where you are, then take one small step toward better.
           </div>
@@ -65,7 +65,7 @@ function TopNav({ screen, go, entitlements, hideNav = false }) {
             onClick={() => go("wheel")}
             aria-current={screen === "wheel" ? "page" : undefined}
           >
-            Activity Picker
+            Pick
           </button>
           <button
             type="button"
@@ -159,7 +159,6 @@ export default function App() {
       <TopNav screen={screen} go={actions.go} entitlements={state.entitlements} />
 
       <div className="grid">
-        {/* LEFT */}
         <main>
           {!signedIn && (
             <Login state={state} actions={actions} />
@@ -193,35 +192,6 @@ export default function App() {
             </Suspense>
           )}
         </main>
-
-        {/* RIGHT */}
-        {signedIn ? (
-          <aside className="side">
-            <div className="card quickStatusCard" style={{ marginTop: 14 }}>
-              <h2>📌 Quick status</h2>
-              <div className="sub">Just enough context.</div>
-              <div style={{ display: "grid", gap: 8, fontSize: 13, color: "var(--muted)" }}>
-                <div>
-                  <b style={{ color: "var(--ink)" }}>Screen:</b> {screen}
-                </div>
-                <div>
-                  <b style={{ color: "var(--ink)" }}>Options ready:</b> {state.options.length}
-                </div>
-                <div>
-                  <b style={{ color: "var(--ink)" }}>Tasks in My Day:</b> {state.myDay.length}
-                </div>
-                <div>
-                  <b style={{ color: "var(--ink)" }}>Checked off today:</b>{" "}
-                  {state.myDay.filter((t) => t.done).length}
-                </div>
-              </div>
-
-              <div className="footerNote" style={{ marginTop: 10 }}>
-                Attune counts “showing up” as success too.
-              </div>
-            </div>
-          </aside>
-        ) : null}
       </div>
 
       {showToast && (

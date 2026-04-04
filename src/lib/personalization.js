@@ -27,7 +27,7 @@ export function getHeaderTagline(name, now = new Date()) {
 
 export function getCheckInHeading(name) {
   const firstName = getFirstName(name);
-  return firstName ? `🌤 How are you today, ${firstName}?` : "🌤 How are you today?";
+  return firstName ? `How are you feeling, ${firstName}?` : "How are you feeling?";
 }
 
 export function getTodayEmptyStateCopy(name) {

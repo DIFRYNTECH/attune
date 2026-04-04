@@ -40,7 +40,7 @@ function getUpgradeCta(state) {
   if (!state?.auth?.signedIn) return "Sign in to upgrade";
   if (!isNativePlatform() && state?.billing?.configuredPaddle) return "Upgrade on the web";
   if (state?.billing?.configuredGooglePlay) return "Upgrade on Google Play";
-  return "Billing not ready";
+  return "Refresh billing";
 }
 
 export default function PaywallSheet({ state, actions }) {
@@ -60,6 +60,14 @@ export default function PaywallSheet({ state, actions }) {
   const onClose = () => actions?.closePaywall?.();
   const onUpgrade = () => actions?.startBillingUpgrade?.();
   const onRestore = () => actions?.restoreBillingPurchases?.();
+  const onPrimaryAction = () => {
+    if (billingSyncing) return;
+    if (!signedIn || billingConfigured) {
+      onUpgrade();
+      return;
+    }
+    actions?.refreshBilling?.().catch(() => {});
+  };
 
   return (
     <div
@@ -115,15 +123,13 @@ export default function PaywallSheet({ state, actions }) {
                 ? isNativePlatform()
                   ? "Purchases are verified against your account after Google Play checkout."
                   : "Web checkout uses Paddle and attaches the subscription to your signed-in Attune account."
-                : isNativePlatform()
-                  ? "Google Play billing still needs server configuration before purchases can be completed."
-                  : "Web billing still needs server configuration before checkout can be completed."
+                : "Refresh billing to check purchase availability for this account."
               : "Sign in first so your purchase can be linked to your Attune account."}
           </div>
         </div>
 
         <div className="modalActions" style={{ justifyContent: "space-between" }}>
-          <button type="button" className="btn" onClick={onUpgrade} style={{ fontWeight: 900 }} disabled={billingSyncing}>
+          <button type="button" className="btn" onClick={onPrimaryAction} style={{ fontWeight: 900 }} disabled={billingSyncing}>
             {getUpgradeCta(state)}
           </button>
           {isNativePlatform() ? (

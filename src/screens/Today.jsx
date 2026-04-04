@@ -32,7 +32,7 @@ export default function Today({ state, actions }) {
 
 	return (
 		<div className="card myDayCard">
-			<h2>🧭 My Day</h2>
+			<h2 className="myDayHeading">🧭 My Day</h2>
 			<div className="sub">Aim for 2-5 tasks. You can add up to 10 if you’d like.</div>
 
 			<div className="result personalNote" style={{ marginBottom: 12 }}>
@@ -100,20 +100,20 @@ export default function Today({ state, actions }) {
 					<ul className="list" aria-label="My Day">
 						{myDay.map((t) => (
 							<li key={t.id} className={"item" + (t.done ? " done" : "") }>
-								<div className="left">
+								<label className="left itemMain">
 									<input
 										type="checkbox"
 										checked={!!t.done}
 										onChange={(e) => actions.toggleDone(t.id, e.target.checked)}
 										aria-label={t.done ? "Mark not done" : "Mark done"}
 									/>
-									<div>
-										<div className="txt">{t.text}</div>
-									</div>
-								</div>
+									<span className="itemTextWrap">
+										<span className="txt">{t.text}</span>
+									</span>
+								</label>
 								<button
 									type="button"
-									className="btn small ghost"
+									className="btn small quiet"
 									onClick={() => actions.removeTask(t.id)}
 									aria-label="Remove"
 								>

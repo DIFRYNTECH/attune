@@ -405,22 +405,22 @@ export default function Weekly({ state, actions }) {
 
   return (
     <div className="card weeklyCard">
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="weeklyHeader">
         <InfoTip label="Week range">
           This week runs Monday to Sunday.
           <div style={{ marginTop: 8, fontWeight: 800, color: "var(--ink)" }}>
             {formatDateLong(weekRange.startKey)} to {formatDateLong(weekRange.endKey)}
           </div>
         </InfoTip>
-        <div style={{ minWidth: 0 }}>
-          <h2 style={{ margin: 0 }}>Weekly</h2>
+        <div className="weeklyHeaderCopy">
+          <h2 className="weeklyHeading">Weekly</h2>
           <div className="weeklyRangeTiny">
             This week: {formatDateShort(weekRange.startKey)} to {formatDateShort(weekRange.endKey)}
           </div>
         </div>
       </div>
 
-      <div className="sub" style={{ marginTop: 10, marginBottom: 8 }}>
+      <div className="sub weeklyIntro">
         A low-pressure look back.
       </div>
 
