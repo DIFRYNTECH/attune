@@ -444,27 +444,32 @@ export default function Profile({ state, actions }) {
           helper="Export is included with Attune Plus. You can always clear everything stored on this device."
           helperLabel="Data info"
         >
-          <div className="settingsActions">
-            <button
-              type="button"
-              className="btn ghost"
-              aria-disabled={!isPlus ? "true" : "false"}
-              title={!isPlus ? "Included with Attune Plus" : ""}
-              style={!isPlus ? { opacity: 0.75 } : undefined}
-              onClick={() => {
-                if(!isPlus) actions?.openPaywall?.("plus", "profile");
-                else doExport();
-              }}
-            >
-              Export data
-            </button>
-            <button
-              type="button"
-              className="btn ghost dangerGhost"
-              onClick={() => setConfirmOpen(true)}
-            >
-              Reset local Attune data
-            </button>
+          <div className="settingsSplitRow settingsSplitRowTerse">
+            <div className="settingsSplitCopy">
+              <div className="settingsInlineSummary">Download a local backup or clear everything stored on this device.</div>
+            </div>
+            <div className="settingsActions settingsSplitActions">
+              <button
+                type="button"
+                className="btn ghost"
+                aria-disabled={!isPlus ? "true" : "false"}
+                title={!isPlus ? "Included with Attune Plus" : ""}
+                style={!isPlus ? { opacity: 0.75 } : undefined}
+                onClick={() => {
+                  if(!isPlus) actions?.openPaywall?.("plus", "profile");
+                  else doExport();
+                }}
+              >
+                Export data
+              </button>
+              <button
+                type="button"
+                className="btn ghost dangerGhost"
+                onClick={() => setConfirmOpen(true)}
+              >
+                Reset local Attune data
+              </button>
+            </div>
           </div>
         </SettingsSection>
 
@@ -477,35 +482,46 @@ export default function Profile({ state, actions }) {
           }
           helperLabel="Note memory info"
         >
-          <div className="settingsActions">
-            <button
-              type="button"
-              className="btn ghost"
-              disabled={isPlus && canUseMemory ? noteCount === 0 : false}
-              aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
-              onClick={() => {
-                if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
-                else doExportNoteMemory();
-              }}
-              title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
-              style={!isPlus || !canUseMemory ? { opacity: 0.75 } : undefined}
-            >
-              Export note history
-            </button>
+          <div className="settingsSplitRow settingsSplitRowTerse">
+            <div className="settingsSplitCopy">
+              <div className="settingsInlineSummary">
+                {canUseMemory
+                  ? noteCount > 0
+                    ? `${noteCount} note${noteCount === 1 ? "" : "s"} saved across recent check-ins.`
+                    : "No saved note history yet."
+                  : "Note history becomes available with Attune Plus."}
+              </div>
+            </div>
+            <div className="settingsActions settingsSplitActions">
+              <button
+                type="button"
+                className="btn ghost"
+                disabled={isPlus && canUseMemory ? noteCount === 0 : false}
+                aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
+                onClick={() => {
+                  if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
+                  else doExportNoteMemory();
+                }}
+                title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
+                style={!isPlus || !canUseMemory ? { opacity: 0.75 } : undefined}
+              >
+                Export note history
+              </button>
 
-            <button
-              type="button"
-              className="btn ghost dangerGhost"
-              disabled={isPlus && canUseMemory ? noteCount === 0 : false}
-              aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
-              onClick={() => {
-                if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
-                else setClearMemoryOpen(true);
-              }}
-              title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
-            >
-              Clear note history
-            </button>
+              <button
+                type="button"
+                className="btn ghost dangerGhost"
+                disabled={isPlus && canUseMemory ? noteCount === 0 : false}
+                aria-disabled={!isPlus || !canUseMemory ? "true" : "false"}
+                onClick={() => {
+                  if(!isPlus || !canUseMemory) actions?.openPaywall?.("noteMemory", "profile");
+                  else setClearMemoryOpen(true);
+                }}
+                title={!isPlus || !canUseMemory ? "Included with Attune Plus" : noteCount === 0 ? "No note history yet" : ""}
+              >
+                Clear note history
+              </button>
+            </div>
           </div>
         </SettingsSection>
 
@@ -514,24 +530,28 @@ export default function Profile({ state, actions }) {
           helper="Email OTP sign-in can sync weekly summaries, note history, and verified billing state tied to your account."
           helperLabel="Account info"
         >
-          <div className="settingsActions">
-            <div style={{ fontSize: 12, color: "var(--muted)", flex: "1 1 auto", minWidth: 180 }}>
-              Signed in{signedInUser ? (
-                <>
-                  {" as "}
-                  <b style={{ color: "var(--ink)" }}>{signedInUser}</b>
-                </>
-              ) : null}
-              {" on this device."}
+          <div className="settingsSplitRow">
+            <div className="settingsSplitCopy">
+              <div className="settingsInlineSummary">
+                Signed in{signedInUser ? (
+                  <>
+                    {" as "}
+                    <b>{signedInUser}</b>
+                  </>
+                ) : null}
+                {" on this device."}
+              </div>
             </div>
 
-            <button
-              type="button"
-              className="btn ghost dangerGhost"
-              onClick={() => setSignOutOpen(true)}
-            >
-              Sign out
-            </button>
+            <div className="settingsActions settingsSplitActions">
+              <button
+                type="button"
+                className="btn ghost dangerGhost"
+                onClick={() => setSignOutOpen(true)}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </SettingsSection>
       </div>

@@ -747,13 +747,67 @@
       align-items:center;
     }
 
+    .settingsSplitRow{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px 18px;
+      align-items: center;
+    }
+
+    .settingsSplitRowTerse{
+      align-items: start;
+    }
+
+    .settingsSplitCopy{
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+      align-content: center;
+    }
+
+    .settingsInlineSummary{
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--muted);
+      max-width: 58ch;
+    }
+
+    .settingsInlineSummary b{
+      color: var(--ink);
+    }
+
+    .settingsSplitActions{
+      justify-content: flex-end;
+      align-self: center;
+    }
+
+    .settingsSplitActions .btn{
+      min-width: 0;
+    }
+
     .settingsActions .btn.primary{
       box-shadow: 0 12px 24px rgba(79,109,245,.22);
+    }
+
+    @media (max-width: 900px){
+      .settingsSplitRow{
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .settingsSplitActions{
+        justify-content: flex-start;
+        align-self: stretch;
+      }
     }
 
     @media (max-width: 640px){
       .settingsActions .btn{
         width: 100%;
+      }
+
+      .settingsInlineSummary{
+        max-width: none;
       }
     }
     .btn.dangerGhost{
