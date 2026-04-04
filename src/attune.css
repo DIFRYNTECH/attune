@@ -15,78 +15,232 @@ html {
   min-height: 100%;
 }
 
-/* Tablet and small-laptop layout pass */
-@media (max-width: 960px) {
+/* Tablet layout: centered app stage with bottom navigation */
+@media (min-width: 521px) and (max-width: 960px) {
   .wrap {
+    --bottomNavSpace: 84px;
     max-width: 100%;
-    padding: clamp(14px, 2.2vw, 22px);
+    padding: 18px 18px calc(22px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
+    height: 100svh;
+    min-height: 100svh;
   }
 
   .top {
-    flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
+    justify-content: flex-start;
     gap: 10px;
-    padding: 8px 0 12px;
+    padding: 8px 2px 12px;
   }
 
   .brand {
     align-items: flex-start;
   }
 
-  .nav {
-    width: 100%;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding-bottom: 2px;
+  .brandMark {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
   }
 
-  .nav::-webkit-scrollbar {
+  h1 {
+    font-size: 18px;
+  }
+
+  .tag {
+    font-size: 12px;
+    line-height: 1.25;
+    max-width: 56ch;
+  }
+
+  .nav {
     display: none;
   }
 
-  .nav .btn {
-    flex: 0 0 auto;
-    white-space: nowrap;
-  }
-
   .grid {
-    gap: 14px;
+    display: block;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding-right: 2px;
   }
 
-  .row {
-    grid-template-columns: 1fr;
+  .grid > main {
+    width: min(100%, 820px);
+    margin: 0 auto;
   }
 
+  .grid > main > .card {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .checkinCard,
+  .myDayCard,
+  .weeklyCard,
+  .settingsCard {
+    min-height: 0;
+  }
+
+  .myDayCard,
+  .weeklyCard,
+  .settingsCard {
+    gap: 0;
+  }
+
+  .row,
   .settingsFields {
     grid-template-columns: 1fr;
+  }
+
+  .moodGrid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .moodBtn {
+    min-height: 62px;
+    padding: 8px 6px 7px;
+  }
+
+  .moodLabel {
+    font-size: 10.6px;
+  }
+
+  .pillrow {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .pill {
+    width: 100%;
+    justify-content: center;
+    padding: 11px 12px;
+  }
+
+  .boardGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .boardTile {
+    min-height: 92px;
+  }
+
+  .boardWrap {
+    margin-top: 14px;
+  }
+
+  .boardTop {
+    align-items: center;
+    flex-wrap: wrap;
+  }
+
+  .boardRight {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .myDayCard .result.personalNote {
+    margin-bottom: 16px;
+    padding: 14px 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background:
+      linear-gradient(180deg, rgba(79,109,245,.05), rgba(255,255,255,0) 72%),
+      var(--card98);
+  }
+
+  .myDayCard .hint {
+    padding: 14px 16px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .weeklyCard .result {
+    padding: 16px 0;
+  }
+
+  .weeklyCard .miniPills {
+    gap: 10px;
+  }
+
+  .weeklyCard .miniPill {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .weekSummaryCard {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .weeklyNoteResult {
+    padding-top: 18px;
+  }
+
+  .weeklyNoteInput {
+    min-height: 124px;
+  }
+
+  .settingsMain {
+    gap: 12px;
+  }
+
+  .settingsSection {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .settingsActions {
+    gap: 12px;
+  }
+
+  .weekStrip {
+    gap: 10px;
+  }
+
+  .weekStripItem {
+    min-width: 118px;
   }
 
   .side,
   .quickStatusCard {
     display: none;
   }
-}
 
-@media (min-width: 521px) and (max-width: 960px) {
-  .card {
-    padding: 18px;
+  .bottomNav {
+    display: flex;
+    left: 50%;
+    right: auto;
+    width: min(560px, calc(100% - 28px));
+    transform: translateX(-50%);
+    bottom: 14px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    border: 1px solid var(--divider);
+    border-radius: 22px;
+    box-shadow: 0 18px 40px rgba(20,30,60,.14);
+    justify-content: space-between;
   }
 
-  .moodGrid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 7px;
+  .bottomNavBtn {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 10px;
+    font-size: 12px;
+    text-align: center;
   }
 
-  .moodBtn {
-    min-height: 58px;
-    padding: 7px 5px 6px;
-  }
-
-  .moodLabel {
-    font-size: 10.4px;
+  .toast {
+    bottom: calc(18px + var(--bottomNavSpace) + env(safe-area-inset-bottom));
+    width: min(640px, calc(100% - 36px));
   }
 }
 
