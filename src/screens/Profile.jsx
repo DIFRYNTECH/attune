@@ -293,9 +293,9 @@ export default function Profile({ state, actions }) {
                 <div className="settingsFeatureStatusNote">
                   {signedIn
                     ? isNative
-                      ? "Purchases stay linked to your signed-in Attune account through Google Play verification."
-                      : "Subscriptions stay linked to your signed-in Attune account through Paddle."
-                    : "Sign in so billing state can stay attached to your Attune account."}
+                      ? "Your purchase is linked to this signed-in Attune account."
+                      : "Your subscription is linked to this signed-in Attune account."
+                    : "Sign in to link billing to your Attune account."}
                 </div>
               </div>
 
