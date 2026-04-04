@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { summarizeRecentThemes } from "../lib/noteMemory";
 import InfoTip from "../components/InfoTip";
+import { getTodayEmptyStateCopy } from "../lib/personalization";
 
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
@@ -8,6 +9,7 @@ export default function Today({ state, actions }) {
 	const canUseMemory = !!state?.entitlements?.noteMemory;
 	const recentThemes = canUseMemory ? summarizeRecentThemes(state.noteMemory, 10) : [];
 	const [noteExpanded, setNoteExpanded] = useState(false);
+	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
 
 	useEffect(() => {
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
@@ -82,7 +84,7 @@ export default function Today({ state, actions }) {
 
 			{myDay.length === 0 ? (
 				<div className="hint">
-					No tasks yet. Tap{" "}
+					{emptyStateCopy.beforeCta}
 					<button
 						type="button"
 						className="linkBtn"
@@ -91,7 +93,7 @@ export default function Today({ state, actions }) {
 					>
 						Pick
 					</button>
-					{" "}to add a few.
+					{emptyStateCopy.afterCta}
 				</div>
 			) : (
 				<div className="myDayScroll" aria-label="My Day tasks">

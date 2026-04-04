@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
+import { getCheckInHeading } from "../lib/personalization";
 
 const MOOD_WORDS = [
   { label: "Worn out", emoji: "🪫", icon: "low-battery", tone: "tough" },
@@ -69,6 +70,7 @@ export default function CheckIn({ state, actions }) {
   const { checkin, level, checkedInToday } = state;
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
+  const checkInHeading = getCheckInHeading(state?.profile?.name);
 
   const autosizeNote = useCallback(() => {
     const el = noteRef.current;
@@ -110,7 +112,7 @@ export default function CheckIn({ state, actions }) {
 
   return (
     <div className="card checkinCard" style={{ display: 'flex', flexDirection: 'column', flex: '1' }}>
-      <h2>🌤 How are you today?</h2>
+      <h2>{checkInHeading}</h2>
       <div className="sub">Changeable anytime.</div>
 
       <div className="row">

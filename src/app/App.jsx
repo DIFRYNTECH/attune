@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect } from "react";
 
 import { useAppInit } from "../hooks/useAppInit";
+import { getHeaderTagline } from "../lib/personalization";
 import BottomNav from "../components/BottomNav.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
 import Login from "../screens/Login.jsx";
@@ -32,7 +33,9 @@ function renderToastText(text) {
   );
 }
 
-function TopNav({ screen, go, entitlements, hideNav = false }) {
+function TopNav({ screen, go, entitlements, profileName, hideNav = false }) {
+  const headerTagline = getHeaderTagline(profileName);
+
   return (
     <div className="top">
       <div className="brand">
@@ -43,9 +46,7 @@ function TopNav({ screen, go, entitlements, hideNav = false }) {
             <span className="versionTag">v0</span>
             {entitlements?.isPlus ? <span className="planTag">Plus</span> : null}
           </h1>
-          <div className="tag">
-            Meet yourself where you are, then take one small step toward better.
-          </div>
+          <div className="tag">{headerTagline}</div>
         </div>
       </div>
 
@@ -156,7 +157,12 @@ export default function App() {
 
   return (
     <div className={wrapClassName}>
-      <TopNav screen={screen} go={actions.go} entitlements={state.entitlements} />
+      <TopNav
+        screen={screen}
+        go={actions.go}
+        entitlements={state.entitlements}
+        profileName={state?.profile?.name}
+      />
 
       <div className="grid">
         {/* LEFT */}
