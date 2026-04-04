@@ -329,84 +329,99 @@ export default function Profile({ state, actions }) {
           }
           helperLabel="About Plus"
         >
-          <ul className="settingsBullets" aria-label="Attune Plus features">
-            <li>
-              <b>Dark mode</b> for a calmer, darker look.
-            </li>
-            <li>
-              <b>Exports</b> to download your local data.
-            </li>
-            <li>
-              <b>Note memory</b> from your check-in note (on-device first, with account sync when signed in).
-            </li>
-            <li>
-              <b>Smarter picking</b> that adapts to what you complete/skip.
-            </li>
-            <li>
-              <b>Weekly insights</b> that help you notice your rhythms over time.
-            </li>
-          </ul>
+          <div className="settingsFeaturePanel">
+            <div className="settingsFeatureBody">
+              <ul className="settingsBullets" aria-label="Attune Plus features">
+                <li>
+                  <b>Dark mode</b> for a calmer, darker look.
+                </li>
+                <li>
+                  <b>Exports</b> to download your local data.
+                </li>
+                <li>
+                  <b>Note memory</b> from your check-in note (on-device first, with account sync when signed in).
+                </li>
+                <li>
+                  <b>Smarter picking</b> that adapts to what you complete/skip.
+                </li>
+                <li>
+                  <b>Weekly insights</b> that help you notice your rhythms over time.
+                </li>
+              </ul>
 
-          <div className="settingsMeta">
-            <div>
-              Billing: <span>{billingStatus}</span>
+              <div className="settingsMeta settingsMetaCompact">
+                <div>
+                  {billingRenewsOn
+                    ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
+                    : billingConfigured
+                      ? isNative
+                        ? "Google Play billing is configured for this account."
+                        : "Web billing is configured for this account."
+                      : isNative
+                        ? "Google Play billing still needs server configuration."
+                        : "Web billing still needs server configuration."}
+                </div>
+              </div>
             </div>
-            <div>
-              {billingRenewsOn
-                ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
-                : billingConfigured
-                  ? isNative
-                    ? "Google Play billing is configured for this account."
-                    : "Web billing is configured for this account."
-                  : isNative
-                    ? "Google Play billing still needs server configuration."
-                    : "Web billing still needs server configuration."}
-            </div>
-          </div>
 
-          <div className="settingsActions" style={{ marginTop: 10 }}>
-            {!isPlus ? (
-              <button
-                type="button"
-                className="btn primary"
-                onClick={() => actions?.startBillingUpgrade?.()}
-                aria-label="Upgrade to Attune Plus"
-                disabled={billingSyncing}
-                title={!signedIn ? "Sign in before upgrading" : !billingConfigured ? isNative ? "Google Play billing is not configured yet" : "Web billing is not configured yet" : ""}
-              >
-                {billingSyncing ? "Working..." : canUpgrade ? isNative ? "Upgrade on Google Play" : "Upgrade on the web" : !signedIn ? "Sign in to upgrade" : "Billing not ready"}
-              </button>
-            ) : null}
-            {isNative ? (
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => actions?.restoreBillingPurchases?.()}
-                disabled={billingSyncing}
-                aria-label="Restore Attune Plus purchase"
-              >
-                Restore purchase
-              </button>
-            ) : canOpenPortal ? (
-              <button
-                type="button"
-                className="btn ghost"
-                onClick={() => actions?.openBillingPortal?.()}
-                disabled={billingSyncing}
-                aria-label="Manage web billing"
-              >
-                Manage billing
-              </button>
-            ) : null}
-            <button
-              type="button"
-              className="btn ghost"
-              onClick={() => actions?.refreshBilling?.()}
-              disabled={billingSyncing}
-              aria-label="Refresh billing status"
-            >
-              Refresh billing
-            </button>
+            <div className="settingsFeatureRail">
+              <div className="settingsFeatureStatusCard">
+                <div className="settingsFeatureStatusLabel">Billing</div>
+                <div className="settingsFeatureStatusValue">{billingStatus}</div>
+                <div className="settingsFeatureStatusNote">
+                  {signedIn
+                    ? isNative
+                      ? "Purchases stay linked to your signed-in Attune account through Google Play verification."
+                      : "Subscriptions stay linked to your signed-in Attune account through Paddle."
+                    : "Sign in so billing state can stay attached to your Attune account."}
+                </div>
+              </div>
+
+              <div className="settingsActions settingsFeatureActions">
+                {!isPlus ? (
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => actions?.startBillingUpgrade?.()}
+                    aria-label="Upgrade to Attune Plus"
+                    disabled={billingSyncing}
+                    title={!signedIn ? "Sign in before upgrading" : !billingConfigured ? isNative ? "Google Play billing is not configured yet" : "Web billing is not configured yet" : ""}
+                  >
+                    {billingSyncing ? "Working..." : canUpgrade ? isNative ? "Upgrade on Google Play" : "Upgrade on the web" : !signedIn ? "Sign in to upgrade" : "Billing not ready"}
+                  </button>
+                ) : null}
+                {isNative ? (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => actions?.restoreBillingPurchases?.()}
+                    disabled={billingSyncing}
+                    aria-label="Restore Attune Plus purchase"
+                  >
+                    Restore purchase
+                  </button>
+                ) : canOpenPortal ? (
+                  <button
+                    type="button"
+                    className="btn ghost"
+                    onClick={() => actions?.openBillingPortal?.()}
+                    disabled={billingSyncing}
+                    aria-label="Manage web billing"
+                  >
+                    Manage billing
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => actions?.refreshBilling?.()}
+                  disabled={billingSyncing}
+                  aria-label="Refresh billing status"
+                >
+                  Refresh billing
+                </button>
+              </div>
+            </div>
           </div>
         </SettingsSection>
 

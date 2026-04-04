@@ -199,12 +199,73 @@ html {
   }
 
   .settingsSection {
-    padding: 16px;
+    padding: 16px 16px 15px;
     border-radius: 18px;
   }
 
   .settingsActions {
-    gap: 12px;
+    gap: 8px;
+  }
+
+  .settingsHeader {
+    margin-bottom: 14px;
+  }
+
+  .settingsSectionHead {
+    margin-bottom: 10px;
+  }
+
+  .settingsSplitRow {
+    grid-template-columns: minmax(0, 1.35fr) auto;
+    gap: 10px 16px;
+    min-height: 42px;
+  }
+
+  .settingsSplitCopy {
+    align-content: center;
+  }
+
+  .settingsInlineSummary {
+    max-width: 46ch;
+    line-height: 1.4;
+  }
+
+  .settingsSplitActions {
+    gap: 8px;
+  }
+
+  .settingsSplitActions .btn {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .settingsFeaturePanel {
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, .82fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .settingsFeatureRail {
+    gap: 8px;
+  }
+
+  .settingsFeatureStatusCard {
+    padding: 13px 14px;
+    border-radius: 16px;
+  }
+
+  .settingsFeatureStatusValue {
+    font-size: 15px;
+  }
+
+  .settingsFeatureActions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .settingsFeatureActions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .weekStrip {
@@ -638,6 +699,67 @@ html {
   .card {
     padding: 16px;
     border-radius: 18px;
+  }
+
+  .settingsMain {
+    gap: 12px;
+  }
+
+  .settingsSection {
+    padding: 16px 16px 15px;
+  }
+
+  .settingsSectionHead {
+    margin-bottom: 10px;
+  }
+
+  .settingsActions {
+    gap: 8px;
+  }
+
+  .settingsSplitRow {
+    grid-template-columns: minmax(0, 1.35fr) auto;
+    gap: 10px 16px;
+    min-height: 42px;
+  }
+
+  .settingsInlineSummary {
+    max-width: 46ch;
+    line-height: 1.4;
+  }
+
+  .settingsSplitActions .btn {
+    padding: 9px 12px;
+    font-size: 12px;
+  }
+
+  .settingsFeaturePanel {
+    grid-template-columns: minmax(0, 1.4fr) minmax(220px, .82fr);
+    gap: 14px;
+    align-items: start;
+  }
+
+  .settingsFeatureRail {
+    gap: 8px;
+  }
+
+  .settingsFeatureStatusCard {
+    padding: 13px 14px;
+    border-radius: 16px;
+  }
+
+  .settingsFeatureStatusValue {
+    font-size: 15px;
+  }
+
+  .settingsFeatureActions {
+    display: grid;
+    gap: 8px;
+  }
+
+  .settingsFeatureActions .btn {
+    width: 100%;
+    justify-content: center;
   }
 
   .bottomNav {
