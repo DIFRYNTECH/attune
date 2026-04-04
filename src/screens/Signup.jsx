@@ -11,6 +11,7 @@ export default function Signup({ state, actions }) {
   const codeRef = useRef(null);
   const authStep = state?.auth?.step === "verify" ? "verify" : "request";
   const sentTo = String(state?.auth?.sentTo || state?.auth?.username || "");
+  const authStatus = String(state?.auth?.status || "idle");
   const nameError = authStep === "request" ? validateDisplayName(name) : "";
   const emailError = authStep === "request" ? validateEmail(username) : "";
 
@@ -27,6 +28,29 @@ export default function Signup({ state, actions }) {
     if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
     return !nameError && !emailError;
   }, [authStep, emailError, nameError, otpCode]);
+
+  const showVerifySubmit = authStep !== "verify" || otpCode.trim().length > 0 || authStatus === "verifying";
+
+  const authFeedback = useMemo(() => {
+    if(authStatus === "sending"){
+      return {
+        role: "status",
+        text: authStep === "verify"
+          ? `Sending a new ${OTP_LENGTH}-digit code…`
+          : "Sending code…",
+      };
+    }
+
+    if(authStatus === "verifying"){
+      return { role: "status", text: "Verifying code…" };
+    }
+
+    if(authStatus === "error" && state?.auth?.error){
+      return { role: "alert", text: state.auth.error };
+    }
+
+    return null;
+  }, [OTP_LENGTH, authStatus, authStep, state?.auth?.error]);
 
   const onSubmit = (e) => {
     e.preventDefault();
@@ -115,18 +139,15 @@ export default function Signup({ state, actions }) {
             </>
           ) : (
             <>
-              <div className="loginHint" role="status">
-                Enter the {OTP_LENGTH}-digit code we sent to {sentTo || username}.
-              </div>
-
               <label className="field">
                 <div className="fieldLabel">Email code</div>
+                <div className="fieldMeta">We sent an {OTP_LENGTH}-digit code to {sentTo || username}.</div>
                 <input
                   ref={codeRef}
                   className="input"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, OTP_LENGTH))}
-                  placeholder="12345678"
+                  placeholder="8-digit code"
                   autoComplete="one-time-code"
                   inputMode="numeric"
                 />
@@ -155,31 +176,19 @@ export default function Signup({ state, actions }) {
             </>
           )}
 
-          {state?.auth?.status === "sending" ? (
-            <div className="loginHint" role="status">
-              Sending code…
-            </div>
-          ) : state?.auth?.status === "sent" ? (
-            <div className="loginHint" role="status">
-              Check your email for an {OTP_LENGTH}-digit code.
-            </div>
-          ) : state?.auth?.status === "verifying" ? (
-            <div className="loginHint" role="status">
-              Verifying code…
-            </div>
-          ) : state?.auth?.status === "error" && state?.auth?.error ? (
-            <div className="loginHint" role="alert">
-              {state.auth.error}
-            </div>
-          ) : authStep === "verify" ? (
-            <div className="loginHint" role="note">
-              Enter the code from your email to finish creating your account.
+          {authFeedback ? (
+            <div className="loginHint" role={authFeedback.role}>
+              {authFeedback.text}
             </div>
           ) : null}
 
-          <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
-            {authStep === "verify" ? "Verify and continue" : "Create account"}
-          </button>
+          {showVerifySubmit ? (
+            <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
+              {authStep === "verify"
+                ? (canSubmit ? "Verify and continue" : "Enter full code to continue")
+                : "Create account"}
+            </button>
+          ) : null}
 
           <div className="loginFooterRail">
             <div className="loginDivider" aria-hidden="true">
