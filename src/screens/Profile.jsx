@@ -1,5 +1,6 @@
 import { useState } from "react";
 import InfoTip from "../components/InfoTip";
+import { buildBackupExport, buildUserDataExport } from "../lib/exportData";
 import { isNativePlatform } from "../lib/platform";
 
 function formatBillingStatus(status) {
@@ -190,16 +191,26 @@ export default function Profile({ state, actions }) {
   const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
   const showBillingStatusPill = !isPlus || billingStatus !== "Active";
 
-  const doExport = () => {
+  const doExportUserData = () => {
     if(!isPlus){
       actions?.openPaywall?.("plus", "profile");
       return;
     }
     const d = new Date();
     const stamp = d.toISOString().slice(0, 10);
-    const { toast: _toast, ...exportPayload } = state || {};
-    downloadJson(`attune-${stamp}.json`, exportPayload);
-    actions?.setToast?.("Exported a copy of your data.", true);
+    downloadJson(`attune-data-${stamp}.json`, buildUserDataExport(state));
+    actions?.setToast?.("Exported a readable copy of your data.", true);
+  };
+
+  const doExportBackup = () => {
+    if(!isPlus){
+      actions?.openPaywall?.("plus", "profile");
+      return;
+    }
+    const d = new Date();
+    const stamp = d.toISOString().slice(0, 10);
+    downloadJson(`attune-backup-${stamp}.json`, buildBackupExport(state));
+    actions?.setToast?.("Exported a full backup.", true);
   };
 
   const doExportNoteMemory = () => {
@@ -381,12 +392,12 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Data"
-          helper="Export your data with Attune Plus. You can clear everything stored on this device at any time."
+          helper="Attune Plus includes a readable data export and a full backup export. You can also clear everything stored on this device at any time."
           helperLabel="Data info"
         >
           <div className="settingsSplitRow settingsSplitRowTerse">
             <div className="settingsSplitCopy">
-              <div className="settingsInlineSummary">Download a local backup or clear everything stored on this device.</div>
+              <div className="settingsInlineSummary">Download a readable copy of your data, or a raw backup for restore and support.</div>
             </div>
             <div className="settingsActions settingsSplitActions">
               <button
@@ -397,10 +408,23 @@ export default function Profile({ state, actions }) {
                 style={!isPlus ? { opacity: 0.75 } : undefined}
                 onClick={() => {
                   if(!isPlus) actions?.openPaywall?.("plus", "profile");
-                  else doExport();
+                  else doExportUserData();
                 }}
               >
-                Export data
+                Export my data
+              </button>
+              <button
+                type="button"
+                className="btn ghost"
+                aria-disabled={!isPlus ? "true" : "false"}
+                title={!isPlus ? "Included with Attune Plus" : "Best for restore or support"}
+                style={!isPlus ? { opacity: 0.75 } : undefined}
+                onClick={() => {
+                  if(!isPlus) actions?.openPaywall?.("plus", "profile");
+                  else doExportBackup();
+                }}
+              >
+                Export backup
               </button>
               <button
                 type="button"
