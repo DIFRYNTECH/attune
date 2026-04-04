@@ -1603,7 +1603,7 @@
 
         .settingsFeatureStatusCard{
           display: grid;
-          gap: 4px;
+          gap: 8px;
           padding: 12px 13px;
           border: 1px solid var(--line);
           border-radius: 14px;
@@ -1612,25 +1612,42 @@
             linear-gradient(135deg, rgba(79,109,245,.08), rgba(139,92,246,.05));
         }
 
-        .settingsFeatureStatusLabel{
-          font-size: 11px;
-          font-weight: 900;
-          letter-spacing: .15px;
-          color: var(--muted);
-          text-transform: uppercase;
+        .settingsFeatureStatusTop{
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+          gap:10px;
+          flex-wrap:wrap;
         }
 
-        .settingsFeatureStatusValue{
-          font-size: 16px;
-          font-weight: 900;
-          letter-spacing: -.2px;
+        .settingsFeatureStatusLabel{
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0;
+          color: var(--muted);
+          text-transform: none;
+        }
+
+        .settingsFeatureStatusPill{
+          display:inline-flex;
+          align-items:center;
+          padding: 4px 10px;
+          border-radius: 999px;
+          border: 1px solid rgba(79,109,245,.18);
+          background:
+            radial-gradient(14px 14px at 30% 25%, var(--shine1), transparent 60%),
+            linear-gradient(135deg, rgba(79,109,245,.10), rgba(139,92,246,.08));
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0;
           color: var(--ink);
         }
 
         .settingsFeatureStatusNote{
           font-size: 12px;
-          line-height: 1.4;
+          line-height: 1.45;
           color: var(--muted);
+          max-width: 32ch;
         }
 
         .settingsFeatureActions{

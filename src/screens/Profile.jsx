@@ -288,8 +288,10 @@ export default function Profile({ state, actions }) {
 
             <div className="settingsFeatureRail">
               <div className="settingsFeatureStatusCard">
-                <div className="settingsFeatureStatusLabel">Billing</div>
-                <div className="settingsFeatureStatusValue">{billingStatus}</div>
+                <div className="settingsFeatureStatusTop">
+                  <div className="settingsFeatureStatusLabel">Billing</div>
+                  <div className="settingsFeatureStatusPill">{billingStatus}</div>
+                </div>
                 <div className="settingsFeatureStatusNote">
                   {signedIn
                     ? isNative
