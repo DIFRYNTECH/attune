@@ -16,7 +16,7 @@ html {
 }
 
 /* Tablet layout: centered app stage with bottom navigation */
-@media (min-width: 521px) and (max-width: 960px) {
+@media (min-width: 641px) and (max-width: 1100px) {
   .wrap {
     --bottomNavSpace: 84px;
     max-width: 100%;
@@ -66,7 +66,7 @@ html {
   }
 
   .grid > main {
-    width: min(100%, 820px);
+    width: min(100%, 860px);
     margin: 0 auto;
   }
 
@@ -220,7 +220,7 @@ html {
     display: flex;
     left: 50%;
     right: auto;
-    width: min(560px, calc(100% - 28px));
+    width: min(620px, calc(100% - 28px));
     transform: translateX(-50%);
     bottom: 14px;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -278,8 +278,18 @@ html {
   background: linear-gradient(135deg, #4f6df5, #8b5cf6);
 }
 
+@media (min-width: 641px) and (max-width: 1100px) {
+  .nav {
+    display: none;
+  }
+
+  .bottomNav {
+    display: flex;
+  }
+}
+
 /* Mobile-first tightening */
-@media (max-width: 520px) {
+@media (max-width: 640px) {
   /* Bottom nav is the primary navigation on mobile.
      Keep the brand row visible so app name/version/plan is always shown. */
   .top {
