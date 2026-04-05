@@ -726,7 +726,7 @@ export default function Weekly({ state, actions }) {
                 {activePastSummary.avgPace ? <span>Avg pace: {prettyLevel(activePastSummary.avgPace)}</span> : null}
               </div>
 
-              <div className="miniPills" style={{ marginTop: 10 }}>
+              <div className="miniPills weekSummaryPills" style={{ marginTop: 10 }}>
                 <button
                   type="button"
                   className="miniPill miniPillBtn"

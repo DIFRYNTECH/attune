@@ -178,9 +178,18 @@ html {
     gap: 10px;
   }
 
+  .weeklyCard .weekSummaryPills {
+    gap: 8px;
+  }
+
   .weeklyCard .miniPill {
     padding: 8px 12px;
     font-size: 12px;
+  }
+
+  .weeklyCard .weekSummaryPills .miniPill {
+    padding: 8px 9px;
+    font-size: 10px;
   }
 
   .weekSummaryCard {
