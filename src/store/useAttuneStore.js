@@ -411,6 +411,16 @@ const DEFAULT_CHECKIN = {
   note: "",
 };
 
+function patchAffectsSuggestedLevel(patch){
+  if(!patch || typeof patch !== "object") return false;
+  return (
+    Object.prototype.hasOwnProperty.call(patch, "mood") ||
+    Object.prototype.hasOwnProperty.call(patch, "moodWords") ||
+    Object.prototype.hasOwnProperty.call(patch, "energy") ||
+    Object.prototype.hasOwnProperty.call(patch, "body")
+  );
+}
+
 function clampText(value, maxLen){
   const s = typeof value === "string" ? value.trim() : "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
@@ -717,6 +727,13 @@ function normalizeLoadedState(loaded){
     next.options = [];
     next.myDayCap = 5;
     next.currentSpin = null;
+  }
+
+  if(next.levelSource === "auto"){
+    next.level = suggestLevelFromCheckin(next.checkin);
+    if(next.optionsSource === "default"){
+      next.options = suggestActivities(next.checkin, next.level);
+    }
   }
 
   // Keep daily message consistent with current selections.
@@ -1379,7 +1396,8 @@ export function useAttuneStore(){
     setCheckin: (patch) =>
       setState(s => {
         const checkin = { ...s.checkin, ...patch };
-        const source = s.levelSource === "manual" ? "manual" : "auto";
+        const shouldResuggestLevel = patchAffectsSuggestedLevel(patch);
+        const source = shouldResuggestLevel ? "auto" : (s.levelSource === "manual" ? "manual" : "auto");
         const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);
         const options = suggestActivities(checkin, level);
         return { ...s, checkin, level, levelSource: source, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };

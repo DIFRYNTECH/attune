@@ -81,15 +81,17 @@ function moodCategoryFromWords(words) {
 }
 
 export default function CheckIn({ state, actions }) {
-  const { checkin, level, checkedInToday } = state;
+  const { checkin, level, checkedInToday, levelSource } = state;
   const DEFAULT_ENERGY = "okay";
   const DEFAULT_BODY = "manageable";
   const DEFAULT_LEVEL = "gentle";
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
+  const previousLevelRef = useRef(level);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
   const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
+  const [paceSuggestionFlash, setPaceSuggestionFlash] = useState(false);
   const trimmedNote = note.trim();
   const showNoteCount = note.length >= 150;
   const notePreview = trimmedNote
@@ -150,6 +152,18 @@ export default function CheckIn({ state, actions }) {
   const visibleEnergyValue = hasInitialProgress.current || stepState.energy ? checkin.energy : "";
   const visibleBodyValue = hasInitialProgress.current || stepState.body ? checkin.body : "";
   const visibleLevel = hasInitialProgress.current || stepState.pace ? level : "";
+
+  useEffect(() => {
+    const previousLevel = previousLevelRef.current;
+    const didLevelChange = previousLevel !== level;
+    previousLevelRef.current = level;
+
+    if (!showPaceStep || levelSource !== "auto" || !didLevelChange) return undefined;
+
+    setPaceSuggestionFlash(true);
+    const timeoutId = setTimeout(() => setPaceSuggestionFlash(false), 950);
+    return () => clearTimeout(timeoutId);
+  }, [level, levelSource, showPaceStep]);
 
   const toggleMoodWord = (word) => {
     const already = visibleMoodWords.includes(word);
@@ -261,8 +275,11 @@ export default function CheckIn({ state, actions }) {
         ) : null}
 
         {showPaceStep ? (
-          <div className="checkinStep" data-step="pace">
-            <label>Pace for today</label>
+          <div className={"checkinStep checkinPaceStep" + (paceSuggestionFlash ? " paceAutoUpdated" : "")} data-step="pace">
+            <div className="checkinPaceHead">
+              <label>Pace for today</label>
+              <span className="checkinPaceHint">You can adjust this if you&apos;d like</span>
+            </div>
             <div className="pillrow" role="group" aria-label="Pace">
               {LEVELS.map((l) => (
                 <button
@@ -295,10 +312,10 @@ export default function CheckIn({ state, actions }) {
               <div className="checkinNoteHead checkinNoteHeadCollapsible">
                 <div className="checkinNoteLead">
                   <div className="checkinNoteTitleRow">
+                    <span className="checkinNoteTitle">Optional note</span>
                     <InfoTip label="How this note is used">
                       If AI is enabled in Profile for your optional note, Attune can use it to personalize your options and make today&apos;s board more relevant.
                     </InfoTip>
-                    <span className="checkinNoteTitle">Optional note</span>
                   </div>
                   {!isNoteExpanded && trimmedNote ? <span className="checkinNoteSummary">{notePreview}</span> : null}
                 </div>

@@ -15,75 +15,112 @@ export function shuffle(arr){
   return a;
 }
 
+const PACE_ORDER = ["rest", "gentle", "light", "steady", "capable", "brave"];
+
+function clampPace(key, maxKey){
+  const keyIndex = PACE_ORDER.indexOf(key);
+  const maxIndex = PACE_ORDER.indexOf(maxKey);
+  if(keyIndex === -1 || maxIndex === -1) return key;
+  return PACE_ORDER[Math.min(keyIndex, maxIndex)];
+}
+
+function scoreToPace(score){
+  if(score < 0.9) return "rest";
+  if(score < 1.9) return "gentle";
+  if(score < 2.9) return "light";
+  if(score < 3.9) return "steady";
+  if(score < 4.9) return "capable";
+  return "brave";
+}
+
 export function suggestLevelFromCheckin(checkin){
   const mood = typeof checkin?.mood === "string" ? checkin.mood : "okay";
   const energy = typeof checkin?.energy === "string" ? checkin.energy : "okay";
   const body = typeof checkin?.body === "string" ? checkin.body : "manageable";
-  const clampLevel = (key, maxKey) => {
-    const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
-    const i = order.indexOf(key);
-    const j = order.indexOf(maxKey);
-    if(i === -1 || j === -1) return key;
-    return order[Math.min(i, j)];
-  };
-
-  const raiseLevel = (key, minKey) => {
-    const order = ["rest", "gentle", "light", "steady", "capable", "brave"];
-    const i = order.indexOf(key);
-    const j = order.indexOf(minKey);
-    if(i === -1 || j === -1) return key;
-    return order[Math.max(i, j)];
-  };
-
   const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords : [];
   const words = moodWords.map(w => (w === "Steady" ? "Settled" : w));
   const has = (w) => words.includes(w);
   const hasAny = (...ws) => ws.some(has);
-
-  let suggested = "gentle";
-
-  if(energy==="verylow" || mood==="low"){
-    suggested = "rest";
-    if(body==="manageable" && mood!=="low") suggested = "gentle";
-  }else if(energy==="low"){
-    suggested = (body==="tender" || mood==="low") ? "gentle" : "steady";
-  }else if(energy==="okay"){
-    suggested = (mood==="good" && body==="manageable") ? "capable" : "steady";
-  }else if(energy==="high"){
-    // "High / wired" can be usable energy, but we keep suggestions grounded.
-    suggested = (mood==="good" && body==="manageable") ? "capable" : "steady";
-  }
-
-  // Mood-word combination nudges (keeps it warm + safe).
-  // If the user picked explicitly tough words, we cap intensity.
   const tough =
     hasAny("Worn out", "Tired", "Flat", "Overwhelmed", "Anxious", "Irritable");
-
-  if(has("Worn out")) suggested = "rest";
-
-  // Wired + overwhelmed often needs grounding even if energy is high.
-  if(hasAny("Overwhelmed", "Anxious") && has("Restless")){
-    suggested = clampLevel(suggested, "gentle");
-  }
-
-  if(has("Irritable")){
-    suggested = clampLevel(suggested, "gentle");
-  }
-
-  if(tough){
-    suggested = clampLevel(suggested, "steady");
-  }
-
-  // Positive combos can gently raise the default, but never if tough words are present.
   const positiveCombo =
     (has("Motivated") && has("Hopeful")) ||
     (has("Motivated") && has("Settled")) ||
     (has("Hopeful") && has("Settled"));
 
-  if(!tough && body === "manageable" && (energy === "okay" || energy === "high")){
-    if(positiveCombo) suggested = raiseLevel(suggested, "capable");
-    else if(has("Motivated")) suggested = raiseLevel(suggested, "steady");
-  }
+  const energyScore = {
+    verylow: 0.6,
+    low: 1.8,
+    okay: 3.0,
+    high: 3.7,
+  }[energy] ?? 3.0;
+
+  const bodyScore = {
+    tender: -0.9,
+    achey: -0.45,
+    manageable: 0.35,
+  }[body] ?? 0.35;
+
+  const moodScore = {
+    low: -0.85,
+    okay: 0,
+    good: 0.35,
+  }[mood] ?? 0;
+
+  const wordScoreMap = {
+    "Worn out": -2.6,
+    Tired: -0.75,
+    Flat: -0.75,
+    Overwhelmed: -1.35,
+    Anxious: -1.35,
+    Irritable: -0.9,
+    Restless: 0.1,
+    Tender: -0.45,
+    Okay: 0,
+    Settled: 0.45,
+    Hopeful: 0.7,
+    Motivated: 1,
+  };
+
+  const averagedWordScore = words.length
+    ? words
+        .map((word) => wordScoreMap[word] ?? 0)
+        .reduce((total, value) => total + value, 0) / words.length
+    : 0;
+
+  let score = energyScore + bodyScore + moodScore + averagedWordScore;
+
+  if(positiveCombo) score += 0.45;
+  if(has("Hopeful") && has("Settled")) score += 0.15;
+  if(has("Overwhelmed") && has("Restless")) score -= 0.7;
+  if(has("Tender")) score -= 0.2;
+  if(mood === "low" && body === "tender") score -= 0.35;
+
+  let suggested = scoreToPace(score);
+
+  if(has("Worn out")) suggested = "rest";
+  if(hasAny("Overwhelmed", "Anxious") && has("Restless")) suggested = clampPace(suggested, "gentle");
+  if(has("Irritable")) suggested = clampPace(suggested, "light");
+  if(tough) suggested = clampPace(suggested, "steady");
+  if(body !== "manageable") suggested = clampPace(suggested, "steady");
+  if(mood === "low" && body === "tender") suggested = clampPace(suggested, "gentle");
+
+  const canBeCapable =
+    body === "manageable" &&
+    mood !== "low" &&
+    !hasAny("Worn out", "Overwhelmed", "Anxious");
+
+  if(!canBeCapable) suggested = clampPace(suggested, "steady");
+
+  const canBeBrave =
+    energy === "high" &&
+    body === "manageable" &&
+    mood === "good" &&
+    !tough &&
+    has("Motivated") &&
+    (has("Hopeful") || has("Settled"));
+
+  if(!canBeBrave) suggested = clampPace(suggested, "capable");
 
   return suggested;
 }
