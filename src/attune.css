@@ -595,6 +595,24 @@ html {
     overflow: visible;
   }
 
+  .weeklyCard .weeklyDigestHero {
+    padding: 16px;
+  }
+
+  .weeklyCard .weeklyDigestHeroTop {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .weeklyCard .weeklyDigestLead {
+    font-size: 14px;
+  }
+
+  .weeklyCard .weeklyUpgradeCard {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .weeklyCard .weeklyNoteBody {
     flex: 0 0 auto;
     min-height: auto;
@@ -606,6 +624,11 @@ html {
   .weeklyCard .weeklyNoteHelp {
     color: var(--muted);
     font-size: 13px;
+  }
+
+  .weeklyCard .weeklyNoteActions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .weeklyCard .weeklyNoteInput {

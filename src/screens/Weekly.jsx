@@ -176,6 +176,50 @@ function limitChars(text, maxChars) {
   return input.slice(0, maxChars);
 }
 
+function getDominantLevel(levelCounts) {
+  const entries = Object.entries(levelCounts || {}).filter(([, count]) => Number(count) > 0);
+  if (!entries.length) return "";
+  entries.sort((a, b) => Number(b[1]) - Number(a[1]));
+  return typeof entries[0]?.[0] === "string" ? entries[0][0] : "";
+}
+
+function buildWeeklyHeroSummary(label, daysPresent, tasksDone) {
+  if (daysPresent <= 0) return "A quieter week so far. You can always come back gently.";
+  if (tasksDone <= 0) return "Showing up is carrying this week. One small finish can still shift the feel of it.";
+
+  switch (label) {
+    case "Quiet":
+      return "A softer week. Rest still counts, and there is room to begin again.";
+    case "Starting":
+      return "Something has started to move. A few returns are already shaping the week.";
+    case "Building":
+      return "A rhythm is forming. Small repeats are starting to hold together.";
+    case "Steady":
+      return "This week feels more repeatable. You are showing up in a way that can last.";
+    case "Strong":
+      return "This week held together with real consistency. Let that count without asking for more.";
+    default:
+      return "A low-pressure look at what this week has been asking of you.";
+  }
+}
+
+function buildWeeklyPaceLine(avgPace, dominantLevel, dominantLevelCount) {
+  const weeklyLevel = typeof avgPace === "string" && avgPace ? avgPace : dominantLevel;
+  const toPlainLevel = (level) => {
+    const formatted = prettyLevel(level);
+    const firstSpace = typeof formatted === "string" ? formatted.indexOf(" ") : -1;
+    return firstSpace > -1 ? formatted.slice(firstSpace + 1) : formatted;
+  };
+
+  if (weeklyLevel) {
+    const levelName = toPlainLevel(weeklyLevel);
+    if (dominantLevelCount > 1) return `${levelName} shaped most of the week across ${dominantLevelCount} check-ins.`;
+    if (dominantLevelCount === 1) return `${levelName} shaped the week so far.`;
+    return `${levelName} shaped most of the week.`;
+  }
+  return "Your weekly pace will start to take shape after a few check-ins.";
+}
+
 export default function Weekly({ state, actions }) {
   const [showMomentumInfo, setShowMomentumInfo] = useState(false);
   const [showWeekDetails, setShowWeekDetails] = useState(false);
@@ -204,7 +248,6 @@ export default function Weekly({ state, actions }) {
   const [weeksToShow, setWeeksToShow] = useState(4);
   const [selectedPastWeekStart, setSelectedPastWeekStart] = useState(null);
 
-  const [isMobile, setIsMobile] = useState(false);
   const [showAllPatterns, setShowAllPatterns] = useState(false);
 
   const canPatternCallouts = !!state?.entitlements?.patternCallouts;
@@ -291,24 +334,6 @@ export default function Weekly({ state, actions }) {
     });
   })();
 
-  useEffect(() => {
-    const mq = window.matchMedia ? window.matchMedia("(max-width: 520px)") : null;
-    if (!mq) return;
-    setIsMobile(mq.matches);
-
-    function onChange(e) {
-      setIsMobile(e.matches);
-    }
-
-    if (mq.addEventListener) mq.addEventListener("change", onChange);
-    else if (mq.addListener) mq.addListener(onChange);
-
-    return () => {
-      if (mq.removeEventListener) mq.removeEventListener("change", onChange);
-      else if (mq.removeListener) mq.removeListener(onChange);
-    };
-  }, []);
-
   const levelCounts = weekRecords.reduce(
     (acc, d) => {
       if (d.checkedIn && d.level && acc[d.level] !== undefined) acc[d.level]++;
@@ -394,6 +419,14 @@ export default function Weekly({ state, actions }) {
 
   const activePastNote = typeof activePastSummary?.weekNote === "string" ? activePastSummary.weekNote : "";
   const activePastIsCurrentWeek = !!activePastSummary?.weekStart && activePastSummary.weekStart === weekRange.startKey;
+  const dominantLevel = getDominantLevel(levelCounts);
+  const dominantLevelCount = dominantLevel ? Number(levelCounts?.[dominantLevel]) || 0 : 0;
+  const heroSummary = buildWeeklyHeroSummary(label, daysPresent, tasksDone);
+  const weeklyPaceLine = buildWeeklyPaceLine(currentWeekSummary.avgPace, dominantLevel, dominantLevelCount);
+  const daysPresentText = daysPresent === 1 ? "day checked in" : "days checked in";
+  const completedTasksText = tasksDone === 1 ? "task finished" : "tasks finished";
+  const primaryPattern = canPatternCallouts && patternCallouts.length > 0 ? patternCallouts[0] : null;
+  const remainingPatterns = primaryPattern ? patternCallouts.slice(1) : [];
 
   useEffect(() => {
     if (!canMultiWeek) return;
@@ -421,69 +454,45 @@ export default function Weekly({ state, actions }) {
       </div>
 
       <div className="sub weeklyIntro">
-        A low-pressure look back.
+        A calmer digest of how the week is landing.
       </div>
 
-      <div className="result">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-          <div className="resultTitle">Momentum</div>
-          <button
-            type="button"
-            onClick={() => setShowMomentumInfo(true)}
-            aria-label="What does Momentum mean?"
-            title="What does Momentum mean?"
-            className="infoBtn"
-          >
-            i
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-          <div style={{ fontWeight: 900, fontSize: 20, color: "var(--ink)" }}>{label}</div>
-          {canExactMomentum ? (
-            <div className="footerNote" style={{ marginTop: 0 }}>
-              Score {score}/100
+      <div className="result weeklyDigestHero" aria-label="Weekly digest">
+        <div className="weeklyDigestHeroTop">
+          <div className="weeklyDigestHeroCopy">
+            <div className="weeklyDigestHeroHead">
+              <div className="weeklyDigestEyebrow">This week&apos;s shape</div>
+              <button
+                type="button"
+                onClick={() => setShowMomentumInfo(true)}
+                aria-label="What does Momentum mean?"
+                title="What does Momentum mean?"
+                className="infoBtn weeklyDigestInfoBtn"
+              >
+                i
+              </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="btn small ghost"
-              onClick={() => actions?.openPaywall?.("momentumExact", "weekly")}
-              aria-label="Unlock exact Momentum score with Attune Plus"
-              title="Plus feature"
-              style={{ marginTop: 0 }}
-            >
-              🔒 Try Plus
-            </button>
-          )}
+            <div className="weeklyDigestTitleRow">
+              <div className="weeklyDigestTitle">{label}</div>
+              {canExactMomentum ? (
+                <div className="weeklyDigestScore">Momentum {score}/100</div>
+              ) : (
+                <button
+                  type="button"
+                  className="btn small ghost"
+                  onClick={() => actions?.openPaywall?.("momentumExact", "weekly")}
+                  aria-label="Unlock exact Momentum score with Attune Plus"
+                  title="Plus feature"
+                >
+                  🔒 Exact score
+                </button>
+              )}
+            </div>
+            <div className="weeklyDigestLead">{heroSummary}</div>
+          </div>
         </div>
 
-        <div className="miniPills" aria-label="Momentum details">
-          <button
-            type="button"
-            className="miniPill miniPillBtn"
-            onClick={() => {
-              setWeekDetailsStart(weekRange.startKey);
-              setShowWeekDetails(true);
-            }}
-            aria-label="Show which days you were present this week"
-          >
-            📅 {daysPresent}/7 days present
-          </button>
-          <button
-            type="button"
-            className="miniPill miniPillBtn"
-            onClick={() => {
-              setWeekActivitiesStart(weekRange.startKey);
-              setShowWeekActivities(true);
-            }}
-            aria-label="Show how many activities you completed each day this week"
-          >
-            ✅ {tasksDone} {tasksDone === 1 ? "activity completed" : "activities completed"}
-          </button>
-        </div>
-
-        <div className="meter" aria-label="Weekly momentum">
+        <div className="meter weeklyDigestMeter" aria-label="Weekly momentum">
           {canExactMomentum ? (
             <div className="meterFill" style={{ width: `${meterPercent}%` }} />
           ) : (
@@ -498,116 +507,115 @@ export default function Weekly({ state, actions }) {
           )}
         </div>
 
-        <div className="footerNote">
-          Not a grade. This score is based on showing up, with a small boost for finishing activities.
+        <div className="weeklyDigestMeta">
+          Showing up matters most. Finishing activities adds a small lift.
           {!canExactMomentum && meterRangeText ? (
-            <div style={{ marginTop: 6 }}>
-              <b style={{ color: "var(--ink)" }}>Estimated range:</b> {meterRangeText}/100. Unlock Plus for the exact score.
-            </div>
+            <span>
+              {" "}<b style={{ color: "var(--ink)" }}>Estimated range:</b> {meterRangeText}/100.
+            </span>
           ) : null}
         </div>
-      </div>
 
-      <div className="result">
-        <div className="resultTitle">Paces you chose</div>
-        <div className="miniPills" aria-label="Pace counts">
-          <span className="miniPill">🫧 Rest: {levelCounts.rest}</span>
-          <span className="miniPill">🌿 Gentle: {levelCounts.gentle}</span>
-          <span className="miniPill">✨ Light: {levelCounts.light}</span>
-          <span className="miniPill">🌤️ Steady: {levelCounts.steady}</span>
-          <span className="miniPill">🌊 Capable: {levelCounts.capable}</span>
-          <span className="miniPill">🔥 Brave: {levelCounts.brave}</span>
+        <div className="weeklyDigestStats" aria-label="Momentum details">
+          <button
+            type="button"
+            className="weeklyDigestStat"
+            onClick={() => {
+              setWeekDetailsStart(weekRange.startKey);
+              setShowWeekDetails(true);
+            }}
+            aria-label="Show which days you were present this week"
+          >
+            <span className="weeklyDigestStatHeader">
+              <span className="weeklyDigestStatLabel">Presence</span>
+              <span className="weeklyDigestStatCue" aria-hidden="true" />
+            </span>
+            <span className="weeklyDigestStatMain">
+              <span className="weeklyDigestStatValue">
+                {daysPresent}
+                <span className="weeklyDigestStatUnit">/7</span>
+              </span>
+            </span>
+            <span className="weeklyDigestStatText">{daysPresentText}</span>
+          </button>
+          <button
+            type="button"
+            className="weeklyDigestStat"
+            onClick={() => {
+              setWeekActivitiesStart(weekRange.startKey);
+              setShowWeekActivities(true);
+            }}
+            aria-label="Show how many activities you completed each day this week"
+          >
+            <span className="weeklyDigestStatHeader">
+              <span className="weeklyDigestStatLabel">Completions</span>
+              <span className="weeklyDigestStatCue" aria-hidden="true" />
+            </span>
+            <span className="weeklyDigestStatMain">
+              <span className="weeklyDigestStatValue">{tasksDone}</span>
+            </span>
+            <span className="weeklyDigestStatText">{completedTasksText}</span>
+          </button>
         </div>
-        <div className="footerNote" style={{ marginTop: 8 }}>
-          Today’s pace: <b>{prettyLevel(state.level)}</b>
+
+        <div className="weeklyDigestFooter">
+          <div className="weeklyDigestPaceLine">{weeklyPaceLine}</div>
         </div>
       </div>
 
       {!isPlus && (
-        <div className="result" aria-label="Attune Plus (teaser)">
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <div className="resultTitle">Attune Plus</div>
-            <InfoTip label="What does Plus unlock?">
-              Unlock patterns and a multi-week view. Weekly insights live on this device first, and signed-in accounts can also sync weekly summaries.
-            </InfoTip>
-          </div>
-
-          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                padding: "10px 10px",
-                border: "1px solid var(--line)",
-                background: "var(--card85)",
-                borderRadius: 14,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <div style={{ fontWeight: 900, color: "var(--ink)" }}>Patterns</div>
-                <InfoTip label="About Patterns">
-                  Low-pressure callouts based on your history, only when there’s enough data.
-                </InfoTip>
+        <div className="result weeklyUpgradeCard" aria-label="Attune Plus (teaser)">
+          <div className="weeklyUpgradeCopy">
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              <div className="resultTitle" style={{ margin: 0 }}>
+                Attune Plus keeps this week in context
               </div>
-              <button
-                type="button"
-                className="btn small ghost"
-                onClick={() => actions?.openPaywall?.("patternCallouts", "weekly")}
-                aria-label="Try Attune Plus to unlock pattern callouts"
-              >
-                🔒 Try Plus
-              </button>
+              <InfoTip label="What does Plus unlock?">
+                Unlock patterns and a multi-week view. Weekly insights live on this device first, and signed-in accounts can also sync weekly summaries.
+              </InfoTip>
             </div>
-
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 10,
-                padding: "10px 10px",
-                border: "1px solid var(--line)",
-                background: "var(--card85)",
-                borderRadius: 14,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
-                <div style={{ fontWeight: 900, color: "var(--ink)" }}>Past weeks</div>
-                <InfoTip label="About Past weeks">See 4-12 weeks at a glance, with low-pressure comparisons.</InfoTip>
-              </div>
-              <button
-                type="button"
-                className="btn small ghost"
-                onClick={() => actions?.openPaywall?.("multiWeekHistory", "weekly")}
-                aria-label="Try Attune Plus to unlock past weeks"
-              >
-                🔒 Try Plus
-              </button>
+            <div className="footerNote" style={{ marginTop: 6 }}>
+              See gentle pattern callouts and a longer weekly archive without turning this screen into a dashboard.
             </div>
           </div>
+          <button
+            type="button"
+            className="btn small ghost"
+            onClick={() => actions?.openPaywall?.("plus", "weekly")}
+            aria-label="Try Attune Plus"
+          >
+            🔒 Try Plus
+          </button>
         </div>
       )}
 
-      {canPatternCallouts && patternCallouts.length > 0 && (
-        <div className="result" aria-label="Patterns">
+      {canPatternCallouts && primaryPattern && (
+        <div className="result weeklyPatternSection" aria-label="Patterns">
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-            <div className="resultTitle">Patterns</div>
+            <div className="resultTitle">Pattern spotlight</div>
             <InfoTip label="About Patterns">A few observations from your recent history.</InfoTip>
           </div>
-          <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-            {(showAllPatterns || !isMobile ? patternCallouts : patternCallouts.slice(0, 2)).map((c) => (
-              <div key={c.id} className="weekInsight">
-                <div className="weekInsightTag">{patternCategoryLabel(c.category)}</div>
-                <div>{c.text}</div>
-              </div>
-            ))}
+
+          <div className="weekInsight weekInsightPrimary" style={{ marginTop: 10 }}>
+            <div className="weekInsightTag">{patternCategoryLabel(primaryPattern.category)}</div>
+            <div>{primaryPattern.text}</div>
           </div>
-          {isMobile && patternCallouts.length > 2 ? (
+
+          {showAllPatterns && remainingPatterns.length > 0 ? (
+            <div className="weeklyPatternExtraList">
+              {remainingPatterns.map((c) => (
+                <div key={c.id} className="weekInsight weekInsightSecondary">
+                  <div className="weekInsightTag">{patternCategoryLabel(c.category)}</div>
+                  <div>{c.text}</div>
+                </div>
+              ))}
+            </div>
+          ) : null}
+
+          {remainingPatterns.length > 0 ? (
             <div className="weekInsightActions">
               <button type="button" className="linkBtn" onClick={() => setShowAllPatterns((v) => !v)}>
-                {showAllPatterns ? "Show less" : `Show ${patternCallouts.length - 2} more`}
+                {showAllPatterns ? "Show fewer patterns" : `Show ${remainingPatterns.length} more pattern${remainingPatterns.length === 1 ? "" : "s"}`}
               </button>
             </div>
           ) : null}
@@ -615,12 +623,12 @@ export default function Weekly({ state, actions }) {
       )}
 
       {canMultiWeek && (
-        <div className="result">
+        <div className="result weeklyArchiveCard">
           <div className="pastWeeksSticky">
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
               <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                 <div className="resultTitle" style={{ margin: 0 }}>
-                  Past weeks
+                  Archive
                 </div>
                 <InfoTip label="About Past weeks">
                   See 4-12 weeks at a glance, with low-pressure comparisons. It lives on this device first, and signed-in accounts can also sync
@@ -645,9 +653,11 @@ export default function Weekly({ state, actions }) {
               </label>
             </div>
 
-            {similar.length > 0 ? (
-              <div className="footerNote" style={{ marginTop: 8 }}>
-                <b style={{ color: "var(--ink)" }}>Similar:</b>{" "}
+            <div className="footerNote weeklyArchiveHint" style={{ marginTop: 8 }}>
+              {similar.length > 0 ? (
+                <>
+                  Closest to
+                  {" "}
                 {similar.slice(0, 2).map((s, idx) => (
                   <span key={s.weekStart}>
                     <button
@@ -658,15 +668,14 @@ export default function Weekly({ state, actions }) {
                     >
                       {formatDateLong(s.weekStart)}
                     </button>
-                    {idx === Math.min(1, similar.length - 1) ? "" : ", "}
+                    {idx === Math.min(1, similar.length - 1) ? "." : " and "}
                   </span>
                 ))}
-              </div>
-            ) : (
-              <div className="footerNote" style={{ marginTop: 8 }}>
-                Add a little more history and we’ll start making low-pressure comparisons.
-              </div>
-            )}
+                </>
+              ) : (
+                "More history turns this into a gentler long-view."
+              )}
+            </div>
 
             {stripSummaries.length > 0 ? (
               <div className="weekStrip" role="list" aria-label="Past weeks (scroll left and right)">
@@ -700,12 +709,8 @@ export default function Weekly({ state, actions }) {
             ) : null}
           </div>
 
-          <div className="footerNote" style={{ marginTop: 8 }}>
-            Tap a week for details.
-          </div>
-
           {activePastSummary ? (
-            <div className="weekSummaryCard" style={{ marginTop: 10 }} aria-label="Selected week details">
+            <div className="weekSummaryCard weekSummaryCardQuiet" style={{ marginTop: 10 }} aria-label="Selected week details">
               <div className="weekSummaryHeader">
                 <div className="weekSummaryTitle">{formatDateLong(activePastSummary.weekStart)}</div>
                 <div className="footerNote" style={{ marginTop: 0 }}>
@@ -714,10 +719,12 @@ export default function Weekly({ state, actions }) {
               </div>
 
               <div className="weekSummaryMeta">
+                <span>{activePastSummary.presence}/7 present</span>
+                <span>{activePastSummary.completions} completed</span>
                 {activePastSummary.avgPace ? <span>Avg pace: {prettyLevel(activePastSummary.avgPace)}</span> : null}
               </div>
 
-              <div className="miniPills" style={{ marginTop: 8 }}>
+              <div className="miniPills" style={{ marginTop: 10 }}>
                 <button
                   type="button"
                   className="miniPill miniPillBtn"
@@ -756,7 +763,7 @@ export default function Weekly({ state, actions }) {
 
       {showWeekDetails && (
         <div
-          className="modalOverlay weekDetailsOverlay"
+          className="modalOverlay weekDetailsOverlay weekSheetOverlay"
           role="dialog"
           aria-modal="true"
           aria-label="Week details"
@@ -764,7 +771,7 @@ export default function Weekly({ state, actions }) {
             if (e.target === e.currentTarget) setShowWeekDetails(false);
           }}
         >
-          <div className="modalCard weekDetailsModal" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="modalCard weekDetailsModal weekSheetModal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">Week details</div>
             <div className="modalBody">
               {weekDetailsStart && weekDetailsEnd
@@ -813,7 +820,7 @@ export default function Weekly({ state, actions }) {
 
       {showWeekActivities && (
         <div
-          className="modalOverlay"
+          className="modalOverlay weekSheetOverlay"
           role="dialog"
           aria-modal="true"
           aria-label="Week activities"
@@ -821,7 +828,7 @@ export default function Weekly({ state, actions }) {
             if (e.target === e.currentTarget) setShowWeekActivities(false);
           }}
         >
-          <div className="modalCard weekActivitiesModal" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="modalCard weekActivitiesModal weekSheetModal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">Completed activities</div>
             <div className="modalBody">
               {weekActivitiesStart && weekActivitiesEnd
@@ -882,7 +889,7 @@ export default function Weekly({ state, actions }) {
 
       {showMomentumInfo && (
         <div
-          className="modalOverlay"
+          className="modalOverlay weekSheetOverlay"
           role="dialog"
           aria-modal="true"
           aria-label="Momentum explanation"
@@ -890,14 +897,14 @@ export default function Weekly({ state, actions }) {
             if (e.target === e.currentTarget) setShowMomentumInfo(false);
           }}
         >
-          <div className="modalCard" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="modalCard weekSheetModal weekMomentumModal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalTitle">About Momentum</div>
             <div className="modalBody">
               Momentum is a helpful score based on your last 7 days: showing up matters most, with a small boost for finishing
               activities.
             </div>
 
-            <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+            <div className="weekMomentumLevels" style={{ marginTop: 10, display: "grid", gap: 8 }}>
               {MOMENTUM_LEVELS.map((item) => (
                 <div key={item.label} style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
                   <b style={{ color: "var(--ink)" }}>{item.label}</b> <span>({item.range})</span>: {item.desc}
@@ -920,9 +927,14 @@ export default function Weekly({ state, actions }) {
       )}
 
       <div className="result weeklyNoteResult" aria-label="Weekly note">
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-          <div className="resultTitle">This week’s note</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div className="weeklyNoteHeader">
+          <div>
+            <div className="resultTitle">Week note</div>
+            <div className="footerNote" style={{ marginTop: 6 }}>
+              Optional context for what is shaping this week.
+            </div>
+          </div>
+          <div className="weeklyNoteActions">
             <div className="footerNote" style={{ marginTop: 0, textAlign: "right" }} aria-label="Weekly note status">
               {isDirty
                 ? "Unsaved"
@@ -946,15 +958,12 @@ export default function Weekly({ state, actions }) {
           </div>
         </div>
         <div className="weeklyNoteBody">
-          <div className="weeklyNoteHelp">
-            Optional. Add context as the week goes.
-          </div>
           <textarea
             className="weeklyNoteInput"
             value={draftNote}
             maxLength={NOTE_CHAR_LIMIT}
             rows={4}
-            placeholder="What’s affecting this week? (travel, deadlines, energy, stress, wins…)"
+            placeholder="What is shaping this week? (energy, deadlines, travel, stress, wins, recovery...)"
             onChange={(e) => setDraftNote(limitChars(e.target.value, NOTE_CHAR_LIMIT))}
             onFocus={() => {
               window.requestAnimationFrame(() => {
