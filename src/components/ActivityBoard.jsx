@@ -120,8 +120,14 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       .filter(Boolean)
       .filter((t, i, a) => a.indexOf(t) === i);
 
+    const hasUserInteraction = pickedCount > 0 || revealed.some(Boolean);
+    const shouldKeepExistingBoard =
+      Array.isArray(storedBoardAssigned) &&
+      storedBoardAssigned.length === TILE_COUNT &&
+      (state.optionsSource !== "ai" || hasUserInteraction);
+
     let shown = null;
-    if (Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT) {
+    if (shouldKeepExistingBoard) {
       shown = storedBoardAssigned;
       setBoardAssigned(storedBoardAssigned);
     } else {

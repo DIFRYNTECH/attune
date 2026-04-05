@@ -31,7 +31,7 @@ import { isNativePlatform } from "../lib/platform";
 const SCHEMA_VERSION = 8;
 
 // Bump this when the AI prompt/validation changes and you want fresh boards.
-const AI_BOARD_VERSION = 2;
+const AI_BOARD_VERSION = 4;
 
 // Bump this when the AI daily note prompt changes.
 const AI_DAILY_NOTE_VERSION = 2;

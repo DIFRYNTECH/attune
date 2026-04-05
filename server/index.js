@@ -18,6 +18,14 @@ import {
 const PORT = Number(process.env.PORT || 8787);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
+const BOARD_TOTAL_TASK_COUNT = 15;
+const BOARD_MODEL = process.env.OPENAI_BOARD_MODEL || MODEL;
+const BOARD_FALLBACK_MODEL = process.env.OPENAI_BOARD_FALLBACK_MODEL || MODEL;
+const BOARD_MODEL_CANDIDATES = Array.from(
+  new Set([BOARD_MODEL, BOARD_FALLBACK_MODEL].map((value) => String(value || "").trim()).filter(Boolean))
+);
+const BOARD_AI_TASK_COUNT = BOARD_TOTAL_TASK_COUNT;
+const BOARD_MAX_COMPLETION_TOKENS = Math.max(220, Math.min(420, Number(process.env.OPENAI_BOARD_MAX_COMPLETION_TOKENS) || 320));
 const openAiClient = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -376,6 +384,7 @@ function makeTtlCache({ ttlMs, maxEntries }) {
 
 const boardCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 250 });
 const noteCache = makeTtlCache({ ttlMs: 10 * 60 * 1000, maxEntries: 400 });
+const planCatalogCache = makeTtlCache({ ttlMs: 5 * 60 * 1000, maxEntries: 8 });
 
 const limitBoard = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 30, keyPrefix: "board" });
 const limitNote = makeRateLimiter({ windowMs: 10 * 60 * 1000, max: 60, keyPrefix: "note" });
@@ -945,14 +954,14 @@ async function requireAuthedUser(req, res) {
   }
 }
 
-async function recordAiUsage({ userId, kind, success, errorCode, meta }) {
+async function recordAiUsage({ userId, kind, model, success, errorCode, meta }) {
   if (!supabaseAdmin) return;
   if (!userId || typeof userId !== "string") return;
 
   const payload = {
     user_id: userId,
     kind: typeof kind === "string" && kind ? kind : "unknown",
-    model: MODEL,
+    model: typeof model === "string" && model ? model : MODEL,
     success: success !== false,
     error_code: typeof errorCode === "string" ? errorCode : null,
     meta: meta && typeof meta === "object" ? meta : {},
@@ -1011,11 +1020,21 @@ async function getUserAiContext(userId) {
   if (entitlementResult.error) throw new Error("entitlement_lookup_failed");
 
   const requestedPlanId = hasPlusEntitlement(entitlementResult.data) ? "plus" : "free";
-  const { data: planRow, error: planError } = await supabaseAdmin
-    .from("plan_catalog")
-    .select("plan_id, ai_daily_request_limit, ai_monthly_request_limit, is_active")
-    .eq("plan_id", requestedPlanId)
-    .maybeSingle();
+  let planRow = planCatalogCache.get(requestedPlanId);
+  let planError = null;
+
+  if (!planRow) {
+    const planResult = await supabaseAdmin
+      .from("plan_catalog")
+      .select("plan_id, ai_daily_request_limit, ai_monthly_request_limit, is_active")
+      .eq("plan_id", requestedPlanId)
+      .maybeSingle();
+
+    planRow = planResult.data || null;
+    planError = planResult.error || null;
+
+    if (planRow) planCatalogCache.set(requestedPlanId, planRow);
+  }
 
   if (planError) throw new Error("plan_lookup_failed");
 
@@ -1041,13 +1060,13 @@ async function getUserAiContext(userId) {
   };
 }
 
-async function reserveAiQuota({ userId, kind, planId, useNoteForAi, dailyLimit, monthlyLimit }) {
+async function reserveAiQuota({ userId, kind, model, planId, useNoteForAi, dailyLimit, monthlyLimit }) {
   if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
 
   const rpcResult = await supabaseAdmin.rpc("reserve_ai_usage_quota", {
     p_user_id: userId,
     p_kind: kind,
-    p_model: MODEL,
+    p_model: typeof model === "string" && model ? model : MODEL,
     p_meta: {
       cached: false,
       planId,
@@ -1077,7 +1096,7 @@ async function reserveAiQuota({ userId, kind, planId, useNoteForAi, dailyLimit, 
   };
 }
 
-async function finalizeReservedAiUsage({ usageId, success, errorCode, meta }) {
+async function finalizeReservedAiUsage({ usageId, success, errorCode, meta, model }) {
   if (!supabaseAdmin || !usageId) return;
 
   const current = await supabaseAdmin
@@ -1095,13 +1114,19 @@ async function finalizeReservedAiUsage({ usageId, success, errorCode, meta }) {
     quotaState: success ? "billed" : "released",
   };
 
+  const updates = {
+    success: success === true,
+    error_code: success === true ? null : (typeof errorCode === "string" ? errorCode : null),
+    meta: nextMeta,
+  };
+
+  if (typeof model === "string" && model) {
+    updates.model = model;
+  }
+
   const result = await supabaseAdmin
     .from("ai_usage")
-    .update({
-      success: success === true,
-      error_code: success === true ? null : (typeof errorCode === "string" ? errorCode : null),
-      meta: nextMeta,
-    })
+    .update(updates)
     .eq("id", usageId)
     .select("id")
     .single();
@@ -1109,7 +1134,7 @@ async function finalizeReservedAiUsage({ usageId, success, errorCode, meta }) {
   if (result.error) throw new Error("ai_usage_finalize_failed");
 }
 
-async function rejectForQuota(req, res, { userId, kind, planId, quota }) {
+async function rejectForQuota(req, res, { userId, kind, model, planId, quota }) {
   setRequestUserId(req, userId);
   setRequestErrorCode(req, quota.error);
   logEvent("warn", "ai_quota_rejected", {
@@ -1128,6 +1153,7 @@ async function rejectForQuota(req, res, { userId, kind, planId, quota }) {
   await recordAiUsage({
     userId,
     kind,
+    model,
     success: false,
     errorCode: quota.error,
     meta: {
@@ -1295,31 +1321,7 @@ function looksWeeklyReflectionTask(text) {
   return false;
 }
 
-function makeFallbackTask(text) {
-  return {
-    text: clampString(text, 120),
-  };
-}
-
-function fillAndSanitizeTasks(tasks) {
-  const safePool = [
-    "Take 5 slow breaths and drop your shoulders.",
-    "Tidy one small surface for 8 minutes.",
-    "Step outside or to a window for 3 minutes of fresh air.",
-    "Do a gentle stretch for your neck and shoulders.",
-    "Put on one song and move lightly for its length.",
-    "Write a tiny list: 2 priorities and 1 treat.",
-    "Make a simple snack and sit to eat it.",
-    "Send one kind message if that feels easy.",
-    "Set a 10-minute timer and do one calm task.",
-    "Do a short walk in place or around the room.",
-    "Put a glass of water somewhere you'll see it.",
-    "Do a quick reset and clear one small pile.",
-    "Read 2 pages of something you like.",
-    "Do a 60-second body scan: forehead, jaw, shoulders.",
-    "Pick one tiny future-you setup like charger, clothes, or keys.",
-  ];
-
+function fillAndSanitizeTasks(tasks, targetCount = BOARD_TOTAL_TASK_COUNT) {
   const out = [];
   const seen = new Set();
 
@@ -1335,18 +1337,7 @@ function fillAndSanitizeTasks(tasks) {
     out.push({ text });
   }
 
-  for (const s of safePool) {
-    if (out.length >= 15) break;
-    const text = clampString(s, 120);
-    if (!text) continue;
-    if (looksWeeklyReflectionTask(text)) continue;
-    const k = text.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    out.push(makeFallbackTask(text));
-  }
-
-  return out.slice(0, 15);
+  return out.slice(0, targetCount);
 }
 
 function stableHash(str) {
@@ -1558,13 +1549,13 @@ function containsAnyFragment(text, fragments) {
   return fragments.some((f) => f && t.includes(f));
 }
 
-function validateBoardPayload(payload, allowedContextLower, groundingFragments) {
+function validateBoardPayload(payload, allowedContextLower, groundingFragments, expectedCount = BOARD_TOTAL_TASK_COUNT) {
   const warnings = [];
   if (!payload || typeof payload !== "object") return { ok: false, error: "Invalid JSON" };
 
   const tasks = payload.tasks;
   if (!Array.isArray(tasks)) return { ok: false, error: "Missing tasks[]" };
-  if (tasks.length !== 15) return { ok: false, error: "tasks[] must have length 15" };
+  if (tasks.length !== expectedCount) return { ok: false, error: `tasks[] must have length ${expectedCount}` };
 
   const seen = new Set();
   const tokenLists = [];
@@ -1591,31 +1582,53 @@ function validateBoardPayload(payload, allowedContextLower, groundingFragments) 
   }
 
   if (Array.isArray(groundingFragments) && groundingFragments.length > 0) {
-    if (groundedCount < 8) warnings.push("Board text is only lightly grounded in the check-in.");
+    const minimumGrounded = Math.max(3, Math.ceil(expectedCount * 0.55));
+    if (groundedCount < minimumGrounded) warnings.push("Board text is only lightly grounded in the check-in.");
   }
 
   return { ok: true, warnings };
 }
 
-async function generateBoardWithRetries(client, { system, userPayload, model }) {
-  const maxAttempts = 1;
+async function generateBoardWithRetries(client, { system, userPayload, models, targetCount, maxCompletionTokens }) {
   let lastError = "";
   let lastWarnings = [];
+  const desiredCount = Math.max(1, Number(targetCount) || BOARD_TOTAL_TASK_COUNT);
+  const modelList = Array.from(
+    new Set(
+      (Array.isArray(models) ? models : [models])
+        .map((value) => String(value || "").trim())
+        .filter(Boolean)
+    )
+  );
+  const attemptedModels = [];
+  const modelErrors = [];
 
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const completion = await client.chat.completions.create({
-      model,
-      temperature: 0.4,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: JSON.stringify(userPayload) },
-      ],
-      response_format: { type: "json_object" },
-    });
+  for (const model of modelList) {
+    attemptedModels.push(model);
+    lastWarnings = [];
 
-    const content = completion.choices?.[0]?.message?.content;
+    let content = "";
+    try {
+      const completion = await client.chat.completions.create({
+        model,
+        temperature: 0.3,
+        max_completion_tokens: Math.max(1, Number(maxCompletionTokens) || BOARD_MAX_COMPLETION_TOKENS),
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: JSON.stringify(userPayload) },
+        ],
+        response_format: { type: "json_object" },
+      });
+      content = completion.choices?.[0]?.message?.content || "";
+    } catch (error) {
+      lastError = summarizeError(error).message || "Model request failed";
+      modelErrors.push({ model, error: lastError });
+      continue;
+    }
+
     if (typeof content !== "string" || !content.trim()) {
       lastError = "Empty model response";
+      modelErrors.push({ model, error: lastError });
       continue;
     }
 
@@ -1624,6 +1637,7 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
       parsed = JSON.parse(content);
     } catch {
       lastError = "Model did not return valid JSON";
+      modelErrors.push({ model, error: lastError });
       continue;
     }
 
@@ -1643,28 +1657,43 @@ async function generateBoardWithRetries(client, { system, userPayload, model }) 
       ? userPayload.grounding.fragments
       : [];
 
-    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks);
+    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, desiredCount);
 
     const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
 
-    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, groundingFragments);
+    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, groundingFragments, desiredCount);
     if (!validated.ok) {
       lastError = validated.error || "Invalid board";
+      modelErrors.push({ model, error: lastError });
       continue;
     }
 
     lastWarnings = Array.isArray(validated.warnings) ? validated.warnings : [];
     const removed = Array.isArray(parsed?.tasks) ? parsed.tasks.length - sanitizedTasks.length : 0;
     if (removed > 0) lastWarnings = [...lastWarnings, "Removed week-level reflection tasks from today's board."];
-    if (sanitizedTasks.length < 15) lastWarnings = [...lastWarnings, "Filled missing tasks with today-focused fallbacks."];
-    return { ok: true, tasks: sanitizedTasks, warnings: lastWarnings };
+    if (sanitizedTasks.length < desiredCount) lastWarnings = [...lastWarnings, "Filled missing tasks with today-focused fallbacks."];
+    return {
+      ok: true,
+      tasks: sanitizedTasks,
+      warnings: lastWarnings,
+      model,
+      attemptedModels,
+      modelErrors,
+    };
   }
 
-  return { ok: false, error: lastError || "Invalid board", warnings: lastWarnings };
+  return {
+    ok: false,
+    error: lastError || "Invalid board",
+    warnings: lastWarnings,
+    attemptedModels,
+    modelErrors,
+  };
 }
 
 app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, res) => {
   try {
+    const totalStartedMs = Date.now();
     const authedUser = await requireAuthedUser(req, res);
     if (!authedUser) return;
     setRequestUserId(req, authedUser.id);
@@ -1695,7 +1724,9 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const allowedLevels = new Set(["rest", "gentle", "light", "steady", "capable", "brave"]);
     const levelRaw = (clampString(req.body?.level, 24) || "gentle").toLowerCase();
     const level = allowedLevels.has(levelRaw) ? levelRaw : "gentle";
+    const aiContextStartedMs = Date.now();
     const aiContext = await getUserAiContext(authedUser.id);
+    const aiContextMs = Date.now() - aiContextStartedMs;
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";
@@ -1719,6 +1750,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const quotaReservation = await reserveAiQuota({
       userId: authedUser.id,
       kind: "generate_board",
+      model: BOARD_MODEL,
       planId: aiContext.planId,
       useNoteForAi: aiContext.useNoteForAi,
       dailyLimit: aiContext.dailyLimit,
@@ -1728,6 +1760,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "generate_board",
+        model: BOARD_MODEL,
         planId: aiContext.planId,
         quota: quotaReservation,
       });
@@ -1764,7 +1797,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Keep task text concise and within maxTextChars. " +
       "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. Avoid near-duplicate tasks. " +
       "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
-      "Return only the 15 task strings the app needs. No explanations, labels, categories, or metadata.";
+      "Return only the task strings the app needs for the AI-generated part of the board. No explanations, labels, categories, or metadata.";
 
     const userPayload = {
       checkin: {
@@ -1780,7 +1813,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         fragments: groundingFragments,
       },
       taskRequirements: {
-        count: 15,
+        count: BOARD_AI_TASK_COUNT,
         style: "short, actionable, grounded in today's check-in",
         maxTextChars: 120,
         avoidAssumptions: true,
@@ -1795,11 +1828,19 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       outputSchema: "{\"tasks\":[string]}"
     };
 
+    const generationStartedMs = Date.now();
     const generated = await generateBoardWithRetries(openAiClient, {
       system,
       userPayload,
-      model: MODEL,
+      models: BOARD_MODEL_CANDIDATES,
+      targetCount: BOARD_AI_TASK_COUNT,
+      maxCompletionTokens: BOARD_MAX_COMPLETION_TOKENS,
     });
+    const generationMs = Date.now() - generationStartedMs;
+    const resolvedBoardModel = generated.model || BOARD_MODEL;
+    const attemptedBoardModels = Array.isArray(generated.attemptedModels) ? generated.attemptedModels : BOARD_MODEL_CANDIDATES;
+    const boardModelErrors = Array.isArray(generated.modelErrors) ? generated.modelErrors : [];
+    const boardFallbackUsed = resolvedBoardModel !== BOARD_MODEL;
 
     if (!generated.ok) {
       setRequestErrorCode(req, generated.error || "invalid_board");
@@ -1809,23 +1850,46 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         userId: authedUser.id,
         errorCode: generated.error || "invalid_board",
         planId: aiContext.planId,
+        model: resolvedBoardModel,
+        requestedModel: BOARD_MODEL,
+        fallbackModel: BOARD_FALLBACK_MODEL,
+        attemptedModels: attemptedBoardModels,
+        modelErrors: boardModelErrors,
+        aiContextMs,
+        generationMs,
       });
       finalizeReservedAiUsage({
         usageId: quotaReservation.usageId,
         success: false,
         errorCode: generated.error || "invalid_board",
-        meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+        model: resolvedBoardModel,
+        meta: {
+          planId: aiContext.planId,
+          useNoteForAi: aiContext.useNoteForAi,
+          model: resolvedBoardModel,
+          requestedModel: BOARD_MODEL,
+          fallbackModel: BOARD_FALLBACK_MODEL,
+          attemptedModels: attemptedBoardModels,
+          modelErrors: boardModelErrors,
+        },
       }).catch(() => {});
       res.status(502).json({ error: generated.error || "Invalid board" });
       return;
     }
 
+    const warnings = Array.isArray(generated.warnings) ? generated.warnings : [];
+
     const payload = {
       tasks: generated.tasks,
       meta: {
-        model: MODEL,
+        model: resolvedBoardModel,
+        requestedModel: BOARD_MODEL,
+        fallbackModel: BOARD_FALLBACK_MODEL,
+        attemptedModels: attemptedBoardModels,
+        fallbackUsed: boardFallbackUsed,
         createdAt: new Date().toISOString(),
-        warnings: Array.isArray(generated.warnings) ? generated.warnings : [],
+        warnings,
+        strategy: "ai",
         cached: false,
       },
     };
@@ -1833,10 +1897,38 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     finalizeReservedAiUsage({
       usageId: quotaReservation.usageId,
       success: true,
-      meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+      model: resolvedBoardModel,
+      meta: {
+        planId: aiContext.planId,
+        useNoteForAi: aiContext.useNoteForAi,
+        model: resolvedBoardModel,
+        requestedModel: BOARD_MODEL,
+        fallbackModel: BOARD_FALLBACK_MODEL,
+        attemptedModels: attemptedBoardModels,
+        fallbackUsed: boardFallbackUsed,
+        strategy: "ai",
+      },
     }).catch(() => {});
 
     boardCache.set(cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });
+
+    logEvent("info", "ai_generate_board_completed", {
+      requestId: getRequestLogContext(req).requestId,
+      route: req.path,
+      userId: authedUser.id,
+      planId: aiContext.planId,
+      model: resolvedBoardModel,
+      requestedModel: BOARD_MODEL,
+      fallbackModel: BOARD_FALLBACK_MODEL,
+      attemptedModels: attemptedBoardModels,
+      fallbackUsed: boardFallbackUsed,
+      aiContextMs,
+      generationMs,
+      totalMs: Date.now() - totalStartedMs,
+      aiTaskCount: generated.tasks.length,
+      warnings: warnings.length,
+    });
+
     res.json(payload);
   } catch (err) {
     const errorCode = String(err?.message || "");
@@ -1919,6 +2011,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     const quotaReservation = await reserveAiQuota({
       userId: authedUser.id,
       kind: "daily_note",
+      model: MODEL,
       planId: aiContext.planId,
       useNoteForAi: aiContext.useNoteForAi,
       dailyLimit: aiContext.dailyLimit,
@@ -1928,6 +2021,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       await rejectForQuota(req, res, {
         userId: authedUser.id,
         kind: "daily_note",
+        model: MODEL,
         planId: aiContext.planId,
         quota: quotaReservation,
       });

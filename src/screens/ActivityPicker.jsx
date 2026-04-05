@@ -9,10 +9,15 @@ export default function ActivityPicker({ state, actions }) {
   }, []);
 
   const aiStatus = state.ai?.status;
-  const boardLoading = aiStatus === "loading";
+  const isPlus = !!state?.entitlements?.isPlus;
+  const hasBoardOptions = Array.isArray(state.options) && state.options.length > 0;
+  const hasAiBoard = state.optionsSource === "ai";
+  const boardLoading = isPlus
+    ? !hasAiBoard && aiStatus !== "error"
+    : aiStatus === "loading" && !hasBoardOptions;
   const statusLine =
     boardLoading
-      ? "Building a calm board from your check-in…"
+      ? "Building your AI board from your check-in…"
       : aiStatus === "error"
         ? (state.ai?.error || "Using built-in suggestions for now.")
         : aiStatus === "ready"
