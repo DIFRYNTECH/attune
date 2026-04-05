@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, prettyLevel } from "../lib/attuneEngine";
@@ -425,6 +426,7 @@ export default function Weekly({ state, actions }) {
   const weeklyPaceLine = buildWeeklyPaceLine(currentWeekSummary.avgPace, dominantLevel, dominantLevelCount);
   const daysPresentText = daysPresent === 1 ? "day checked in" : "days checked in";
   const completedTasksText = tasksDone === 1 ? "task finished" : "tasks finished";
+  const renderModal = (node) => (typeof document === "undefined" ? null : createPortal(node, document.body));
   const primaryPattern = canPatternCallouts && patternCallouts.length > 0 ? patternCallouts[0] : null;
   const remainingPatterns = primaryPattern ? patternCallouts.slice(1) : [];
 
@@ -761,7 +763,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      {showWeekDetails && (
+      {showWeekDetails && renderModal(
         <div
           className="modalOverlay weekDetailsOverlay weekSheetOverlay"
           role="dialog"
@@ -818,7 +820,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      {showWeekActivities && (
+      {showWeekActivities && renderModal(
         <div
           className="modalOverlay weekSheetOverlay"
           role="dialog"
@@ -887,7 +889,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      {showMomentumInfo && (
+      {showMomentumInfo && renderModal(
         <div
           className="modalOverlay weekSheetOverlay"
           role="dialog"
