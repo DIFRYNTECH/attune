@@ -1791,9 +1791,16 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
       "Keep tasks small, doable, varied, and non-punitive. " +
-      "Each task must be a single short line that starts with a brief grounding clause tied to a REAL check-in signal, then the action. " +
-      "Use patterns like: 'With low energy, ...', 'With a gentle pace, ...', 'If your body feels tight, ...', or 'If you're feeling {moodWord}, ...'. " +
-      "Do NOT add grounding that introduces new emotional assumptions. " +
+        "Each task must be a single short line written as a direct action or invitation. " +
+        "Use the check-in as hidden context for choosing the task, not as a required opening clause. " +
+        "Only mention pace, energy, body, mood, or note details when they materially sharpen the task, and weave them in naturally. " +
+      "Make the board feel bespoke: at least a third of the tasks should visibly reflect a concrete signal from the user's body state, mood words, pace, energy, or note. " +
+        "Avoid formulaic lead-ins like 'With low energy, ...', 'With a gentle pace, ...', 'If your body feels tight, ...', or 'If you're feeling {moodWord}, ...'. " +
+        "Do NOT add grounding that introduces new emotional assumptions. " +
+        "Aim for concise, editorial phrasing that sounds written by a thoughtful coach, not assembled from placeholders. " +
+      "Favor specific verbs and concrete details over generic productivity language. " +
+      "Do not lean on filler tasks like drinking water, closing tabs, clearing a surface, taking a walk, or setting a timer unless the check-in clearly supports them. " +
+      "Vary the mix across body reset, environment reset, emotional regulation, and practical next-step tasks so the board does not collapse into one pattern. " +
       "Keep task text concise and within maxTextChars. " +
       "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. Avoid near-duplicate tasks. " +
       "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
@@ -1814,15 +1821,15 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       },
       taskRequirements: {
         count: BOARD_AI_TASK_COUNT,
-        style: "short, actionable, grounded in today's check-in",
+        style: "short, actionable, editorial, grounded in today's check-in",
         maxTextChars: 120,
         avoidAssumptions: true,
         avoidNearDuplicates: true,
         pacingHint: preferences,
         examples: [
-          "With low energy, tidy one small surface.",
-          "If your body feels tight, do a gentle neck stretch.",
-          "With a gentle pace, write down one small next step.",
+          "Drop your shoulders and lengthen the back of your neck.",
+          "Turn the next task into a one-line starting point.",
+          "Reset the space directly around you.",
         ],
       },
       outputSchema: "{\"tasks\":[string]}"

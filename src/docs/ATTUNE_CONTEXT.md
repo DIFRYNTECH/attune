@@ -136,7 +136,7 @@ Current behavior highlights:
 	- No repeats; stable assignment (tiles shouldn’t “jump” when revealing)
 	- Soft cap: 5 tasks (confirm to continue)
 	- Hard cap: 10 tasks (prevents revealing/adding beyond 10)
-	- “Clear board” clears My Day and refreshes options
+	- “Reset today” clears My Day and refreshes options
 - Toasts
 	- Fixed above bottom nav on mobile
 	- Scoped to the screen that created them (no cross-screen bleed)

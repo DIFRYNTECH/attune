@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAttuneStore } from "../store/useAttuneStore";
-import { smartPickPool } from "../lib/smartPick";
+import { getAttuneRecommendedPicks, smartPickPool } from "../lib/smartPick";
 
 function shuffle(arr) {
   const a = [...arr];
@@ -41,9 +41,10 @@ function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
   return list;
 }
 
-function mergeBoardAssigned({ existingBoard, pool, preservedTexts, tileCount }) {
+function mergeBoardAssigned({ existingBoard, pool, preservedTexts, prioritizedTexts, tileCount }) {
   const next = Array.from({ length: tileCount }).map(() => ({ text: "", placeholder: true }));
   const preserved = new Set(Array.isArray(preservedTexts) ? preservedTexts.filter(Boolean) : []);
+  const prioritized = Array.isArray(prioritizedTexts) ? prioritizedTexts.filter(Boolean) : [];
   const seen = new Set();
 
   const currentBoard = Array.isArray(existingBoard) ? existingBoard : [];
@@ -58,6 +59,19 @@ function mergeBoardAssigned({ existingBoard, pool, preservedTexts, tileCount }) 
 
   const optionsPool = Array.isArray(pool) ? pool : [];
   let poolIndex = 0;
+
+  for (const prioritizedText of prioritized) {
+    if (!prioritizedText || seen.has(prioritizedText)) continue;
+
+    const candidate = optionsPool.find((option) => option?.text === prioritizedText);
+    if (!candidate) continue;
+
+    const slot = next.findIndex((entry) => !entry?.text);
+    if (slot === -1) break;
+
+    next[slot] = { text: candidate.text, level: candidate?.level };
+    seen.add(candidate.text);
+  }
 
   for (let i = 0; i < tileCount; i += 1) {
     if (next[i]?.text) continue;
@@ -102,8 +116,24 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     return smartPickPool(base, state?.events, { nowMs });
   }, [options, canSmartPick, state?.events]);
 
+  const attunePicks = useMemo(() => {
+    if (!canSmartPick) return [];
+    return getAttuneRecommendedPicks(options, state?.events, { limit: 3 });
+  }, [options, canSmartPick, state?.events]);
+
+  const attunePickOrder = useMemo(() => {
+    const map = new Map();
+    for (let i = 0; i < attunePicks.length; i += 1) {
+      const text = typeof attunePicks[i]?.text === "string" ? attunePicks[i].text : "";
+      if (!text || map.has(text)) continue;
+      map.set(text, i);
+    }
+    return map;
+  }, [attunePicks]);
+
   const [revealed, setRevealed] = useState(() => Array(TILE_COUNT).fill(false));
   const [revealFx, setRevealFx] = useState(() => Array(TILE_COUNT).fill(false));
+  const [attunePickFx, setAttunePickFx] = useState(() => Array(TILE_COUNT).fill(false));
   const [boardAssigned, setBoardAssigned] = useState(() => {
     if (Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT) {
       return storedBoardAssigned;
@@ -114,6 +144,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAdd, setPendingAdd] = useState(null); // { idx, opt }
   const revealTimeoutsRef = useRef(new Map());
+  const attunePickTimeoutsRef = useRef(new Map());
 
   const takenTexts = useMemo(() => {
     const set = new Set();
@@ -176,6 +207,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   useEffect(() => () => {
     revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     revealTimeoutsRef.current.clear();
+    attunePickTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    attunePickTimeoutsRef.current.clear();
   }, []);
 
   useEffect(() => {
@@ -189,6 +222,11 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       .map((t) => t?.text)
       .filter(Boolean)
       .filter((t, i, a) => a.indexOf(t) === i);
+    const attunePickTexts = attunePicks
+      .map((pick) => pick?.text)
+      .filter(Boolean)
+      .filter((text, i, list) => list.indexOf(text) === i);
+    const prioritizedTexts = [...pinnedTexts, ...attunePickTexts].filter((text, i, list) => list.indexOf(text) === i);
 
     const existingBoardForMerge =
       Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT
@@ -206,12 +244,13 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
         existingBoard: existingBoardForMerge,
         pool: optionsPool,
         preservedTexts: pinnedTexts,
+        prioritizedTexts,
         tileCount: TILE_COUNT,
       });
       shown = merged;
       persistBoard(merged);
     } else {
-      const next = buildBoardAssigned({ pool: optionsPool, pinnedTexts, tileCount: TILE_COUNT });
+      const next = buildBoardAssigned({ pool: optionsPool, pinnedTexts: prioritizedTexts, tileCount: TILE_COUNT });
       shown = next;
       persistBoard(next);
     }
@@ -225,8 +264,33 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     });
     revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     revealTimeoutsRef.current.clear();
+    attunePickTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    attunePickTimeoutsRef.current.clear();
     setRevealed(Array(TILE_COUNT).fill(false));
     setRevealFx(Array(TILE_COUNT).fill(false));
+    setAttunePickFx(() => {
+      const next = Array(TILE_COUNT).fill(false);
+      if (!canSmartPick || !attunePickOrder.size) return next;
+
+      for (let i = 0; i < TILE_COUNT; i += 1) {
+        const text = typeof shown?.[i]?.text === "string" ? shown[i].text : "";
+        if (!attunePickOrder.has(text)) continue;
+        next[i] = true;
+
+        const timeoutId = window.setTimeout(() => {
+          setAttunePickFx((prev) => {
+            const updated = [...prev];
+            updated[i] = false;
+            return updated;
+          });
+          attunePickTimeoutsRef.current.delete(i);
+        }, 1200 + attunePickOrder.get(text) * 90);
+
+        attunePickTimeoutsRef.current.set(i, timeoutId);
+      }
+
+      return next;
+    });
     setConfirmOpen(false);
     setPendingAdd(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,10 +400,16 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
             {effectiveCap < HARD_CAP ? "" : " (max 10)"}
           </div>
           <button type="button" className="btn small ghost" onClick={clearBoard} disabled={loading}>
-            Clear board
+            Reset today
           </button>
         </div>
       </div>
+
+      {canSmartPick && attunePicks.length > 0 && (
+        <div className="boardSmartHint" aria-label="Attune recommendations">
+          Attune marked 3 suggestions for you today.
+        </div>
+      )}
 
       {loading && (
         <div className="boardLoadingOverlay" role="status" aria-live="polite" aria-label="Preparing your activity board">
@@ -396,6 +466,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
           const opt = boardAssigned[idx];
           const isPlaceholder = !!opt?.placeholder || !opt?.text;
           const isTaken = !!opt?.text && takenTexts.has(opt.text);
+          const attunePickRank = opt?.text ? attunePickOrder.get(opt.text) : undefined;
+          const isAttunePick = typeof attunePickRank === "number";
 
           // Once the user hits the hard cap, don't show any more option text.
           // Keep only already-added tasks visible.
@@ -410,10 +482,17 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
               type="button"
               className={
                 "boardTile" +
+                (isAttunePick ? " attunePick" : "") +
+                (attunePickFx[idx] ? " attunePickIntro" : "") +
                 (isRevealed ? " revealed" : "") +
                 (revealFx[idx] ? " revealing" : "") +
                 (isTaken ? " taken" : "") +
                 (isDisabled ? " disabled" : "")
+              }
+              style={
+                isAttunePick
+                  ? { "--board-pick-delay": `${attunePickRank * 80}ms` }
+                  : undefined
               }
               onClick={() => {
                 if (isDisabled) {
@@ -445,7 +524,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                     ? "No more options"
                     : isDisabled
                       ? "You’ve reached today’s cap"
-                      : (isRevealed && opt?.text ? opt.text : "Tap to add")
+                      : (isRevealed && opt?.text ? `${opt.text}${isAttunePick ? " · Attune pick" : ""}` : (isAttunePick ? "Tap to add · Attune pick" : "Tap to add"))
               }
             >
               {!isRevealed && (

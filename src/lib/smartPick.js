@@ -243,3 +243,35 @@ export function smartPickPool(options, eventsByDay, ctx) {
     return computeActivityWeight(opt, s, pacePicked21, nowMs);
   });
 }
+
+export function getAttuneRecommendedPicks(options, eventsByDay, ctx) {
+  const nowMs = typeof ctx?.nowMs === "number" ? ctx.nowMs : Date.now();
+  const limit = clamp(Number(ctx?.limit) || 3, 1, 6);
+  const { stats, pacePicked21 } = buildActivityStats(eventsByDay, nowMs);
+
+  const opts = Array.isArray(options) ? options.filter((opt) => opt && opt.text) : [];
+  if (!opts.length) return [];
+
+  return opts
+    .map((opt, idx) => {
+      const key = normText(opt?.text);
+      const stat = stats.get(key);
+      return {
+        opt,
+        idx,
+        weight: computeActivityWeight(opt, stat, pacePicked21, nowMs),
+        completed: Number(stat?.completed) || 0,
+        picked: Number(stat?.picked) || 0,
+        shown7: Number(stat?.shown7) || 0,
+      };
+    })
+    .sort((a, b) => {
+      if (b.weight !== a.weight) return b.weight - a.weight;
+      if (b.completed !== a.completed) return b.completed - a.completed;
+      if (b.picked !== a.picked) return b.picked - a.picked;
+      if (a.shown7 !== b.shown7) return a.shown7 - b.shown7;
+      return a.idx - b.idx;
+    })
+    .slice(0, limit)
+    .map((entry) => entry.opt);
+}

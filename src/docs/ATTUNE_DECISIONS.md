@@ -42,7 +42,7 @@ Use a 15-tile board with stable, no-repeat assignment and “gentle caps” for 
 ### Notes
 - Soft cap: 5 (confirm to continue)
 - Hard cap: 10 (prevents more reveals/adds)
-- “Clear board” clears My Day and refreshes options
+- “Reset today” clears My Day and refreshes options
 
 ---
 

@@ -2075,6 +2075,12 @@
     .boardTitle{font-weight:800; letter-spacing:-.03em; font-size:22px;}
     .boardRight{display:flex; align-items:center; gap:10px; margin-left:auto;}
     .boardMeta{font-size:12px; color:var(--muted); font-weight:800;}
+    .boardSmartHint{
+      margin:-4px 0 14px;
+      font-size:12px;
+      line-height:1.4;
+      color:color-mix(in oklab, var(--muted) 88%, var(--brand));
+    }
     .boardWrap.loading .boardTop,
     .boardWrap.loading .boardGrid{
       opacity:.42;
@@ -2165,6 +2171,14 @@
       0%{opacity:0; transform: translateY(6px); filter: blur(2px);}
       100%{opacity:1; transform: translateY(0); filter: blur(0);}
     }
+    @keyframes boardTileAttuneShudder{
+      0%, 100%{transform: translate3d(0, 0, 0) rotate(0deg);}
+      18%{transform: translate3d(-.75px, 0, 0) rotate(-.2deg);}
+      34%{transform: translate3d(.75px, 0, 0) rotate(.2deg);}
+      52%{transform: translate3d(-.75px, 0, 0) rotate(-.14deg);}
+      70%{transform: translate3d(.75px, 0, 0) rotate(.14deg);}
+      86%{transform: translate3d(0, 0, 0) rotate(0deg);}
+    }
     .boardGrid{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2223,6 +2237,27 @@
       animation: boardTileRevealPop .48s cubic-bezier(.2,.86,.28,1);
       border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
     }
+    .boardTile.attunePick{
+      border-color: color-mix(in oklab, var(--brand) 14%, var(--line));
+      box-shadow:
+        0 8px 16px rgba(79,109,245,.045),
+        inset 0 1px 0 rgba(255,255,255,.34);
+    }
+    .boardTile.attunePick::after{
+      content:"";
+      position:absolute;
+      top:10px;
+      left:14px;
+      width:30px;
+      height:4px;
+      border-radius:999px;
+      background: linear-gradient(90deg, rgba(107,89,247,.62), rgba(131,223,191,.44));
+      opacity:.72;
+      pointer-events:none;
+    }
+    .boardTile.attunePickIntro{
+      animation: boardTileAttuneShudder 1.44s ease var(--board-pick-delay, 0ms) 1;
+    }
     .boardTile.revealing::before{
       opacity:.72;
     }
@@ -2233,6 +2268,12 @@
     html[data-theme="dark"] .boardTile.revealed::before{opacity:.35;}
     html[data-theme="dark"] .boardTile.revealing{
       border-color: color-mix(in oklab, var(--brand) 28%, var(--line));
+    }
+    html[data-theme="dark"] .boardTile.attunePick{
+      border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
+      box-shadow:
+        0 10px 20px rgba(10,14,28,.18),
+        inset 0 1px 0 rgba(255,255,255,.05);
     }
 
     .tileBack{position:relative; z-index:1}
@@ -2267,6 +2308,7 @@
       .tileText{font-size:11px;}
       .tileText.sm{font-size:9.5px;}
       .tileText.xs{font-size:8.5px; line-height:1.12;}
+      .boardTile.attunePick::after{top:8px; left:12px; width:24px; height:3px;}
     }
 
     .boardTile.taken{
