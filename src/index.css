@@ -1372,6 +1372,70 @@
       gap:12px;
       margin-bottom:8px;
     }
+    .checkinNoteBlockCollapsible{
+      padding: 0;
+      overflow: hidden;
+    }
+    .checkinNoteToggle{
+      width: 100%;
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap: 12px;
+      padding: 14px;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      text-align: left;
+    }
+    .checkinNoteToggle:hover{
+      background: color-mix(in oklab, var(--surface2) 90%, var(--brandSoft) 10%);
+    }
+    .checkinNoteToggle:focus-visible{
+      outline: 2px solid color-mix(in oklab, var(--brand) 34%, transparent);
+      outline-offset: -2px;
+    }
+    .checkinNoteTitleWrap{
+      min-width: 0;
+      display:grid;
+      gap: 4px;
+    }
+    .checkinNoteTitle{
+      font-size:13px;
+      font-weight:700;
+      color: var(--muted);
+    }
+    .checkinNoteSummary{
+      font-size: 12px;
+      line-height: 1.45;
+      color: color-mix(in oklab, var(--muted) 92%, var(--ink) 8%);
+    }
+    .checkinNoteMeta{
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      flex: 0 0 auto;
+    }
+    .checkinNoteAction{
+      font-size: 12px;
+      font-weight: 800;
+      color: color-mix(in oklab, var(--brand) 68%, var(--ink) 32%);
+    }
+    .checkinNoteChevron{
+      width: 9px;
+      height: 9px;
+      border-right: 2px solid color-mix(in oklab, var(--muted) 78%, var(--ink) 22%);
+      border-bottom: 2px solid color-mix(in oklab, var(--muted) 78%, var(--ink) 22%);
+      transform: rotate(45deg) translateY(-1px);
+      transition: transform .18s ease;
+    }
+    .checkinNoteChevron.open{
+      transform: rotate(-135deg) translate(-1px, -1px);
+    }
+    .checkinNotePanel{
+      padding: 0 14px 14px;
+    }
     .noteInput{
       width:100%;
       resize:none;

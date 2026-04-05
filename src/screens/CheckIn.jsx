@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
 import { getCheckInHeading } from "../lib/personalization";
@@ -72,6 +72,11 @@ export default function CheckIn({ state, actions }) {
   const noteRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
+  const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
+  const trimmedNote = note.trim();
+  const notePreview = trimmedNote
+    ? (trimmedNote.length > 72 ? `${trimmedNote.slice(0, 72).trimEnd()}...` : trimmedNote)
+    : "Add context if it would help Attune meet you more gently.";
 
   const autosizeNote = useCallback(() => {
     const el = noteRef.current;
@@ -81,8 +86,20 @@ export default function CheckIn({ state, actions }) {
   }, []);
 
   useEffect(() => {
+    if(!isNoteExpanded) return;
     autosizeNote();
-  }, [note, autosizeNote]);
+  }, [note, autosizeNote, isNoteExpanded]);
+
+  const toggleNote = () => {
+    const nextExpanded = !isNoteExpanded;
+    setIsNoteExpanded(nextExpanded);
+    if(!nextExpanded) return;
+
+    requestAnimationFrame(() => {
+      autosizeNote();
+      noteRef.current?.focus?.();
+    });
+  };
 
   const selectedMoodWordsRaw =
     checkin.moodWords?.length
@@ -178,23 +195,41 @@ export default function CheckIn({ state, actions }) {
         </select>
       </div>
 
-      <div className="checkinNoteBlock" style={{ marginTop: 14 }}>
-        <div className="checkinNoteHead">
-          <label htmlFor="checkinNote">Optional note</label>
-          <div className="charCount">{note.length}/200</div>
-        </div>
-        <textarea
-          id="checkinNote"
-          className="noteInput"
-          ref={noteRef}
-          value={note}
-          maxLength={200}
-          rows={3}
-          placeholder="Anything else to know today, if it helps Attune meet you more gently."
-          onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
-          onInput={autosizeNote}
-          aria-label="Optional note"
-        />
+      <div className="checkinNoteBlock checkinNoteBlockCollapsible" style={{ marginTop: 14 }}>
+        <button
+          type="button"
+          className="checkinNoteToggle"
+          aria-expanded={isNoteExpanded}
+          aria-controls="checkinNotePanel"
+          onClick={toggleNote}
+        >
+          <span className="checkinNoteTitleWrap">
+            <span className="checkinNoteTitle">Optional note</span>
+            {!isNoteExpanded ? <span className="checkinNoteSummary">{notePreview}</span> : null}
+          </span>
+          <span className="checkinNoteMeta">
+            <span className="charCount">{note.length}/200</span>
+            <span className="checkinNoteAction">{isNoteExpanded ? "Hide" : (trimmedNote ? "Edit" : "Add")}</span>
+            <span className={"checkinNoteChevron" + (isNoteExpanded ? " open" : "")} aria-hidden="true"></span>
+          </span>
+        </button>
+
+        {isNoteExpanded ? (
+          <div id="checkinNotePanel" className="checkinNotePanel">
+            <textarea
+              id="checkinNote"
+              className="noteInput"
+              ref={noteRef}
+              value={note}
+              maxLength={200}
+              rows={3}
+              placeholder="Anything else to know today, if it helps Attune meet you more gently."
+              onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
+              onInput={autosizeNote}
+              aria-label="Optional note"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div style={{ marginTop: 14 }}>
