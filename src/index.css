@@ -1549,7 +1549,7 @@
     .choicePillGrid{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap:10px;
+      gap:7px;
     }
     .choicePillGrid[data-columns="3"]{
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1557,9 +1557,9 @@
     .choicePill{
       appearance:none;
       border:1px solid var(--line);
-      border-radius:17px;
-      min-height:58px;
-      padding:10px 9px;
+      border-radius:14px;
+      min-height:50px;
+      padding:7px 7px;
       background:
         linear-gradient(180deg, color-mix(in oklab, var(--surface2) 88%, var(--bg) 12%), var(--surface2));
       box-shadow:
@@ -1628,18 +1628,18 @@
       display:flex;
       flex-direction:column;
       align-items:center;
-      gap:2px;
+      gap:1px;
       min-width:0;
     }
     .choicePillLabel{
-      font-size:13px;
+      font-size:11.5px;
       font-weight:900;
       letter-spacing:-.18px;
       color:var(--ink);
       line-height:1.1;
     }
     .choicePillHint{
-      font-size:10px;
+      font-size:8.7px;
       font-weight:800;
       letter-spacing:-.08px;
       color:var(--muted);
@@ -1665,15 +1665,15 @@
       color: color-mix(in oklab, var(--brand) 62%, var(--muted) 38%);
       animation: checkinPaceHintPulse .9s ease;
     }
-    .pillrow{display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px}
+    .pillrow{display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:8px}
     .checkinPaceStep.paceAutoUpdated .pillrow{
       animation: checkinPaceRowPulse .72s cubic-bezier(.2,.84,.28,1);
       transform-origin: center top;
     }
     .pill{
       border:1px solid var(--line);
-      padding:12px 14px; border-radius:20px;
-      font-size:15px; cursor:pointer;
+      padding:9px 11px; border-radius:17px;
+      font-size:13.5px; cursor:pointer;
       background:var(--surface2);
       transition: background .22s ease, border-color .22s ease, transform .18s ease, box-shadow .22s ease;
       user-select:none;
@@ -1681,12 +1681,12 @@
 
       display:flex;
       align-items:center;
-      gap:6px;
-      --pillEmojiSize: 20px;
+      gap:4px;
+      --pillEmojiSize: 17px;
     }
     .pillIcon{
-      width: calc(var(--pillEmojiSize) + 12px);
-      height: calc(var(--pillEmojiSize) + 12px);
+      width: calc(var(--pillEmojiSize) + 9px);
+      height: calc(var(--pillEmojiSize) + 9px);
       border-radius: 999px;
       display:flex;
       align-items:center;
@@ -3037,18 +3037,18 @@
       .choicePillGrid,
       .choicePillGrid[data-columns="3"]{
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap:8px;
+        gap:7px;
       }
       .choicePillGrid[data-columns="3"] .choicePill:last-child{
         grid-column: span 2;
       }
       .choicePill{
-        min-height:54px;
-        padding:9px 7px;
-        border-radius:15px;
+        min-height:46px;
+        padding:6px 5px;
+        border-radius:13px;
       }
-      .choicePillLabel{font-size:12px;}
-      .choicePillHint{font-size:9.7px;}
+      .choicePillLabel{font-size:11px;}
+      .choicePillHint{font-size:8.4px;}
       .checkinPaceHead{
         align-items:flex-start;
       }
@@ -3061,16 +3061,18 @@
       .pillrow{
         display:grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap:8px;
+        gap:7px;
       }
       .pill{
         width:100%;
         display:flex;
         align-items:center;
         justify-content:center;
-        gap:6px;
-        padding:9px 10px;
-        --pillEmojiSize: 18px;
+        gap:5px;
+        padding:7px 8px;
+        font-size:13px;
+        border-radius:15px;
+        --pillEmojiSize: 15px;
       }
 
       .moodGrid{grid-template-columns: repeat(5, minmax(0, 1fr)); gap:6px;}
