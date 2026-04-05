@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
+import InfoTip from "../components/InfoTip";
 import { getCheckInHeading } from "../lib/personalization";
 
 const MOOD_WORDS = [
@@ -22,6 +23,19 @@ const MOOD_WORD_ALIASES = {
   Anxious: "Overwhelmed",
   Flat: "Tired",
 };
+
+const ENERGY_OPTIONS = [
+  { value: "verylow", label: "Very low", hint: "Depleted", tone: "low" },
+  { value: "low", label: "Low", hint: "Drained", tone: "low" },
+  { value: "okay", label: "Okay", hint: "Steady", tone: "okay" },
+  { value: "high", label: "Wired", hint: "Buzzing", tone: "high" },
+];
+
+const BODY_OPTIONS = [
+  { value: "tender", label: "Tender", hint: "Sensitive", tone: "soft" },
+  { value: "achey", label: "Sore", hint: "Achey", tone: "low" },
+  { value: "manageable", label: "Manageable", hint: "Holding okay", tone: "okay" },
+];
 
 function normalizeMoodWord(word) {
   return MOOD_WORD_ALIASES[word] || word;
@@ -68,15 +82,19 @@ function moodCategoryFromWords(words) {
 
 export default function CheckIn({ state, actions }) {
   const { checkin, level, checkedInToday } = state;
+  const DEFAULT_ENERGY = "okay";
+  const DEFAULT_BODY = "manageable";
+  const DEFAULT_LEVEL = "gentle";
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
   const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
   const trimmedNote = note.trim();
+  const showNoteCount = note.length >= 150;
   const notePreview = trimmedNote
     ? (trimmedNote.length > 72 ? `${trimmedNote.slice(0, 72).trimEnd()}...` : trimmedNote)
-    : "Add context if it would help Attune meet you more gently.";
+    : "";
 
   const autosizeNote = useCallback(() => {
     const el = noteRef.current;
@@ -109,22 +127,46 @@ export default function CheckIn({ state, actions }) {
         : [];
 
   const selectedMoodWords = selectedMoodWordsRaw.map(normalizeMoodWord);
+  const hasInitialProgress = useRef(
+    checkedInToday ||
+    trimmedNote.length > 0 ||
+    checkin.energy !== DEFAULT_ENERGY ||
+    checkin.body !== DEFAULT_BODY ||
+    level !== DEFAULT_LEVEL ||
+    !(selectedMoodWords.length === 1 && selectedMoodWords[0] === "Okay" && checkin.mood === "okay")
+  );
+  const [stepState, setStepState] = useState(() => ({
+    mood: hasInitialProgress.current,
+    energy: hasInitialProgress.current,
+    body: hasInitialProgress.current,
+    pace: hasInitialProgress.current,
+  }));
+
+  const visibleMoodWords = hasInitialProgress.current || stepState.mood ? selectedMoodWords : [];
+  const showEnergyStep = hasInitialProgress.current || stepState.mood;
+  const showBodyStep = hasInitialProgress.current || stepState.energy;
+  const showPaceStep = hasInitialProgress.current || stepState.body;
+  const showNoteStep = hasInitialProgress.current || stepState.pace;
+  const visibleEnergyValue = hasInitialProgress.current || stepState.energy ? checkin.energy : "";
+  const visibleBodyValue = hasInitialProgress.current || stepState.body ? checkin.body : "";
+  const visibleLevel = hasInitialProgress.current || stepState.pace ? level : "";
 
   const toggleMoodWord = (word) => {
-    const already = selectedMoodWords.includes(word);
+    const already = visibleMoodWords.includes(word);
 
     let next;
     if (already) {
-      next = selectedMoodWords.filter((w) => w !== word);
+      next = visibleMoodWords.filter((w) => w !== word);
     } else {
       // keep it gentle: max 2 words
       next =
-        selectedMoodWords.length >= 2
-          ? [selectedMoodWords[0], word]
-          : [...selectedMoodWords, word];
+        visibleMoodWords.length >= 2
+          ? [visibleMoodWords[0], word]
+          : [...visibleMoodWords, word];
     }
 
     const mood = moodCategoryFromWords(next) || checkin.mood || "okay";
+    setStepState((current) => (current.mood ? current : { ...current, mood: true }));
     actions.setCheckin({ moodWords: next, mood });
   };
 
@@ -132,11 +174,10 @@ export default function CheckIn({ state, actions }) {
     <div className="card checkinCard">
       <div className="checkinIntro">
         <h2 className={"checkinHeading" + (compactHeading ? " compact" : "")}>{checkInHeading}</h2>
-        <div className="sub checkinSub">Changeable anytime.</div>
       </div>
 
-      <div className="row">
-        <div>
+      <div className="checkinFlow">
+        <div className="checkinStep checkinStepMood" data-step="mood">
           <label>Mood (pick up to 2)</label>
           <div className="moodGrid" role="group" aria-label="Mood">
             {MOOD_WORDS.map((w) => (
@@ -144,11 +185,11 @@ export default function CheckIn({ state, actions }) {
                 key={w.label}
                 type="button"
                 className={
-                  "moodBtn" + (selectedMoodWords.includes(w.label) ? " active" : "")
+                  "moodBtn" + (visibleMoodWords.includes(w.label) ? " active" : "")
                 }
                 title={w.label}
                 data-tone={w.tone}
-                aria-pressed={selectedMoodWords.includes(w.label)}
+                aria-pressed={visibleMoodWords.includes(w.label)}
                 onClick={() => toggleMoodWord(w.label)}
               >
                 <span className="moodCheck" aria-hidden="true">
@@ -167,104 +208,139 @@ export default function CheckIn({ state, actions }) {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="energy">Energy</label>
-          <select
-            id="energy"
-            value={checkin.energy}
-            onChange={(e) => actions.setCheckin({ energy: e.target.value })}
-          >
-            <option value="okay">Okay</option>
-            <option value="low">Low / drained</option>
-            <option value="verylow">Very low / depleted</option>
-            <option value="high">High / wired</option>
-          </select>
-        </div>
-      </div>
+        {showEnergyStep ? (
+          <div className="checkinStep" data-step="energy">
+            <label>Energy</label>
+            <div className="choicePillGrid" data-columns="4" role="group" aria-label="Energy">
+              {ENERGY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={"choicePill" + (visibleEnergyValue === option.value ? " active" : "")}
+                  data-tone={option.tone}
+                  aria-pressed={visibleEnergyValue === option.value}
+                  onClick={() => {
+                    setStepState((current) => (current.energy ? current : { ...current, energy: true }));
+                    actions.setCheckin({ energy: option.value });
+                  }}
+                >
+                  <span className="choicePillText">
+                    <span className="choicePillLabel">{option.label}</span>
+                    <span className="choicePillHint">{option.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
-      <div style={{ marginTop: 10 }}>
-        <label htmlFor="body">Body</label>
-        <select
-          id="body"
-          value={checkin.body}
-          onChange={(e) => actions.setCheckin({ body: e.target.value })}
-        >
-          <option value="manageable">Manageable</option>
-          <option value="achey">Sore / achey</option>
-          <option value="tender">Tender</option>
-        </select>
-      </div>
+        {showBodyStep ? (
+          <div className="checkinStep" data-step="body">
+            <label>Body</label>
+            <div className="choicePillGrid" data-columns="3" role="group" aria-label="Body">
+              {BODY_OPTIONS.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={"choicePill" + (visibleBodyValue === option.value ? " active" : "")}
+                  data-tone={option.tone}
+                  aria-pressed={visibleBodyValue === option.value}
+                  onClick={() => {
+                    setStepState((current) => (current.body ? current : { ...current, body: true }));
+                    actions.setCheckin({ body: option.value });
+                  }}
+                >
+                  <span className="choicePillText">
+                    <span className="choicePillLabel">{option.label}</span>
+                    <span className="choicePillHint">{option.hint}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
-      <div className="checkinNoteBlock checkinNoteBlockCollapsible" style={{ marginTop: 14 }}>
-        <button
-          type="button"
-          className="checkinNoteToggle"
-          aria-expanded={isNoteExpanded}
-          aria-controls="checkinNotePanel"
-          onClick={toggleNote}
-        >
-          <span className="checkinNoteTitleWrap">
-            <span className="checkinNoteTitle">Optional note</span>
-            {!isNoteExpanded ? <span className="checkinNoteSummary">{notePreview}</span> : null}
-          </span>
-          <span className="checkinNoteMeta">
-            <span className="charCount">{note.length}/200</span>
-            <span className="checkinNoteAction">{isNoteExpanded ? "Hide" : (trimmedNote ? "Edit" : "Add")}</span>
-            <span className={"checkinNoteChevron" + (isNoteExpanded ? " open" : "")} aria-hidden="true"></span>
-          </span>
-        </button>
+        {showPaceStep ? (
+          <div className="checkinStep" data-step="pace">
+            <label>Pace for today</label>
+            <div className="pillrow" role="group" aria-label="Pace">
+              {LEVELS.map((l) => (
+                <button
+                  key={l.key}
+                  type="button"
+                  className={"pill" + (visibleLevel === l.key ? " active" : "")}
+                  onClick={() => {
+                    setStepState((current) => (current.pace ? current : { ...current, pace: true }));
+                    actions.setLevel(l.key);
+                  }}
+                >
+                  <span className="pillIcon" aria-hidden="true">
+                    <EmojiIcon
+                      id={l.icon}
+                      size="var(--pillEmojiSize)"
+                      fallback={l.emoji}
+                      className="pillEmoji"
+                    />
+                  </span>
+                  <span className="pillLabel">{l.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
-        {isNoteExpanded ? (
-          <div id="checkinNotePanel" className="checkinNotePanel">
-            <textarea
-              id="checkinNote"
-              className="noteInput"
-              ref={noteRef}
-              value={note}
-              maxLength={200}
-              rows={3}
-              placeholder="Anything else to know today, if it helps Attune meet you more gently."
-              onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
-              onInput={autosizeNote}
-              aria-label="Optional note"
-            />
+        {showNoteStep ? (
+          <div className="checkinStep" data-step="note">
+            <div className="checkinNoteBlock checkinNoteBlockCollapsible">
+              <div className="checkinNoteHead checkinNoteHeadCollapsible">
+                <div className="checkinNoteLead">
+                  <div className="checkinNoteTitleRow">
+                    <InfoTip label="How this note is used">
+                      If AI is enabled in Profile for your optional note, Attune can use it to personalize your options and make today&apos;s board more relevant.
+                    </InfoTip>
+                    <span className="checkinNoteTitle">Optional note</span>
+                  </div>
+                  {!isNoteExpanded && trimmedNote ? <span className="checkinNoteSummary">{notePreview}</span> : null}
+                </div>
+
+                <button
+                  type="button"
+                  className="checkinNoteToggleBtn"
+                  aria-label={isNoteExpanded ? "Collapse optional note" : "Expand optional note"}
+                  aria-expanded={isNoteExpanded}
+                  aria-controls="checkinNotePanel"
+                  onClick={toggleNote}
+                >
+                  <span className="checkinNoteMeta">
+                    {showNoteCount ? <span className="charCount">{note.length}/200</span> : null}
+                    <span className={"checkinNoteChevron" + (isNoteExpanded ? " open" : "")} aria-hidden="true"></span>
+                  </span>
+                </button>
+              </div>
+
+              {isNoteExpanded ? (
+                <div id="checkinNotePanel" className="checkinNotePanel">
+                  <textarea
+                    id="checkinNote"
+                    className="noteInput"
+                    ref={noteRef}
+                    value={note}
+                    maxLength={200}
+                    rows={3}
+                    placeholder="Anything else you would like Attune to know about today?"
+                    onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
+                    onInput={autosizeNote}
+                    aria-label="Optional note"
+                  />
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </div>
 
-      <div style={{ marginTop: 14 }}>
-        <label>Pace for today</label>
-        <div className="pillrow" role="group" aria-label="Pace">
-          {LEVELS.map((l) => (
-            <button
-              key={l.key}
-              type="button"
-              className={"pill" + (level === l.key ? " active" : "")}
-              onClick={() => actions.setLevel(l.key)}
-            >
-              <span className="pillIcon" aria-hidden="true">
-                <EmojiIcon
-                  id={l.icon}
-                  size="var(--pillEmojiSize)"
-                  fallback={l.emoji}
-                  className="pillEmoji"
-                />
-              </span>
-              <span className="pillLabel">{l.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="hint" style={{ marginTop: 12 }}>
-        Used to personalize your options and keep suggestions relevant. If AI is enabled, your optional note may be used to help build today’s board. You can change this anytime.
-      </div>
-
       <div className="checkinBottom">
-        <div className="footerNote" style={{ marginTop: 12 }}>
-          Use the tabs below when you’re ready.
-          {checkedInToday ? " Saved for today." : ""}
-        </div>
+        {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Saved for today.</div> : null}
       </div>
     </div>
   );
