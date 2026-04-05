@@ -6,10 +6,28 @@ export function prettyLevel(key){
   return lvl ? `${lvl.emoji} ${lvl.name}` : key;
 }
 
-export function shuffle(arr){
+function createSeededRandom(seed){
+  const text = String(seed || "attune");
+  let state = 2166136261;
+
+  for(let i = 0; i < text.length; i += 1){
+    state ^= text.charCodeAt(i);
+    state = Math.imul(state, 16777619);
+  }
+
+  if(state === 0) state = 1;
+
+  return () => {
+    state = Math.imul(state, 1664525) + 1013904223;
+    state >>>= 0;
+    return state / 4294967296;
+  };
+}
+
+export function shuffle(arr, randomFn = Math.random){
   const a = [...arr];
   for(let i=a.length-1;i>0;i--){
-    const j = Math.floor(Math.random()*(i+1));
+    const j = Math.floor(randomFn()*(i+1));
     [a[i],a[j]] = [a[j],a[i]];
   }
   return a;
@@ -137,7 +155,7 @@ export function generateOptions(level){
  * @param {string} level - The user's chosen pace for the day.
  * @returns {Array<{text: string, level: string}>} A list of suggested activities.
  */
-export function suggestActivities(checkin, level) {
+export function suggestActivities(checkin, level, seed = "") {
   const { energy, mood } = checkin;
 
   // 1. Start with a base pool from the selected level.
@@ -162,10 +180,11 @@ export function suggestActivities(checkin, level) {
 
   // 3. Create a unique set of tasks, then convert back to an array.
   const uniquePool = [...new Set(pool)];
+  const randomFn = seed ? createSeededRandom(seed) : Math.random;
 
   // 4. Shuffle the unique pool and take the first batch.
   // Expanded pool helps the 15-tile board avoid repeats.
-  return shuffle(uniquePool).slice(0, 30).map(text => {
+  return shuffle(uniquePool, randomFn).slice(0, 30).map(text => {
     // Find the original level of the task for context, defaulting to the chosen level.
     const taskLevel = Object.keys(TASKS).find(l => TASKS[l].includes(text)) || level;
     return { text, level: taskLevel };

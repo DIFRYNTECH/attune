@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAttuneStore } from "../store/useAttuneStore";
 import { smartPickPool } from "../lib/smartPick";
 
@@ -41,6 +41,43 @@ function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
   return list;
 }
 
+function mergeBoardAssigned({ existingBoard, pool, preservedTexts, tileCount }) {
+  const next = Array.from({ length: tileCount }).map(() => ({ text: "", placeholder: true }));
+  const preserved = new Set(Array.isArray(preservedTexts) ? preservedTexts.filter(Boolean) : []);
+  const seen = new Set();
+
+  const currentBoard = Array.isArray(existingBoard) ? existingBoard : [];
+  for (let i = 0; i < tileCount; i += 1) {
+    const slot = currentBoard[i];
+    const text = typeof slot?.text === "string" ? slot.text : "";
+    if (!text || !preserved.has(text) || seen.has(text)) continue;
+
+    next[i] = { text, level: slot?.level };
+    seen.add(text);
+  }
+
+  const optionsPool = Array.isArray(pool) ? pool : [];
+  let poolIndex = 0;
+
+  for (let i = 0; i < tileCount; i += 1) {
+    if (next[i]?.text) continue;
+
+    while (poolIndex < optionsPool.length) {
+      const candidate = optionsPool[poolIndex];
+      poolIndex += 1;
+
+      const text = typeof candidate?.text === "string" ? candidate.text : "";
+      if (!text || seen.has(text)) continue;
+
+      next[i] = { text, level: candidate?.level };
+      seen.add(text);
+      break;
+    }
+  }
+
+  return next;
+}
+
 export default function ActivityBoard({ state: stateProp, actions: actionsProp, loading = false }) {
   const store = useAttuneStore();
   const state = stateProp || store.state;
@@ -66,6 +103,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   }, [options, canSmartPick, state?.events]);
 
   const [revealed, setRevealed] = useState(() => Array(TILE_COUNT).fill(false));
+  const [revealFx, setRevealFx] = useState(() => Array(TILE_COUNT).fill(false));
   const [boardAssigned, setBoardAssigned] = useState(() => {
     if (Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT) {
       return storedBoardAssigned;
@@ -75,6 +113,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAdd, setPendingAdd] = useState(null); // { idx, opt }
+  const revealTimeoutsRef = useRef(new Map());
 
   const takenTexts = useMemo(() => {
     const set = new Set();
@@ -91,7 +130,10 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     typeof myDayCap === "number" ? Math.min(Math.max(myDayCap, 0), HARD_CAP) : 5;
 
   const clearBoard = () => {
+    revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    revealTimeoutsRef.current.clear();
     setRevealed(Array(TILE_COUNT).fill(false));
+    setRevealFx(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
     actions.trackEvent?.("boardCleared", {
@@ -108,6 +150,34 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     actions.setBoardAssigned?.(next);
   };
 
+  const triggerRevealFx = (idx) => {
+    const timeouts = revealTimeoutsRef.current;
+    const existing = timeouts.get(idx);
+    if (existing) window.clearTimeout(existing);
+
+    setRevealFx((prev) => {
+      const next = [...prev];
+      next[idx] = true;
+      return next;
+    });
+
+    const timeoutId = window.setTimeout(() => {
+      setRevealFx((prev) => {
+        const next = [...prev];
+        next[idx] = false;
+        return next;
+      });
+      timeouts.delete(idx);
+    }, 560);
+
+    timeouts.set(idx, timeoutId);
+  };
+
+  useEffect(() => () => {
+    revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    revealTimeoutsRef.current.clear();
+  }, []);
+
   useEffect(() => {
     // Ensure options exist, then reset board when options change.
     if (!options?.length) {
@@ -120,16 +190,26 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       .filter(Boolean)
       .filter((t, i, a) => a.indexOf(t) === i);
 
-    const hasUserInteraction = pickedCount > 0 || revealed.some(Boolean);
-    const shouldKeepExistingBoard =
-      Array.isArray(storedBoardAssigned) &&
-      storedBoardAssigned.length === TILE_COUNT &&
-      (state.optionsSource !== "ai" || hasUserInteraction);
+    const existingBoardForMerge =
+      Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT
+        ? storedBoardAssigned
+        : (Array.isArray(boardAssigned) && boardAssigned.length === TILE_COUNT ? boardAssigned : null);
+
+    const canMergeExistingBoard =
+      Array.isArray(existingBoardForMerge) &&
+      existingBoardForMerge.length === TILE_COUNT &&
+      pinnedTexts.length > 0;
 
     let shown = null;
-    if (shouldKeepExistingBoard) {
-      shown = storedBoardAssigned;
-      setBoardAssigned(storedBoardAssigned);
+    if (canMergeExistingBoard) {
+      const merged = mergeBoardAssigned({
+        existingBoard: existingBoardForMerge,
+        pool: optionsPool,
+        preservedTexts: pinnedTexts,
+        tileCount: TILE_COUNT,
+      });
+      shown = merged;
+      persistBoard(merged);
     } else {
       const next = buildBoardAssigned({ pool: optionsPool, pinnedTexts, tileCount: TILE_COUNT });
       shown = next;
@@ -143,7 +223,10 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       pace: state.level,
       source: state.optionsSource,
     });
+    revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    revealTimeoutsRef.current.clear();
     setRevealed(Array(TILE_COUNT).fill(false));
+    setRevealFx(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -192,12 +275,16 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     if (!opt?.text) return;
 
     // Single-click behavior: reveal the tile when selecting.
+    let didReveal = false;
     setRevealed((prev) => {
       if (prev[idx]) return prev;
+      didReveal = true;
       const next = [...prev];
       next[idx] = true;
       return next;
     });
+
+    if (didReveal) triggerRevealFx(idx);
 
     if (takenTexts.has(opt.text)) {
       actions.setToast?.("Already in your day. Trying is enough.", true);
@@ -241,7 +328,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   return (
     <div className={"boardWrap" + (loading ? " loading" : "")} aria-busy={loading ? "true" : undefined}>
       <div className="boardTop">
-        <div className="boardTitle">Pick a tile</div>
+        <div className="boardTitle">What feels right?</div>
 
         <div className="boardRight">
           <div className="boardMeta" aria-label="Picked count">
@@ -272,14 +359,14 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
       {confirmOpen && (
         <div
-          className="modalOverlay"
+          className="modalOverlay modalOverlayCentered confirmModalOverlay"
           role="presentation"
           onMouseDown={(e) => {
             if (e.target === e.currentTarget) closeConfirm();
           }}
         >
           <div
-            className="modalCard"
+            className="modalCard confirmModalCard"
             role="dialog"
             aria-modal="true"
             aria-labelledby="moreActivitiesTitle"
@@ -324,6 +411,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
               className={
                 "boardTile" +
                 (isRevealed ? " revealed" : "") +
+                (revealFx[idx] ? " revealing" : "") +
                 (isTaken ? " taken" : "") +
                 (isDisabled ? " disabled" : "")
               }

@@ -52,11 +52,11 @@
 
       --switchTrack: rgba(25,28,42,.10);
 
-      --toastGoodBg: rgba(131,223,191,.20);
-      --toastGoodBorder: rgba(102,200,168,.38);
+      --toastGoodBg: rgba(131,223,191,.12);
+      --toastGoodBorder: rgba(102,200,168,.22);
       --toastGoodText: #15503a;
-      --toastWarnBg: rgba(245,158,11,.14);
-      --toastWarnBorder: rgba(245,158,11,.28);
+      --toastWarnBg: rgba(245,158,11,.10);
+      --toastWarnBorder: rgba(245,158,11,.18);
       --toastWarnText: #7c4a00;
 
       --myDayItemBg: var(--surface2);
@@ -146,11 +146,11 @@
 
       --switchTrack: rgba(240,244,255,.14);
 
-      --toastGoodBg: rgba(87,204,165,.18);
-      --toastGoodBorder: rgba(106,221,185,.36);
+      --toastGoodBg: rgba(87,204,165,.12);
+      --toastGoodBorder: rgba(106,221,185,.22);
       --toastGoodText: rgba(236,255,246,.94);
-      --toastWarnBg: rgba(245,158,11,.18);
-      --toastWarnBorder: rgba(251,191,36,.34);
+      --toastWarnBg: rgba(245,158,11,.12);
+      --toastWarnBorder: rgba(251,191,36,.22);
       --toastWarnText: rgba(255,244,223,.92);
 
       --myDayItemBg: rgba(29,38,69,.88);
@@ -2101,6 +2101,33 @@
       0%, 80%, 100%{transform: translateY(0) scale(.92); opacity:.42;}
       40%{transform: translateY(-2px) scale(1); opacity:1;}
     }
+    @keyframes boardTileRevealPop{
+      0%{
+        transform: scale(1);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
+      }
+      42%{
+        transform: scale(1.028);
+        box-shadow:
+          0 0 0 4px rgba(107,89,247,.08),
+          0 18px 30px rgba(107,89,247,.14),
+          inset 0 1px 0 rgba(255,255,255,.36);
+      }
+      100%{
+        transform: scale(1);
+        box-shadow:
+          0 8px 18px rgba(107,89,247,.06),
+          inset 0 1px 0 rgba(255,255,255,.34);
+      }
+    }
+    @keyframes boardTileBackIn{
+      0%{opacity:0; transform: translateY(5px) scale(.985);}
+      100%{opacity:1; transform: translateY(0) scale(1);}
+    }
+    @keyframes boardTileTextIn{
+      0%{opacity:0; transform: translateY(6px); filter: blur(2px);}
+      100%{opacity:1; transform: translateY(0); filter: blur(0);}
+    }
     .boardGrid{
       display:grid;
       grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2155,13 +2182,27 @@
       pointer-events:none;
     }
     .boardTile.revealed::before{opacity:.55}
+    .boardTile.revealing{
+      animation: boardTileRevealPop .48s cubic-bezier(.2,.86,.28,1);
+      border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
+    }
+    .boardTile.revealing::before{
+      opacity:.72;
+    }
 
     /* Dark mode: reduce background glow so text looks crisper */
     html[data-theme="dark"] .boardTile{background: var(--card98);}
     html[data-theme="dark"] .boardTile::before{opacity:.55;}
     html[data-theme="dark"] .boardTile.revealed::before{opacity:.35;}
+    html[data-theme="dark"] .boardTile.revealing{
+      border-color: color-mix(in oklab, var(--brand) 28%, var(--line));
+    }
 
     .tileBack{position:relative; z-index:1}
+    .boardTile.revealing .tileBack{
+      opacity:0;
+      animation: boardTileBackIn .26s ease .12s forwards;
+    }
     .tileText{
       font-size:15px;
       font-weight:800;
@@ -2170,6 +2211,10 @@
       word-break: normal;
       overflow-wrap: break-word;
       hyphens: none;
+    }
+    .boardTile.revealing .tileText{
+      opacity:0;
+      animation: boardTileTextIn .28s ease .14s forwards;
     }
     html[data-theme="dark"] .tileText{
       color: rgba(255,255,255,.96);
@@ -3062,30 +3107,46 @@
       margin: 0;
       padding:10px 12px;
       border-radius:14px;
-      background: var(--toastGoodBg);
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--card98) 76%, transparent), color-mix(in oklab, var(--card98) 58%, transparent)),
+        var(--toastGoodBg);
       border:1px solid var(--toastGoodBorder);
       color: var(--toastGoodText);
       font-size:13px;
-      display:none;
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      display:block;
+      box-shadow: 0 12px 30px rgba(17,24,39,.10);
+      backdrop-filter: blur(16px) saturate(1.08);
+      -webkit-backdrop-filter: blur(16px) saturate(1.08);
       z-index: 60;
+      opacity:0;
+      transform: translateX(-50%) translateY(8px);
+      transition:
+        opacity .18s ease,
+        transform .24s cubic-bezier(.2,.84,.28,1);
     }
     .toast.good{
-      background: var(--toastGoodBg);
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--card98) 76%, transparent), color-mix(in oklab, var(--card98) 58%, transparent)),
+        var(--toastGoodBg);
       border-color: var(--toastGoodBorder);
       color: var(--toastGoodText);
     }
     .toast.warn{
-      background: var(--toastWarnBg);
+      background:
+        linear-gradient(180deg, color-mix(in oklab, var(--card98) 76%, transparent), color-mix(in oklab, var(--card98) 58%, transparent)),
+        var(--toastWarnBg);
       border-color: var(--toastWarnBorder);
       color: var(--toastWarnText);
     }
-    .toast .toastCount{
-      font-weight: 950;
-      color: inherit;
+    .toast.toast-entering,
+    .toast.toast-entered{
+      opacity:1;
+      transform: translateX(-50%) translateY(0);
     }
-    .toast.show{display:block}
+    .toast.toast-exiting{
+      opacity:0;
+      transform: translateX(-50%) translateY(2px);
+    }
 
     .footerNote{
       margin-top:10px;

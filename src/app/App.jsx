@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
@@ -12,25 +12,6 @@ const Profile = lazy(() => import("../screens/Profile.jsx"));
 const Today = lazy(() => import("../screens/Today.jsx"));
 const Weekly = lazy(() => import("../screens/Weekly.jsx"));
 const PaywallSheet = lazy(() => import("../components/PaywallSheet.jsx"));
-
-function renderToastText(text) {
-  if (typeof text !== "string" || !text) return text;
-
-  const match = text.match(/\b\d+\/10\b/);
-  if (!match || match.index == null) return text;
-
-  const start = match.index;
-  const token = match[0];
-  const end = start + token.length;
-
-  return (
-    <>
-      {text.slice(0, start)}
-      <strong className="toastCount">{token}</strong>
-      {text.slice(end)}
-    </>
-  );
-}
 
 function TopNav({ screen, go, entitlements, hideNav = false }) {
   return (
@@ -123,8 +104,11 @@ export default function App() {
   const { state, actions } = useAttuneStore();
   const signedIn = !!state?.auth?.signedIn;
   const screen = state.screen;
-  const showToast = signedIn && !!(state.toast && state.toast.screen === screen);
-  const wrapClassName = "wrap" + (showToast ? " toastOn" : "");
+  const activeToast = signedIn && state.toast && state.toast.screen === screen ? state.toast : null;
+  const showToast = !!activeToast;
+  const [renderedToast, setRenderedToast] = useState(null);
+  const [toastPhase, setToastPhase] = useState("hidden");
+  const wrapClassName = "wrap" + (renderedToast ? " toastOn" : "");
 
   // App-level init: theme, Capacitor deep links, status bar, splash.
   useAppInit({ theme: state?.profile?.theme });
@@ -137,7 +121,30 @@ export default function App() {
     }, 5000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [showToast, state.toast?.text, state.toast?.good, state.toast?.screen, actions]);
+  }, [showToast, activeToast?.text, activeToast?.good, activeToast?.screen, actions]);
+
+  useEffect(() => {
+    if (activeToast) {
+      setRenderedToast(activeToast);
+      setToastPhase("entering");
+
+      const rafId = window.requestAnimationFrame(() => {
+        setToastPhase("entered");
+      });
+
+      return () => window.cancelAnimationFrame(rafId);
+    }
+
+    if (!renderedToast) return undefined;
+
+    setToastPhase("exiting");
+    const timeoutId = window.setTimeout(() => {
+      setRenderedToast(null);
+      setToastPhase("hidden");
+    }, 220);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [activeToast, renderedToast]);
 
   if(!signedIn){
     const authView = state?.auth?.view === "signup" ? "signup" : "signin";
@@ -194,14 +201,14 @@ export default function App() {
         </main>
       </div>
 
-      {showToast && (
+      {renderedToast && (
         <div
-          className={"toast show " + (state.toast.good ? "good" : "warn")}
+          className={"toast show " + (renderedToast.good ? "good" : "warn") + " toast-" + toastPhase}
           role="status"
           aria-live="polite"
           onClick={actions.clearToast}
         >
-          {renderToastText(state.toast.text)}
+          {renderedToast.text}
         </div>
       )}
 

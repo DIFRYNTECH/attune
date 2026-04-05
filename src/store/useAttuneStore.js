@@ -38,6 +38,274 @@ const AI_DAILY_NOTE_VERSION = 2;
 
 const EVENT_DAYS_TO_KEEP = 90;
 const NOTE_MEMORY_MAX = 30;
+const PICK_TOAST_MATRIX = {
+  low: {
+    rest: [
+      "Added to your day, just being is enough.",
+      "Added to your day, nothing more is needed right now.",
+      "Added to your day, this can wait until you're ready.",
+      "Added to your day, take all the time you need.",
+      "Added to your day, rest is doing something.",
+      "Added to your day, this is already enough for today.",
+      "Added to your day, you don’t need to do more.",
+      "Added to your day, slow is perfectly okay.",
+      "Added to your day, you’re allowed to pause here.",
+      "Added to your day, let this be gentle on you.",
+    ],
+    gentle: [
+      "Added to your day, take this slowly.",
+      "Added to your day, keep it soft and simple.",
+      "Added to your day, this is a small step.",
+      "Added to your day, ease into it.",
+      "Added to your day, no need to rush.",
+      "Added to your day, just a little is enough.",
+      "Added to your day, let it be light.",
+      "Added to your day, move gently through this.",
+      "Added to your day, this can be easy.",
+      "Added to your day, keep things calm.",
+    ],
+    light: [
+      "Added to your day, just a small step today.",
+      "Added to your day, no need to push.",
+      "Added to your day, this is enough movement.",
+      "Added to your day, take it one step at a time.",
+      "Added to your day, keep it manageable.",
+      "Added to your day, a little effort is enough.",
+      "Added to your day, stay within your energy.",
+      "Added to your day, just try it gently.",
+      "Added to your day, keep things simple.",
+      "Added to your day, this is a safe step.",
+    ],
+    steady: [
+      "Added to your day, one thing at a time.",
+      "Added to your day, you’re finding your rhythm.",
+      "Added to your day, stay with this pace.",
+      "Added to your day, keep it steady.",
+      "Added to your day, you’re doing enough.",
+      "Added to your day, no need to rush forward.",
+      "Added to your day, this is a balanced step.",
+      "Added to your day, take it as it comes.",
+      "Added to your day, this works for today.",
+      "Added to your day, keep it grounded.",
+    ],
+    capable: [
+      "Added to your day, see how it feels, no pressure.",
+      "Added to your day, you can ease into this.",
+      "Added to your day, try it gently.",
+      "Added to your day, take it at your own pace.",
+      "Added to your day, there’s no need to force it.",
+      "Added to your day, just explore it lightly.",
+      "Added to your day, this can stay flexible.",
+      "Added to your day, go softly with it.",
+      "Added to your day, feel your way through.",
+      "Added to your day, this is optional.",
+    ],
+    brave: [
+      "Added to your day, this is a strong step, go gently.",
+      "Added to your day, even brave can be soft.",
+      "Added to your day, take courage at your own pace.",
+      "Added to your day, this is enough bravery.",
+      "Added to your day, no need to push too far.",
+      "Added to your day, keep it gentle even here.",
+      "Added to your day, you’re allowed to take it slow.",
+      "Added to your day, courage can be quiet.",
+      "Added to your day, this is already a lot.",
+      "Added to your day, go easy with yourself.",
+    ],
+  },
+  mid: {
+    rest: [
+      "Added to your day, rest is part of progress.",
+      "Added to your day, it’s okay to pause.",
+      "Added to your day, take a breather here.",
+      "Added to your day, slowing down helps too.",
+      "Added to your day, this keeps things balanced.",
+      "Added to your day, rest fits your day.",
+      "Added to your day, take this moment.",
+      "Added to your day, pause without guilt.",
+      "Added to your day, this supports your rhythm.",
+      "Added to your day, it’s good to slow down.",
+    ],
+    gentle: [
+      "Added to your day, this feels like a good pace.",
+      "Added to your day, keep it light and steady.",
+      "Added to your day, this is a nice step.",
+      "Added to your day, this works well.",
+      "Added to your day, ease through this.",
+      "Added to your day, stay relaxed with it.",
+      "Added to your day, this fits your flow.",
+      "Added to your day, just keep it simple.",
+      "Added to your day, no need to rush.",
+      "Added to your day, this feels right.",
+    ],
+    light: [
+      "Added to your day, a nice step forward.",
+      "Added to your day, this fits your day well.",
+      "Added to your day, keep moving gently.",
+      "Added to your day, this is a good pace.",
+      "Added to your day, keep things easy.",
+      "Added to your day, this keeps momentum.",
+      "Added to your day, just keep going.",
+      "Added to your day, this is enough effort.",
+      "Added to your day, stay light with it.",
+      "Added to your day, this works nicely.",
+    ],
+    steady: [
+      "Added to your day, you’re in a good rhythm.",
+      "Added to your day, keep going like this.",
+      "Added to your day, this feels balanced.",
+      "Added to your day, stay steady.",
+      "Added to your day, you’re on track.",
+      "Added to your day, this is working.",
+      "Added to your day, keep this pace.",
+      "Added to your day, this is solid.",
+      "Added to your day, you’re doing well.",
+      "Added to your day, this feels right.",
+    ],
+    capable: [
+      "Added to your day, you’ve got this.",
+      "Added to your day, this is a solid move.",
+      "Added to your day, you can handle this.",
+      "Added to your day, this fits your energy.",
+      "Added to your day, keep going.",
+      "Added to your day, this works well.",
+      "Added to your day, you’re moving forward.",
+      "Added to your day, this is a good step.",
+      "Added to your day, you’re doing great.",
+      "Added to your day, this feels strong.",
+    ],
+    brave: [
+      "Added to your day, a bold step forward.",
+      "Added to your day, this could shift your day.",
+      "Added to your day, go for it.",
+      "Added to your day, this is a strong choice.",
+      "Added to your day, step into it.",
+      "Added to your day, this is momentum.",
+      "Added to your day, you’re ready.",
+      "Added to your day, this is powerful.",
+      "Added to your day, keep pushing forward.",
+      "Added to your day, this is your move.",
+    ],
+  },
+  high: {
+    rest: [
+      "Added to your day, even strong days need rest.",
+      "Added to your day, take a moment to recharge.",
+      "Added to your day, rest keeps this energy sustainable.",
+      "Added to your day, slowing down helps you stay steady.",
+      "Added to your day, this keeps things balanced.",
+      "Added to your day, it’s good to pause while you can.",
+      "Added to your day, rest supports your momentum.",
+      "Added to your day, take this time for yourself.",
+      "Added to your day, this keeps your energy grounded.",
+      "Added to your day, rest is part of staying strong.",
+    ],
+    gentle: [
+      "Added to your day, keep this energy calm and steady.",
+      "Added to your day, no need to rush it.",
+      "Added to your day, let this flow naturally.",
+      "Added to your day, keep things smooth and easy.",
+      "Added to your day, stay relaxed with this.",
+      "Added to your day, this keeps your rhythm steady.",
+      "Added to your day, ease through it.",
+      "Added to your day, this is a good pace to stay in.",
+      "Added to your day, keep it soft and consistent.",
+      "Added to your day, let it unfold naturally.",
+    ],
+    light: [
+      "Added to your day, nice and easy momentum.",
+      "Added to your day, this keeps things flowing.",
+      "Added to your day, just keep it moving.",
+      "Added to your day, this is a smooth step forward.",
+      "Added to your day, keep this going lightly.",
+      "Added to your day, this fits your energy well.",
+      "Added to your day, a simple step works here.",
+      "Added to your day, keep things easy and moving.",
+      "Added to your day, this is a good flow.",
+      "Added to your day, stay light with it.",
+    ],
+    steady: [
+      "Added to your day, you’re in a great groove.",
+      "Added to your day, keep this rhythm going.",
+      "Added to your day, this feels balanced.",
+      "Added to your day, stay consistent with this.",
+      "Added to your day, this is a strong rhythm.",
+      "Added to your day, you’re moving well.",
+      "Added to your day, keep this pace.",
+      "Added to your day, this is working for you.",
+      "Added to your day, stay in this flow.",
+      "Added to your day, this is a solid rhythm.",
+    ],
+    capable: [
+      "Added to your day, you’re moving well today.",
+      "Added to your day, this fits your energy.",
+      "Added to your day, you’ve got good momentum.",
+      "Added to your day, this is a strong step.",
+      "Added to your day, you’re handling this well.",
+      "Added to your day, keep going like this.",
+      "Added to your day, this suits your energy today.",
+      "Added to your day, you’re in a good place for this.",
+      "Added to your day, this is a confident step.",
+      "Added to your day, you’re doing great with this.",
+    ],
+    brave: [
+      "Added to your day, this is your moment.",
+      "Added to your day, go for it, you’re ready.",
+      "Added to your day, this could really shift your day.",
+      "Added to your day, step into it fully.",
+      "Added to your day, this is a bold move.",
+      "Added to your day, you’ve got the energy for this.",
+      "Added to your day, lean into it.",
+      "Added to your day, this is a powerful step.",
+      "Added to your day, go where this takes you.",
+      "Added to your day, this is a strong choice.",
+    ],
+  },
+};
+
+const LOW_MOOD_WORDS = new Set(["Worn out", "Tired", "Overwhelmed", "Irritable", "Restless", "Tender", "Flat", "Anxious"]);
+const MID_MOOD_WORDS = new Set(["Okay", "Settled", "Steady"]);
+const HIGH_MOOD_WORDS = new Set(["Hopeful", "Motivated"]);
+const PICK_TOAST_MOOD_ALIASES = {
+  Steady: "Settled",
+  Anxious: "Overwhelmed",
+  Flat: "Tired",
+};
+
+function normalizePickToastMoodWord(word){
+  return PICK_TOAST_MOOD_ALIASES[word] || word;
+}
+
+function getPickToastMoodBucket(checkin){
+  const words = Array.isArray(checkin?.moodWords)
+    ? checkin.moodWords.map(normalizePickToastMoodWord).filter(Boolean)
+    : [];
+
+  if(words.some((word) => LOW_MOOD_WORDS.has(word))) return "low";
+  if(words.some((word) => HIGH_MOOD_WORDS.has(word))) return "high";
+  if(words.some((word) => MID_MOOD_WORDS.has(word))) return "mid";
+
+  if(checkin?.mood === "low") return "low";
+  if(checkin?.mood === "good") return "high";
+  return "mid";
+}
+
+function getNextPickToast(checkin, pace, cycleMap){
+  const moodBucket = getPickToastMoodBucket(checkin);
+  const paceKey = typeof pace === "string" && PICK_TOAST_MATRIX[moodBucket]?.[pace] ? pace : "gentle";
+  const messages = PICK_TOAST_MATRIX[moodBucket][paceKey];
+  const key = `${moodBucket}:${paceKey}`;
+  const currentIndex = Number.isFinite(cycleMap?.[key]) ? cycleMap[key] : 0;
+  const normalizedIndex = ((currentIndex % messages.length) + messages.length) % messages.length;
+
+  return {
+    text: messages[normalizedIndex],
+    nextCycle: {
+      ...(cycleMap && typeof cycleMap === "object" ? cycleMap : {}),
+      [key]: (normalizedIndex + 1) % messages.length,
+    },
+  };
+}
 
 function defaultBillingState(){
   return {
@@ -102,12 +370,14 @@ function applyBillingStateToLocalState(baseState, billingPatch){
 
   if(planId !== "plus") profile.theme = "light";
 
-  return {
+  const nextState = {
     ...baseState,
     billing,
     profile,
     noteMemory: planId === "plus" ? baseState.noteMemory : clearNoteMemoryObj(baseState.noteMemory),
   };
+
+  return planId === "plus" ? nextState : toFreeLocalBoardState(nextState);
 }
 
 function getBillingErrorMessage(errorCode){
@@ -453,6 +723,7 @@ function defaultState(){
     boardAssigned: [],
     myDay: [],
     myDayCap: 5,
+    pickToastCycle: {},
     history: [],
     weeklySummaries: [],
     events: {},
@@ -498,6 +769,41 @@ function checkinSignature(checkin, level, useNoteForAi){
   const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,200) : "";
   const lvl = typeof level === "string" ? level : "";
   return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, note, lvl });
+}
+
+function getLocalOptionsRefreshKey(today){
+  const t = typeof today === "string" && today ? today : todayKey();
+  const [year, month, day] = t.split("-").map((value) => Number(value) || 0);
+  const date = new Date(year, Math.max(0, month - 1), Math.max(1, day));
+  const dayOfWeek = date.getDay();
+  const phase = dayOfWeek >= 6 || dayOfWeek === 0
+    ? "sat"
+    : dayOfWeek >= 3
+      ? "wed"
+      : "mon";
+  return `${weekStartMondayKey(t) || t}:${phase}`;
+}
+
+function getDefaultOptions(checkin, level, today, planId){
+  if(planId === "plus") return suggestActivities(checkin, level);
+
+  const seed = `${getLocalOptionsRefreshKey(today)}|${checkinSignature(checkin, level, false)}`;
+  return suggestActivities(checkin, level, seed);
+}
+
+function toFreeLocalBoardState(baseState){
+  const checkin = baseState?.checkin || DEFAULT_CHECKIN;
+  const level = typeof baseState?.level === "string" ? baseState.level : "gentle";
+  const today = typeof baseState?.today === "string" ? baseState.today : todayKey();
+
+  return {
+    ...baseState,
+    options: getDefaultOptions(checkin, level, today, "free"),
+    optionsSource: "default",
+    boardAssigned: [],
+    currentSpin: null,
+    ai: { status: "idle", today: "", sig: "", tasks: [], error: "" },
+  };
 }
 
 function dailyNoteSignature(checkin, level, useNoteForAi, today){
@@ -548,6 +854,9 @@ function normalizeLoadedState(loaded){
     if(next.myDayCap !== 5 && next.myDayCap !== 10) next.myDayCap = 5;
     if(Array.isArray(next.myDay) && next.myDay.length > 5) next.myDayCap = 10;
   }
+
+  if(!next.pickToastCycle || typeof next.pickToastCycle !== "object" || Array.isArray(next.pickToastCycle)) next.pickToastCycle = {};
+  if("pickToastIndex" in next) delete next.pickToastIndex;
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
 
@@ -732,8 +1041,13 @@ function normalizeLoadedState(loaded){
   if(next.levelSource === "auto"){
     next.level = suggestLevelFromCheckin(next.checkin);
     if(next.optionsSource === "default"){
-      next.options = suggestActivities(next.checkin, next.level);
+      next.options = getDefaultOptions(next.checkin, next.level, next.today, normalizedPlanId);
     }
+  }
+
+  if(normalizedPlanId !== "plus"){
+    next.optionsSource = "default";
+    next.ai = { status: "idle", today: "", sig: "", tasks: [], error: "" };
   }
 
   // Keep daily message consistent with current selections.
@@ -867,39 +1181,41 @@ export function useAttuneStore(){
 
   // daily rollover
   useEffect(() => {
-    const t = todayKey();
-    if(state.today !== t){
-      setState(prev => {
-        const rolled = rollDayToHistory(prev);
-        // Snapshot/update the week summary for the day we just rolled.
-        const weekStart = weekStartMondayKey(prev.today);
-        let weeklySummaries = rolled.weeklySummaries;
-        if(weekStart){
-          const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
-          const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
-          if(summary) weeklySummaries = upsertWeeklySummary(weeklySummaries, summary, 52);
-        }
-        const checkin = { ...DEFAULT_CHECKIN };
-        const level = "gentle";
-        const next = {
-          ...rolled,
-          today: t,
-          checkedInToday: false,
-          checkin,
-          level,
-          options: [],
-          myDay: [],
-          myDayCap: 5,
-          weeklySummaries,
-          boardAssigned: [],
-          currentSpin: null,
-          toast: null,
-          dailyMessage: dailyMessageFromCheckin(checkin, level),
-        };
-        return next;
-      });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if(typeof window === "undefined") return;
+
+    let timeoutId = null;
+
+    const applyRolloverIfNeeded = () => {
+      const t = todayKey();
+      if(stateRef.current.today === t) return;
+      setState((prev) => rolloverStateToToday(prev, t));
+    };
+
+    const scheduleNextMidnight = () => {
+      const now = new Date();
+      const nextMidnight = new Date(now);
+      nextMidnight.setHours(24, 0, 0, 50);
+      const delayMs = Math.max(1000, nextMidnight.getTime() - now.getTime());
+
+      timeoutId = window.setTimeout(() => {
+        applyRolloverIfNeeded();
+        scheduleNextMidnight();
+      }, delayMs);
+    };
+
+    const handleVisibilityChange = () => {
+      if(document.visibilityState !== "visible") return;
+      applyRolloverIfNeeded();
+    };
+
+    applyRolloverIfNeeded();
+    scheduleNextMidnight();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      if(timeoutId) window.clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   // persist
@@ -1340,7 +1656,7 @@ export function useAttuneStore(){
 
       const options = current.options?.length
         ? current.options
-        : suggestActivities(current.checkin, current.level);
+        : getDefaultOptions(current.checkin, current.level, current.today, getBillingPlanIdFromState(current));
 
       const nextBase = {
         ...current,
@@ -1399,20 +1715,20 @@ export function useAttuneStore(){
         const shouldResuggestLevel = patchAffectsSuggestedLevel(patch);
         const source = shouldResuggestLevel ? "auto" : (s.levelSource === "manual" ? "manual" : "auto");
         const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);
-        const options = suggestActivities(checkin, level);
+        const options = getDefaultOptions(checkin, level, s.today, getBillingPlanIdFromState(s));
         return { ...s, checkin, level, levelSource: source, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
       setState(s => {
-        const options = suggestActivities(s.checkin, level);
+        const options = getDefaultOptions(s.checkin, level, s.today, getBillingPlanIdFromState(s));
         return {...s, level, levelSource: "manual", options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
       }),
 
     suggestLevel: () =>
       setState(s => {
         const suggested = suggestLevelFromCheckin(s.checkin);
-        const options = suggestActivities(s.checkin, suggested);
+        const options = getDefaultOptions(s.checkin, suggested, s.today, getBillingPlanIdFromState(s));
         return {
           ...s,
           level: suggested,
@@ -1429,10 +1745,10 @@ export function useAttuneStore(){
     refreshOptions: () =>
       setState(s => ({
         ...s,
-        options: (s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
+        options: (getBillingPlanIdFromState(s) === "plus" && s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
           ? s.ai.tasks.map(t => ({ text: t.text, level: s.level }))
-          : suggestActivities(s.checkin, s.level),
-        optionsSource: (s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
+          : getDefaultOptions(s.checkin, s.level, s.today, getBillingPlanIdFromState(s)),
+        optionsSource: (getBillingPlanIdFromState(s) === "plus" && s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
           ? "ai"
           : "default",
         boardAssigned: [],
@@ -1440,6 +1756,8 @@ export function useAttuneStore(){
       })),
 
     ensureAiBoard: async (checkin, level, today) => {
+      if(getBillingPlanIdFromState(stateRef.current) !== "plus") return;
+
       const t = typeof today === "string" ? today : todayKey();
       const includeNote = stateRef.current?.profile?.useNoteForAi !== false;
       const sig = checkinSignature(checkin, level, includeNote);
@@ -1682,14 +2000,14 @@ export function useAttuneStore(){
           return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
-        const nextCount = (s.myDay?.length || 0) + 1;
-        const label = nextCount === 1 ? "activity" : "activities";
+        const pickToast = getNextPickToast(s.checkin, s.currentSpin?.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
           myDay: [...s.myDay, { id, text: s.currentSpin.text, done:false }],
+          pickToastCycle: pickToast.nextCycle,
           currentSpin: null,
           toast: {
-            text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
+            text: pickToast.text,
             good: true,
             screen: s.screen,
           }
@@ -1713,13 +2031,13 @@ export function useAttuneStore(){
           return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
-        const nextCount = (s.myDay?.length || 0) + 1;
-        const label = nextCount === 1 ? "activity" : "activities";
+        const pickToast = getNextPickToast(s.checkin, opt.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
           myDay: [...s.myDay, { id, text: opt.text, done:false }],
+          pickToastCycle: pickToast.nextCycle,
           toast: {
-            text: `${nextCount} ${label} added to your day. Trying is enough. Click My Day to see what your day looks like.`,
+            text: pickToast.text,
             good: true,
             screen: s.screen,
           }
@@ -2361,4 +2679,35 @@ function rollDayToHistory(s){
   const trimmed = history.length > 21 ? history.slice(history.length-21) : history;
 
   return { ...s, history: trimmed };
+}
+
+function rolloverStateToToday(prev, nextToday){
+  const rolled = rollDayToHistory(prev);
+  const weekStart = weekStartMondayKey(prev.today);
+  let weeklySummaries = rolled.weeklySummaries;
+
+  if(weekStart){
+    const weekRecords = buildWeekRecordsFromHistory(rolled.history, weekStart);
+    const summary = computeWeekSummaryFromWeekRecords(weekRecords, weekStart);
+    if(summary) weeklySummaries = upsertWeeklySummary(weeklySummaries, summary, 52);
+  }
+
+  const checkin = { ...DEFAULT_CHECKIN };
+  const level = "gentle";
+
+  return {
+    ...rolled,
+    today: nextToday,
+    checkedInToday: false,
+    checkin,
+    level,
+    options: [],
+    myDay: [],
+    myDayCap: 5,
+    weeklySummaries,
+    boardAssigned: [],
+    currentSpin: null,
+    toast: null,
+    dailyMessage: dailyMessageFromCheckin(checkin, level),
+  };
 }

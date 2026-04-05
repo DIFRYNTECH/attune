@@ -3,24 +3,25 @@ import { useEffect } from "react";
 import ActivityBoard from "../components/ActivityBoard.jsx";
 
 export default function ActivityPicker({ state, actions }) {
+  const isPlus = !!state?.entitlements?.isPlus;
+
   useEffect(() => {
+    if(!isPlus) return;
     actions.ensureAiBoard?.(state.checkin, state.level, state.today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const aiStatus = state.ai?.status;
-  const isPlus = !!state?.entitlements?.isPlus;
-  const hasBoardOptions = Array.isArray(state.options) && state.options.length > 0;
   const hasAiBoard = state.optionsSource === "ai";
-  const boardLoading = isPlus
-    ? !hasAiBoard && aiStatus !== "error"
-    : aiStatus === "loading" && !hasBoardOptions;
+  const boardLoading = isPlus && !hasAiBoard && aiStatus !== "error";
   const statusLine =
-    boardLoading
+    !isPlus
+      ? ""
+      : boardLoading
       ? "Building your AI board from your check-in…"
       : aiStatus === "error"
         ? (state.ai?.error || "Using built-in suggestions for now.")
-        : aiStatus === "ready"
+        : hasAiBoard
           ? "Personalized from your check-in."
           : "";
 
