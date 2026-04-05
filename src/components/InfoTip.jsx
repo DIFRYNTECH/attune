@@ -100,7 +100,8 @@ export default function InfoTip({ label = "More info", children, align = "right"
               className={"infoBubble" + (align === "left" ? " left" : "")}
               style={pos ? { top: pos.top, left: pos.left } : { top: -9999, left: -9999 }}
             >
-              {children}
+              <span className="infoBubbleTitle">{label}</span>
+              <span className="infoBubbleBody">{children}</span>
             </span>,
             document.body,
           )

@@ -184,19 +184,23 @@
     /* Scrollbar theming (Firefox) */
     *{
       scrollbar-width: thin;
-      scrollbar-color: var(--scrollThumb) var(--scrollTrack);
+      scrollbar-color: var(--scrollThumb) transparent;
     }
 
     /* Scrollbar theming (Chromium/Safari) */
     *::-webkit-scrollbar{width: 12px; height: 12px;}
-    *::-webkit-scrollbar-track{background: var(--scrollTrack); border-radius: 999px;}
+    *::-webkit-scrollbar-track{
+      background: transparent;
+      border-radius: 999px;
+    }
     *::-webkit-scrollbar-thumb{
       background-color: var(--scrollThumb);
       border-radius: 999px;
       border: 4px solid transparent;
       background-clip: padding-box;
+      min-height: 36px;
     }
-    *::-webkit-scrollbar-thumb:hover{background: var(--scrollThumbHover);}
+    *::-webkit-scrollbar-thumb:hover{background-color: var(--scrollThumbHover);}
 
     html, body {
       height: 100%;
@@ -390,6 +394,33 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
+      overflow-x: hidden;
+      padding-right: 6px;
+      scrollbar-gutter: stable;
+      scrollbar-width: thin;
+      scrollbar-color: color-mix(in oklab, var(--scrollThumb) 82%, transparent) transparent;
+    }
+    .grid::-webkit-scrollbar{
+      width: 10px;
+    }
+    .grid::-webkit-scrollbar-track{
+      background: transparent;
+      margin-block: 10px;
+    }
+    .grid::-webkit-scrollbar-thumb{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0)) padding-box,
+        color-mix(in oklab, var(--scrollThumb) 90%, transparent) padding-box;
+      border-radius: 999px;
+      border: 3px solid transparent;
+      background-clip: padding-box;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .grid::-webkit-scrollbar-thumb:hover{
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.24), rgba(255,255,255,0)) padding-box,
+        color-mix(in oklab, var(--scrollThumbHover) 94%, transparent) padding-box;
+      background-clip: padding-box;
     }
     @media (max-width: 880px){
       .grid{display:block}
@@ -929,13 +960,16 @@
     }
     .checkinFlow{
       display:grid;
-      gap:14px;
+      gap:12px;
     }
     .checkinStep{
       display:grid;
-      gap:8px;
+      gap:7px;
       animation: checkinStepReveal .34s cubic-bezier(.2,.84,.28,1) both;
       transform-origin: top center;
+    }
+    .checkinStep[data-step="pace"]{
+      margin-top: 4px;
     }
     .checkinStepMood{
       animation:none;
@@ -1646,20 +1680,23 @@
       line-height:1.05;
     }
     .checkinPaceHead{
+      display:block;
+    }
+    .checkinPaceHead label{
+      margin:0;
       display:flex;
       align-items:baseline;
-      justify-content:space-between;
-      gap:8px 14px;
+      gap:6px;
       flex-wrap:wrap;
     }
-    .checkinPaceHead label{margin:0;}
     .checkinPaceHint{
-      font-size:11.5px;
+      font-size:11px;
       font-weight:800;
       letter-spacing:-.08px;
       color:var(--muted);
       line-height:1.2;
-      text-align:right;
+      text-align:left;
+      max-width:none;
     }
     .checkinPaceStep.paceAutoUpdated .checkinPaceHint{
       color: color-mix(in oklab, var(--brand) 62%, var(--muted) 38%);
@@ -2840,18 +2877,74 @@
     .infoTip.open .infoBtn{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
     .infoBubble{
       position: fixed;
-      width: min(260px, 80vw);
-      padding: 10px 12px;
-      background: var(--card98);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      box-shadow: 0 16px 40px rgba(20,30,60,.14);
+      width: min(280px, 82vw);
+      display: grid;
+      gap: 6px;
+      padding: 12px 14px 13px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.94)) padding-box,
+        linear-gradient(180deg, rgba(255,255,255,.64), rgba(107,89,247,.14)) border-box;
+      border: 1px solid transparent;
+      border-radius: 16px;
+      box-shadow: 0 18px 44px rgba(20,30,60,.16);
+      backdrop-filter: blur(14px) saturate(135%);
+      -webkit-backdrop-filter: blur(14px) saturate(135%);
       color: var(--ink);
       font-size: 12px;
-      line-height: 1.35;
+      line-height: 1.45;
       z-index: 80;
+      overflow: visible;
+    }
+    .infoBubble::before{
+      content: "";
+      position: absolute;
+      top: -6px;
+      right: 16px;
+      width: 12px;
+      height: 12px;
+      border-top: 1px solid rgba(255,255,255,.68);
+      border-left: 1px solid rgba(255,255,255,.68);
+      background: color-mix(in oklab, var(--card98) 90%, white 10%);
+      transform: rotate(45deg);
+      box-shadow: -3px -3px 12px rgba(20,30,60,.05);
     }
     .infoBubble.left{transform-origin: top left;}
+    .infoBubble.left::before{
+      left: 16px;
+      right: auto;
+    }
+    .infoBubbleTitle{
+      display: block;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: color-mix(in oklab, var(--brand) 56%, var(--muted) 44%);
+    }
+    .infoBubbleBody{
+      display: block;
+      font-size: 12.5px;
+      line-height: 1.45;
+      color: color-mix(in oklab, var(--ink) 92%, var(--muted) 8%);
+    }
+    html[data-theme="dark"] .infoBubble{
+      background:
+        linear-gradient(180deg, rgba(24,31,58,.92), rgba(18,24,46,.98)) padding-box,
+        linear-gradient(180deg, rgba(255,255,255,.12), rgba(122,104,255,.22)) border-box;
+      box-shadow: 0 22px 52px rgba(0,0,0,.34);
+    }
+    html[data-theme="dark"] .infoBubble::before{
+      border-top-color: rgba(255,255,255,.12);
+      border-left-color: rgba(255,255,255,.12);
+      background: color-mix(in oklab, var(--card98) 92%, var(--brand) 8%);
+      box-shadow: -3px -3px 14px rgba(0,0,0,.16);
+    }
+    html[data-theme="dark"] .infoBubbleTitle{
+      color: color-mix(in oklab, var(--brand2) 72%, var(--muted) 28%);
+    }
+    html[data-theme="dark"] .infoBubbleBody{
+      color: color-mix(in oklab, var(--ink) 94%, var(--muted) 6%);
+    }
 
     .list{
       margin:0; padding:0; list-style:none;
@@ -3174,7 +3267,7 @@
       .choicePillLabel{font-size:11px;}
       .choicePillHint{font-size:8.4px;}
       .checkinPaceHead{
-        align-items:flex-start;
+        display:block;
       }
       .checkinPaceHint{
         font-size:11px;

@@ -411,8 +411,10 @@ export default function CheckIn({ state, actions }) {
         {showPaceStep ? (
           <div className={"checkinStep checkinPaceStep" + (paceSuggestionFlash ? " paceAutoUpdated" : "")} data-step="pace">
             <div className="checkinPaceHead">
-              <label>Pace for today</label>
-              <span className="checkinPaceHint">You can adjust this if you&apos;d like</span>
+              <label>
+                Pace for today
+                <span className="checkinPaceHint">(defaulted, but adjustable)</span>
+              </label>
             </div>
             <div className="pillrow" role="group" aria-label="Pace">
               {LEVELS.map((l) => (
@@ -496,7 +498,7 @@ export default function CheckIn({ state, actions }) {
       </div>
 
       <div className="checkinBottom">
-        {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Saved for today.</div> : null}
+        {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Your check-in is saved. You can update it anytime today.</div> : null}
       </div>
     </div>
   );
