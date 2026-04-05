@@ -1,13 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { summarizeRecentThemes } from "../lib/noteMemory";
+import { useEffect, useState } from "react";
 import InfoTip from "../components/InfoTip";
 import { getTodayEmptyStateCopy } from "../lib/personalization";
 
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
 	const aiNote = state.aiDailyNote;
-	const canUseMemory = !!state?.entitlements?.noteMemory;
-	const recentThemes = canUseMemory ? summarizeRecentThemes(state.noteMemory, 10) : [];
 	const [noteExpanded, setNoteExpanded] = useState(false);
 	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
 
@@ -22,13 +19,6 @@ export default function Today({ state, actions }) {
 	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
 	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "On-device";
 	const canToggleNote = (noteBody || "").length > 180;
-
-	const latelyText = useMemo(() => {
-		if (!recentThemes.length) return "";
-		const short = recentThemes.slice(0, 3);
-		const more = recentThemes.length - short.length;
-		return short.join(" · ") + (more > 0 ? ` +${more}` : "");
-	}, [recentThemes]);
 
 	return (
 		<div className="card myDayCard">
@@ -74,11 +64,6 @@ export default function Today({ state, actions }) {
 				)}
 				{aiNote?.status === "error" && !!aiNote?.error && (
 					<div className="sub" style={{ marginTop: 8 }}>{aiNote.error}</div>
-				)}
-				{recentThemes.length > 0 && (
-					<div className="miniPills" aria-label="Recent themes">
-						<div className="miniPill">🧠 Lately: {latelyText}</div>
-					</div>
 				)}
 			</div>
 

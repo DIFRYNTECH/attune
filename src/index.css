@@ -3019,6 +3019,9 @@
       align-items:flex-start;
       min-width:0;
       cursor:pointer;
+      user-select:none;
+      -webkit-user-select:none;
+      -webkit-tap-highlight-color: transparent;
     }
     .itemMain input{
       appearance:none;
@@ -3044,7 +3047,7 @@
       color:white;
       line-height:1;
     }
-    .itemTextWrap{display:block; min-width:0;}
+    .itemTextWrap{display:block; min-width:0; user-select:none; -webkit-user-select:none;}
     .item .txt{font-weight:800; font-size:16px; line-height:1.35; overflow-wrap: anywhere; letter-spacing:-.02em;}
     .item .small{font-size:12px; color:var(--muted); margin-top:2px}
     .item.done{opacity:1; border-color: var(--successLine); background: linear-gradient(180deg, var(--successSoft), rgba(255,255,255,0)), var(--surface2)}
