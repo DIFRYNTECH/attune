@@ -259,6 +259,7 @@ export default function Weekly({ state, actions }) {
   const weekRange = buildWeekKeysMondayToSunday(new Date());
   const weekId = `${weekRange.startKey}_${weekRange.endKey}`;
   const NOTE_CHAR_LIMIT = 500;
+  const WEEK_NOTE_AUTOSAVE_MS = 1200;
 
   const savedWeekSummary = (Array.isArray(state.weeklySummaries) ? state.weeklySummaries : []).find(
     (w) => w?.weekStart === weekRange.startKey,
@@ -267,13 +268,44 @@ export default function Weekly({ state, actions }) {
   const savedNoteUpdatedAt = Number(savedWeekSummary?.weekNoteUpdatedAt) || 0;
 
   const [draftNote, setDraftNote] = useState(savedNote);
+  const [isWeekNoteOpen, setIsWeekNoteOpen] = useState(false);
+  const [hasLocalWeekNoteEdits, setHasLocalWeekNoteEdits] = useState(false);
   useEffect(() => {
     setDraftNote(savedNote);
+    setIsWeekNoteOpen(false);
+    setHasLocalWeekNoteEdits(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekRange.startKey]);
 
   const isDirty = draftNote !== savedNote;
   const noteChars = countChars(draftNote);
+
+  useEffect(() => {
+    if (!hasLocalWeekNoteEdits) {
+      setDraftNote(savedNote);
+      return;
+    }
+    if (draftNote === savedNote) setHasLocalWeekNoteEdits(false);
+  }, [savedNote, draftNote, hasLocalWeekNoteEdits]);
+
+  useEffect(() => {
+    if (isDirty) setIsWeekNoteOpen(true);
+  }, [isDirty]);
+
+  function persistWeekNote(text) {
+    if (typeof weekRange.startKey !== "string" || !weekRange.startKey) return;
+    actions?.saveWeeklyNote?.(weekRange.startKey, text);
+  }
+
+  useEffect(() => {
+    if (!hasLocalWeekNoteEdits || !isDirty) return undefined;
+    const timeoutId = window.setTimeout(() => {
+      persistWeekNote(draftNote);
+    }, WEEK_NOTE_AUTOSAVE_MS);
+
+    return () => window.clearTimeout(timeoutId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftNote, isDirty, hasLocalWeekNoteEdits, weekRange.startKey]);
 
   useEffect(() => {
     if (!showMomentumInfo && !showWeekDetails && !showWeekActivities) return;
@@ -930,52 +962,78 @@ export default function Weekly({ state, actions }) {
 
       <div className="result weeklyNoteResult" aria-label="Weekly note">
         <div className="weeklyNoteHeader">
-          <div>
+          <div className="weeklyNoteHeaderCopy">
             <div className="resultTitle">Week note</div>
             <div className="footerNote" style={{ marginTop: 6 }}>
               Optional context for what is shaping this week.
             </div>
           </div>
           <div className="weeklyNoteActions">
-            <div className="footerNote" style={{ marginTop: 0, textAlign: "right" }} aria-label="Weekly note status">
-              {isDirty
-                ? "Unsaved"
-                : formatUpdatedAt(savedNoteUpdatedAt) || (savedNote.trim().length ? "Saved" : "")}
-              {noteChars > 420 ? (
-                <span>
-                  {!isDirty && (formatUpdatedAt(savedNoteUpdatedAt) || savedNote.trim().length) ? " · " : ""}
-                  {noteChars}/{NOTE_CHAR_LIMIT}
-                </span>
-              ) : null}
-            </div>
             <button
               type="button"
-              className="btn small"
-              onClick={() => actions?.saveWeeklyNote?.(weekRange.startKey, draftNote)}
+              className="btn small quiet weeklyNoteSaveBtn"
+              onClick={() => persistWeekNote(draftNote)}
               disabled={!isDirty}
               aria-label="Save this week’s note"
             >
               Save
             </button>
+            <button
+              type="button"
+              className="btn quiet small weeklyNoteToggle"
+              onClick={() => setIsWeekNoteOpen((open) => !open)}
+              aria-expanded={isWeekNoteOpen}
+              aria-controls="weekly-note-panel"
+              aria-label={isWeekNoteOpen ? "Collapse weekly note" : "Expand weekly note"}
+            >
+              <span className={"checkinNoteChevron" + (isWeekNoteOpen ? " open" : "")} aria-hidden="true" />
+            </button>
           </div>
         </div>
-        <div className="weeklyNoteBody">
-          <textarea
-            className="weeklyNoteInput"
-            value={draftNote}
-            maxLength={NOTE_CHAR_LIMIT}
-            rows={4}
-            placeholder="What is shaping this week? (energy, deadlines, travel, stress, wins, recovery...)"
-            onChange={(e) => setDraftNote(limitChars(e.target.value, NOTE_CHAR_LIMIT))}
-            onFocus={() => {
-              window.requestAnimationFrame(() => {
-                noteRef.current?.scrollIntoView?.({ block: "nearest" });
-              });
-            }}
-            ref={noteRef}
-            aria-label="Weekly note"
-          />
-        </div>
+        {isWeekNoteOpen ? (
+          <div className="weeklyNoteBody" id="weekly-note-panel">
+            <div className="weeklyNoteStatusRow">
+              <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note status">
+                {isDirty
+                  ? "Unsaved"
+                  : formatUpdatedAt(savedNoteUpdatedAt) || (savedNote.trim().length ? "Saved" : "")}
+              </div>
+              {noteChars > 420 ? (
+                <div className="charCount">{noteChars}/{NOTE_CHAR_LIMIT}</div>
+              ) : null}
+            </div>
+
+            <textarea
+              className="weeklyNoteInput"
+              value={draftNote}
+              maxLength={NOTE_CHAR_LIMIT}
+              rows={4}
+              placeholder="What is shaping this week? (energy, deadlines, travel, stress, wins, recovery...)"
+              onChange={(e) => {
+                setHasLocalWeekNoteEdits(true);
+                setDraftNote(limitChars(e.target.value, NOTE_CHAR_LIMIT));
+              }}
+              onBlur={() => {
+                if (isDirty) persistWeekNote(draftNote);
+              }}
+              onFocus={() => {
+                setIsWeekNoteOpen(true);
+                window.requestAnimationFrame(() => {
+                  noteRef.current?.scrollIntoView?.({ block: "nearest" });
+                });
+              }}
+              ref={noteRef}
+              aria-label="Weekly note"
+            />
+          </div>
+        ) : (
+          <div className="weeklyNoteCollapsed">
+            <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note status">
+              {savedNote.trim().length ? (formatUpdatedAt(savedNoteUpdatedAt) || "Saved") : "Collapsed until you need it."}
+            </div>
+            {savedNote.trim().length ? <div className="weeklyNoteCollapsedPreview">{savedNote}</div> : null}
+          </div>
+        )}
       </div>
     </div>
   );

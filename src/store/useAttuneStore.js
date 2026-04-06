@@ -2484,16 +2484,16 @@ export function useAttuneStore(){
       let toastText = "Saved.";
 
       const trimmed = nextText.trim();
+      const prev = list[idx] || null;
       if(!trimmed){
-        const prev = list[idx];
+        const hadExistingNote = !!(prev?.weekNote || prev?.weekNoteUpdatedAt);
+        if(!hadExistingNote) return;
         toastText = "Note cleared.";
-        if(prev?.weekNote || prev?.weekNoteUpdatedAt){
-          const { weekNote: _weekNote, weekNoteUpdatedAt: _weekNoteUpdatedAt, ...rest } = prev || {};
-          list[idx] = { ...rest };
-        }
+        const { weekNote: _weekNote, weekNoteUpdatedAt: _weekNoteUpdatedAt, ...rest } = prev || {};
+        list[idx] = { ...rest };
       }else{
-        const prev = list[idx];
         const unchanged = prev?.weekNote === nextText;
+        if(unchanged) return;
         if(!unchanged) list[idx] = { ...prev, weekNote: nextText, weekNoteUpdatedAt: nowMs };
       }
 

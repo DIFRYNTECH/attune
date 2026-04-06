@@ -627,7 +627,7 @@ html {
     min-height: auto;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
   }
 
   .weeklyCard .weeklyNoteHelp {
@@ -635,9 +635,19 @@ html {
     font-size: 13px;
   }
 
-  .weeklyCard .weeklyNoteActions {
+  .weeklyCard .weeklyNoteStatusRow {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .weeklyCard .weeklyNoteActions {
+    gap: 6px;
+    padding: 3px;
+  }
+
+  .weeklyCard .weeklyNoteSaveBtn {
+    padding: 8px 8px;
+    font-size: 12px;
   }
 
   .weeklyCard .weeklyNoteInput {
