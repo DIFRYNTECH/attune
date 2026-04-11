@@ -283,16 +283,10 @@ export default function Profile({ state, actions }) {
           helper={
             <div style={{ display: "grid", gap: 10, maxWidth: 320 }}>
               <div>
-                Plus helps Attune understand your rhythms and offer better suggestions, without turning your day into a checklist.
+                Plus helps Attune respond to your rhythms with better suggestions, while keeping planning flexible.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                Day-to-day planning stays local to this device. Plus includes dark mode, exports, note memory, smarter picking, and deeper Weekly
-                insights. If you sign in, Attune can also sync weekly summaries, note history, and billing state tied to your account.
-              </div>
-              <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                {isNative
-                  ? "Google Play purchases are verified on the server and attached to your signed-in Attune account."
-                  : "Web subscriptions run through Paddle and are attached to your signed-in Attune account."}
+                Plus adds dark mode, exports, note memory, smarter picking, and deeper Weekly insights.
               </div>
             </div>
           }
@@ -305,10 +299,10 @@ export default function Profile({ state, actions }) {
                   <b>Dark mode</b> for a calmer, darker look.
                 </li>
                 <li>
-                  <b>Exports</b> to download your local data.
+                  <b>Exports</b> to download your data.
                 </li>
                 <li>
-                  <b>Note memory</b> from your check-in note (on-device first, with account sync when signed in).
+                  <b>Note memory</b> from your check-in note.
                 </li>
                 <li>
                   <b>Smarter picking</b> that adapts to what you complete/skip.

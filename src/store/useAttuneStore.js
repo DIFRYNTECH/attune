@@ -8,7 +8,7 @@ import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
 import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj, extractThemes } from "../lib/noteMemory";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
-import { ensureProfile } from "../lib/profileApi";
+import { ensureProfile, updateProfile } from "../lib/profileApi";
 import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
 import { deleteAllNoteMemory as deleteAllNoteMemoryRemote, listNoteMemory as listNoteMemoryRemote, upsertNoteMemory as upsertNoteMemoryRemote } from "../lib/noteMemoryApi";
 import { getApiUrl } from "../lib/api";
@@ -1142,6 +1142,30 @@ export function useAttuneStore(){
     return syncPromise;
   }
 
+  async function hydrateProfileNameFromAccount({ userId, email }){
+    const nextUserId = typeof userId === "string" ? userId : "";
+    const nextEmail = typeof email === "string" ? email.trim().toLowerCase() : "";
+    if(!nextUserId) return "";
+
+    const localName = typeof stateRef.current?.profile?.name === "string"
+      ? stateRef.current.profile.name.trim()
+      : "";
+
+    try {
+      let remoteProfile = await ensureProfile({ userId: nextUserId, email: nextEmail });
+      let remoteName = typeof remoteProfile?.name === "string" ? remoteProfile.name.trim() : "";
+
+      if(!remoteName && localName){
+        remoteProfile = await ensureProfile({ userId: nextUserId, email: nextEmail, name: localName });
+        remoteName = typeof remoteProfile?.name === "string" ? remoteProfile.name.trim() : "";
+      }
+
+      return remoteName;
+    } catch {
+      return "";
+    }
+  }
+
   useEffect(() => {
     if(typeof window === "undefined") return;
 
@@ -1316,19 +1340,9 @@ export function useAttuneStore(){
         const email = session?.user?.email ? String(session.user.email) : "";
         const userId = session?.user?.id ? String(session.user.id) : "";
 
-        if(userId){
-          // Create the profiles row on first sign-in (idempotent).
-          // Name comes from the local signup field if provided.
-          try {
-            await ensureProfile({
-              userId,
-              email,
-              name: stateRef.current?.profile?.name,
-            });
-          } catch {
-            // Ignore; app can still run even if profile upsert fails.
-          }
-        }
+        const remoteProfileName = userId
+          ? await hydrateProfileNameFromAccount({ userId, email })
+          : "";
 
         setState((s) => ({
           ...s,
@@ -1345,7 +1359,8 @@ export function useAttuneStore(){
           },
           profile: (() => {
             const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
-            return email ? { ...currentProfile, email } : currentProfile;
+            const nextProfile = email ? { ...currentProfile, email } : currentProfile;
+            return remoteProfileName ? { ...nextProfile, name: remoteProfileName } : nextProfile;
           })(),
         }));
 
@@ -1360,16 +1375,6 @@ export function useAttuneStore(){
       const email = session?.user?.email ? String(session.user.email) : "";
       const userId = session?.user?.id ? String(session.user.id) : "";
 
-      if(userId){
-        // Ensure profile exists whenever a new session is established.
-        // Fire-and-forget to avoid blocking UI.
-        ensureProfile({
-          userId,
-          email,
-          name: stateRef.current?.profile?.name,
-        }).catch(() => {});
-      }
-
       setState((s) => ({
         ...s,
         auth: {
@@ -1383,10 +1388,29 @@ export function useAttuneStore(){
           otpCode: "",
           error: "",
         },
+        profile: (() => {
+          const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
+          return email ? { ...currentProfile, email } : currentProfile;
+        })(),
         screen: session ? (s.screen || "checkin") : "checkin",
       }));
 
       if(userId){
+        hydrateProfileNameFromAccount({ userId, email })
+          .then((remoteProfileName) => {
+            if(!remoteProfileName) return;
+
+            setState((s) => {
+              if(s?.auth?.signedIn !== true || s?.auth?.userId !== userId) return s;
+              const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
+              return {
+                ...s,
+                profile: { ...currentProfile, email: email || currentProfile.email, name: remoteProfileName },
+              };
+            });
+          })
+          .catch(() => {});
+
         syncBillingState(userId)
           .then((billingState) => {
             syncFromSupabase({ userId, canSyncNoteMemory: hasVerifiedPlusNoteMemoryAccess(billingState) });
@@ -2369,10 +2393,17 @@ export function useAttuneStore(){
     setBoardAssigned: (boardAssigned) =>
       setState(s => ({ ...s, boardAssigned: Array.isArray(boardAssigned) ? boardAssigned : [] })),
 
-    setProfile: (patch) =>
+    setProfile: (patch) => {
+      const rawPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
+      const { plan: _ignoredPlan, email: _ignoredEmail, ...nextPatch } = rawPatch;
+      const current = stateRef.current || {};
+      const currentProfile = current.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
+      const previousName = typeof currentProfile.name === "string" ? currentProfile.name : "";
+
+      let nextNameForSync = "";
+      let shouldSyncName = false;
+
       setState(s => {
-        const rawPatch = patch && typeof patch === "object" && !Array.isArray(patch) ? patch : {};
-        const { plan: _ignoredPlan, email: _ignoredEmail, ...nextPatch } = rawPatch;
         const profile = { ...(s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" }), ...nextPatch };
         if(typeof profile.name !== "string") profile.name = "";
         if(profile.name.length > 40) profile.name = profile.name.slice(0, 40);
@@ -2389,11 +2420,19 @@ export function useAttuneStore(){
         if(typeof profile.plan !== "string") profile.plan = "free";
         if(profile.plan !== "free" && profile.plan !== "plus") profile.plan = "free";
 
-        // Dark mode is a Plus feature; keep free plan on light.
         if(profile.plan !== "plus") profile.theme = "light";
 
+        nextNameForSync = profile.name;
+        shouldSyncName = Object.prototype.hasOwnProperty.call(nextPatch, "name") && profile.name !== previousName;
+
         return { ...s, profile };
-      }),
+      });
+
+      const userId = typeof current?.auth?.userId === "string" ? current.auth.userId : "";
+      if(shouldSyncName && userId){
+        updateProfile(userId, { name: nextNameForSync }).catch(() => {});
+      }
+    },
 
     setPlan: (nextPlan) => {
       const requestedPlan = nextPlan === "plus" ? "plus" : "free";
