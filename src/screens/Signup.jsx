@@ -132,7 +132,7 @@ export default function Signup({ state, actions }) {
                   </span>
                   <span className="rememberTextWrap">
                     <span className="rememberTitle">Remember me</span>
-                    <span className="rememberMeta">Keep this device ready so you can come back easily.</span>
+                    <span className="rememberMeta">Save your email on this device for next time.</span>
                   </span>
                 </label>
               </div>

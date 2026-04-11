@@ -655,8 +655,9 @@
     }
     .remember{
       position: relative;
-      display:inline-flex;
-      align-items:flex-start;
+      display:flex;
+      width:100%;
+      align-items:center;
       gap: 12px;
       font-size: 13px;
       font-weight: 800;
@@ -724,6 +725,7 @@
       display: grid;
       gap: 2px;
       min-width: 0;
+      flex: 1 1 auto;
     }
     .rememberTitle{
       font-size: 13px;
@@ -3024,6 +3026,32 @@
       background: var(--card78);
       border: 1px solid var(--line);
       overflow-wrap: anywhere;
+    }
+    .weekInsightTag[data-category="pacing"]{
+      color: color-mix(in oklab, #5b47d6 78%, var(--ink) 22%);
+      background: linear-gradient(180deg, rgba(107,89,247,.14), rgba(131,223,191,.08));
+      border-color: rgba(107,89,247,.24);
+    }
+    .weekInsightTag[data-category="schedule"]{
+      color: color-mix(in oklab, #6f5b2e 80%, var(--ink) 20%);
+      background: linear-gradient(180deg, rgba(249,197,124,.18), rgba(249,197,124,.08));
+      border-color: rgba(214,158,46,.24);
+    }
+    .weekInsightTag[data-category="followthrough"]{
+      color: color-mix(in oklab, #1f6b57 76%, var(--ink) 24%);
+      background: linear-gradient(180deg, rgba(110,231,183,.18), rgba(110,231,183,.08));
+      border-color: rgba(52,211,153,.22);
+    }
+    .weekInsightTag[data-category="rhythm"]{
+      color: color-mix(in oklab, #2f5c8a 76%, var(--ink) 24%);
+      background: linear-gradient(180deg, rgba(125,211,252,.18), rgba(129,140,248,.08));
+      border-color: rgba(96,165,250,.22);
+    }
+    .weekInsightTag[data-category="consistency"],
+    .weekInsightTag[data-category="trend"]{
+      color: color-mix(in oklab, #7a4b9a 74%, var(--ink) 26%);
+      background: linear-gradient(180deg, rgba(196,181,253,.18), rgba(244,114,182,.06));
+      border-color: rgba(167,139,250,.22);
     }
 
     .weekInsightActions{

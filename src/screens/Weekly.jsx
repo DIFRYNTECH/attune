@@ -639,7 +639,7 @@ export default function Weekly({ state, actions }) {
           </div>
 
           <div className="weekInsight weekInsightPrimary" style={{ marginTop: 10 }}>
-            <div className="weekInsightTag">{patternCategoryLabel(primaryPattern.category)}</div>
+            <div className="weekInsightTag" data-category={primaryPattern.category || "default"}>{patternCategoryLabel(primaryPattern.category)}</div>
             <div>{primaryPattern.text}</div>
           </div>
 
@@ -647,7 +647,7 @@ export default function Weekly({ state, actions }) {
             <div className="weeklyPatternExtraList">
               {remainingPatterns.map((c) => (
                 <div key={c.id} className="weekInsight weekInsightSecondary">
-                  <div className="weekInsightTag">{patternCategoryLabel(c.category)}</div>
+                  <div className="weekInsightTag" data-category={c.category || "default"}>{patternCategoryLabel(c.category)}</div>
                   <div>{c.text}</div>
                 </div>
               ))}

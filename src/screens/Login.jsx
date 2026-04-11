@@ -113,7 +113,7 @@ export default function Login({ state, actions }) {
                   </span>
                   <span className="rememberTextWrap">
                     <span className="rememberTitle">Remember me</span>
-                    <span className="rememberMeta">Keep this device ready for a faster return.</span>
+                    <span className="rememberMeta">Save your email on this device for next time.</span>
                   </span>
                 </label>
               </div>
