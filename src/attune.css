@@ -641,13 +641,7 @@ html {
   }
 
   .weeklyCard .weeklyNoteActions {
-    gap: 6px;
-    padding: 3px;
-  }
-
-  .weeklyCard .weeklyNoteSaveBtn {
-    padding: 8px 8px;
-    font-size: 12px;
+    gap: 8px;
   }
 
   .weeklyCard .weeklyNoteInput {

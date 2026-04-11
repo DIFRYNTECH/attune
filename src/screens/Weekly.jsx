@@ -292,6 +292,14 @@ export default function Weekly({ state, actions }) {
     if (isDirty) setIsWeekNoteOpen(true);
   }, [isDirty]);
 
+  function openWeekNoteEditor() {
+    setIsWeekNoteOpen(true);
+    window.requestAnimationFrame(() => {
+      noteRef.current?.focus?.();
+      noteRef.current?.scrollIntoView?.({ block: "nearest" });
+    });
+  }
+
   function persistWeekNote(text) {
     if (typeof weekRange.startKey !== "string" || !weekRange.startKey) return;
     actions?.saveWeeklyNote?.(weekRange.startKey, text);
@@ -969,19 +977,21 @@ export default function Weekly({ state, actions }) {
             </div>
           </div>
           <div className="weeklyNoteActions">
-            <button
-              type="button"
-              className="btn small quiet weeklyNoteSaveBtn"
-              onClick={() => persistWeekNote(draftNote)}
-              disabled={!isDirty}
-              aria-label="Save this week’s note"
-            >
-              Save
-            </button>
+            {isDirty || savedNote.trim().length ? (
+              <div className="weeklyNoteHeaderStatus" aria-label="Weekly note save status">
+                {isDirty ? "Saving soon" : (formatUpdatedAt(savedNoteUpdatedAt) || "Saved")}
+              </div>
+            ) : null}
             <button
               type="button"
               className="btn quiet small weeklyNoteToggle"
-              onClick={() => setIsWeekNoteOpen((open) => !open)}
+              onClick={() => {
+                if (isWeekNoteOpen) {
+                  setIsWeekNoteOpen(false);
+                  return;
+                }
+                openWeekNoteEditor();
+              }}
               aria-expanded={isWeekNoteOpen}
               aria-controls="weekly-note-panel"
               aria-label={isWeekNoteOpen ? "Collapse weekly note" : "Expand weekly note"}
@@ -1008,7 +1018,7 @@ export default function Weekly({ state, actions }) {
               value={draftNote}
               maxLength={NOTE_CHAR_LIMIT}
               rows={4}
-              placeholder="What is shaping this week? (energy, deadlines, travel, stress, wins, recovery...)"
+              placeholder="Add context, pressure, wins, or anything else worth noting as the week unfolds."
               onChange={(e) => {
                 setHasLocalWeekNoteEdits(true);
                 setDraftNote(limitChars(e.target.value, NOTE_CHAR_LIMIT));
@@ -1026,22 +1036,7 @@ export default function Weekly({ state, actions }) {
               aria-label="Weekly note"
             />
           </div>
-        ) : (
-          <div className="weeklyNoteCollapsed">
-            {savedNote.trim().length ? (
-              <>
-                <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note status">
-                  {formatUpdatedAt(savedNoteUpdatedAt) || "Saved"}
-                </div>
-                <div className="weeklyNoteCollapsedPreview">{savedNote}</div>
-              </>
-            ) : (
-              <div className="weeklyNoteCollapsedPreview weeklyNoteCollapsedEmpty">
-                Add context, pressure, wins, or anything worth updating as the week unfolds. You can update it as the week goes on.
-              </div>
-            )}
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
