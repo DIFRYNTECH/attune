@@ -25,16 +25,17 @@ const MOOD_WORD_ALIASES = {
 };
 
 const ENERGY_OPTIONS = [
-  { value: "verylow", label: "Very low", hint: "Depleted", tone: "low" },
+  { value: "verylow", label: "Very low", hint: "Depleted", tone: "soft" },
   { value: "low", label: "Low", hint: "Drained", tone: "low" },
   { value: "okay", label: "Okay", hint: "Steady", tone: "okay" },
-  { value: "high", label: "Wired", hint: "Buzzing", tone: "high" },
+  { value: "high", label: "High", hint: "Charged", tone: "high" },
 ];
 
 const BODY_OPTIONS = [
   { value: "tender", label: "Tender", hint: "Sensitive", tone: "soft" },
   { value: "achey", label: "Sore", hint: "Achey", tone: "low" },
   { value: "manageable", label: "Manageable", hint: "Holding okay", tone: "okay" },
+  { value: "great", label: "Great", hint: "Feeling strong", tone: "high" },
 ];
 
 const PACE_TRACE_PATH = "M80 1.5 H137 C148.874 1.5 158.5 11.126 158.5 23 C158.5 34.874 148.874 44.5 137 44.5 H23 C11.126 44.5 1.5 34.874 1.5 23 C1.5 11.126 11.126 1.5 23 1.5 H80";
@@ -385,7 +386,7 @@ export default function CheckIn({ state, actions }) {
         {showBodyStep ? (
           <div className="checkinStep" data-step="body">
             <label>Body</label>
-            <div className="choicePillGrid" data-columns="3" role="group" aria-label="Body">
+            <div className="choicePillGrid" data-columns="2" role="group" aria-label="Body">
               {BODY_OPTIONS.map((option) => (
                 <button
                   key={option.value}

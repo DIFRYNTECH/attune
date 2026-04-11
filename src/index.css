@@ -1585,6 +1585,9 @@
       grid-template-columns: repeat(4, minmax(0, 1fr));
       gap:7px;
     }
+    .choicePillGrid[data-columns="2"]{
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .choicePillGrid[data-columns="3"]{
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
@@ -3724,6 +3727,7 @@
 
     @media (max-width: 640px){
       .choicePillGrid,
+      .choicePillGrid[data-columns="2"],
       .choicePillGrid[data-columns="3"]{
         grid-template-columns: repeat(2, minmax(0, 1fr));
         gap:7px;

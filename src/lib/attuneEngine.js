@@ -77,6 +77,7 @@ export function suggestLevelFromCheckin(checkin){
     tender: -0.9,
     achey: -0.45,
     manageable: 0.35,
+    great: 0.9,
   }[body] ?? 0.35;
 
   const moodScore = {
@@ -120,11 +121,11 @@ export function suggestLevelFromCheckin(checkin){
   if(hasAny("Overwhelmed", "Anxious") && has("Restless")) suggested = clampPace(suggested, "gentle");
   if(has("Irritable")) suggested = clampPace(suggested, "light");
   if(tough) suggested = clampPace(suggested, "steady");
-  if(body !== "manageable") suggested = clampPace(suggested, "steady");
+  if(body !== "manageable" && body !== "great") suggested = clampPace(suggested, "steady");
   if(mood === "low" && body === "tender") suggested = clampPace(suggested, "gentle");
 
   const canBeCapable =
-    body === "manageable" &&
+    (body === "manageable" || body === "great") &&
     mood !== "low" &&
     !hasAny("Worn out", "Overwhelmed", "Anxious");
 
@@ -132,7 +133,7 @@ export function suggestLevelFromCheckin(checkin){
 
   const canBeBrave =
     energy === "high" &&
-    body === "manageable" &&
+    (body === "manageable" || body === "great") &&
     mood === "good" &&
     !tough &&
     has("Motivated") &&
