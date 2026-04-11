@@ -19,13 +19,34 @@ export default function Today({ state, actions }) {
 	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
 	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "On-device";
 	const canToggleNote = (noteBody || "").length > 180;
+	const togglePersonalNote = () => {
+		if (canToggleNote) setNoteExpanded((v) => !v);
+	};
 
 	return (
 		<div className="card myDayCard">
 			<h2 className="myDayHeading">🧭 My Day</h2>
 			<div className="sub">Aim for 2-5 tasks. You can add up to 10 if you’d like.</div>
 
-			<div className="result personalNote" style={{ marginBottom: 12 }}>
+			<div
+				className={"result personalNote" + (canToggleNote ? " tappable" : "")}
+				style={{ marginBottom: 12 }}
+				onClick={(e) => {
+					if (e.target instanceof Element && e.target.closest("button, a, input, select, textarea, label")) return;
+					togglePersonalNote();
+				}}
+				onKeyDown={(e) => {
+					if (!canToggleNote) return;
+					if (e.target !== e.currentTarget) return;
+					if (e.key === "Enter" || e.key === " ") {
+						e.preventDefault();
+						togglePersonalNote();
+					}
+				}}
+				role={canToggleNote ? "button" : undefined}
+				tabIndex={canToggleNote ? 0 : undefined}
+				aria-expanded={canToggleNote ? noteExpanded : undefined}
+			>
 				<div className="personalNoteTop">
 					<div style={{ display: "inline-flex", alignItems: "center", gap: 8, minWidth: 0 }}>
 						<div className="resultTitle" style={{ margin: 0 }}>
@@ -35,33 +56,26 @@ export default function Today({ state, actions }) {
 							AI notes are generated from your check-in. On-device notes use built-in guidance based on your selected pace.
 						</InfoTip>
 					</div>
-					<span
-						className={
-							"sourceChip" +
-							(noteIsAi ? " ai" : "") +
-							(noteIsLoading ? " loading" : "")
-						}
-						aria-label="Note source"
-					>
-						{noteSource}
-					</span>
+					<div>
+						<span
+							className={
+								"sourceChip" +
+								(noteIsAi ? " ai" : "") +
+								(noteIsLoading ? " loading" : "")
+							}
+							aria-label="Note source"
+						>
+							{noteSource}
+						</span>
+						{canToggleNote ? (
+							<span className={"personalNoteExpandCue" + (noteExpanded ? " open" : "")} aria-hidden="true">
+								<span className={"checkinNoteChevron" + (noteExpanded ? " open" : "")} aria-hidden="true" />
+							</span>
+						) : null}
+					</div>
 				</div>
 				{!!noteTitle && <p className="personalNoteTitle">{noteTitle}</p>}
-				{!!noteBody && (
-					<p className={"personalNoteBody" + (!noteExpanded ? " clamp" : "")}>{noteBody}</p>
-				)}
-				{canToggleNote && (
-					<div className="personalNoteActions">
-						<button
-							type="button"
-							className="linkBtn"
-							onClick={() => setNoteExpanded((v) => !v)}
-							aria-expanded={noteExpanded}
-						>
-							{noteExpanded ? "Show less" : "Read more"}
-						</button>
-					</div>
-				)}
+				{!!noteBody && <p className={"personalNoteBody" + (!noteExpanded ? " clamp" : "")}>{noteBody}</p>}
 				{aiNote?.status === "error" && !!aiNote?.error && (
 					<div className="sub" style={{ marginTop: 8 }}>{aiNote.error}</div>
 				)}

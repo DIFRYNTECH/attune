@@ -665,8 +665,8 @@ export default function Weekly({ state, actions }) {
                   Archive
                 </div>
                 <InfoTip label="About Past weeks">
-                  See 4-12 weeks at a glance, with low-pressure comparisons. It lives on this device first, and signed-in accounts can also sync
-                  weekly summaries.
+                  See 4-12 weeks at a glance, with low-pressure comparisons. Weekly summaries are stored on this device and also saved to your
+                  Attune account.
                 </InfoTip>
               </div>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--muted)" }}>
@@ -752,11 +752,11 @@ export default function Weekly({ state, actions }) {
                 </div>
               </div>
 
-              <div className="weekSummaryMeta">
-                <span>{activePastSummary.presence}/7 present</span>
-                <span>{activePastSummary.completions} completed</span>
-                {activePastSummary.avgPace ? <span>Avg pace: {prettyLevel(activePastSummary.avgPace)}</span> : null}
-              </div>
+              {activePastSummary.avgPace ? (
+                <div className="weekSummaryMeta">
+                  <span>Average pace: {prettyLevel(activePastSummary.avgPace)}</span>
+                </div>
+              ) : null}
 
               <div className="miniPills weekSummaryPills" style={{ marginTop: 10 }}>
                 <button
@@ -965,7 +965,7 @@ export default function Weekly({ state, actions }) {
           <div className="weeklyNoteHeaderCopy">
             <div className="resultTitle">Week note</div>
             <div className="footerNote" style={{ marginTop: 6 }}>
-              Optional context for what is shaping this week.
+              A few words about what is shaping this week.
             </div>
           </div>
           <div className="weeklyNoteActions">
@@ -1028,10 +1028,18 @@ export default function Weekly({ state, actions }) {
           </div>
         ) : (
           <div className="weeklyNoteCollapsed">
-            <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note status">
-              {savedNote.trim().length ? (formatUpdatedAt(savedNoteUpdatedAt) || "Saved") : "Collapsed until you need it."}
-            </div>
-            {savedNote.trim().length ? <div className="weeklyNoteCollapsedPreview">{savedNote}</div> : null}
+            {savedNote.trim().length ? (
+              <>
+                <div className="footerNote" style={{ marginTop: 0 }} aria-label="Weekly note status">
+                  {formatUpdatedAt(savedNoteUpdatedAt) || "Saved"}
+                </div>
+                <div className="weeklyNoteCollapsedPreview">{savedNote}</div>
+              </>
+            ) : (
+              <div className="weeklyNoteCollapsedPreview weeklyNoteCollapsedEmpty">
+                Add context, pressure, wins, or anything worth updating as the week unfolds. You can update it as the week goes on.
+              </div>
+            )}
           </div>
         )}
       </div>

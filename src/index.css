@@ -3183,6 +3183,14 @@
       overflow-wrap: anywhere;
       white-space: pre-wrap;
     }
+    .weeklyNoteCollapsedEmpty{
+      color: var(--muted);
+      display: block;
+      -webkit-line-clamp: unset;
+      line-clamp: unset;
+      -webkit-box-orient: initial;
+      background: color-mix(in oklab, var(--card85) 72%, white 28%);
+    }
 
     .weekStrip{
       margin-top: 10px;
@@ -3484,6 +3492,23 @@
       gap: 10px;
       margin-bottom: 8px;
     }
+    .personalNoteTop > :last-child{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      flex: 0 0 auto;
+    }
+    .personalNote.tappable{
+      cursor: pointer;
+    }
+    .personalNote.tappable:hover{
+      border-color: rgba(79,109,245,.18);
+      box-shadow: 0 10px 26px rgba(79,109,245,.08);
+    }
+    .personalNote.tappable:focus-visible{
+      outline: none;
+      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+    }
     .personalNoteMeta{
       font-size: 12px;
       font-weight: 900;
@@ -3530,14 +3555,28 @@
 
     .personalNoteBody.clamp{
       display: -webkit-box;
-      line-clamp: 3;
-      -webkit-line-clamp: 3;
+      line-clamp: 4;
+      -webkit-line-clamp: 4;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
-
-    .personalNoteActions{
-      margin-top: 6px;
+    .personalNoteExpandCue{
+      width: 26px;
+      height: 26px;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      border:1px solid color-mix(in oklab, var(--brand) 10%, var(--line));
+      background: color-mix(in oklab, var(--card98) 76%, white 24%);
+      flex: 0 0 auto;
+    }
+    .personalNoteExpandCue .checkinNoteChevron{
+      width: 7px;
+      height: 7px;
+      border-right-width: 1.6px;
+      border-bottom-width: 1.6px;
+      flex: 0 0 auto;
     }
 
     .linkBtn{
