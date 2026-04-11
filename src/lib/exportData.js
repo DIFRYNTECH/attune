@@ -165,7 +165,7 @@ export function buildUserDataExport(state) {
   const plan = getExportPlan(source, billing);
 
   return {
-    kind: "attune-user-data",
+    exportType: "attune-user-data",
     exportVersion: 1,
     exportedAt: new Date().toISOString(),
     app: {

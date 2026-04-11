@@ -257,7 +257,7 @@ export default function Profile({ state, actions }) {
     const d = new Date();
     const stamp = d.toISOString().slice(0, 10);
     const exportNoteMemoryPayload = {
-      kind: "attune-note-memory",
+      exportType: "attune-note-memory",
       exportedAt: new Date().toISOString(),
       noteMemory: state?.noteMemory || { notes: [] },
     };
