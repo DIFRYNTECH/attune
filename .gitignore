@@ -13,6 +13,7 @@ dist-ssr
 android/**/build/
 android/.gradle/
 android/capacitor-cordova-android-plugins/build/
+android/attune.env.properties
 
 # Vite cache
 .vite

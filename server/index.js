@@ -16,6 +16,7 @@ import {
 } from "./lib/paddleBilling.js";
 
 const PORT = Number(process.env.PORT || 8787);
+const ATTUNE_ENV = process.env.ATTUNE_ENV || process.env.NODE_ENV || "development";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
 const BOARD_TOTAL_TASK_COUNT = 15;
@@ -2153,7 +2154,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
 
 if (process.env.VERCEL !== "1") {
   app.listen(PORT, () => {
-    console.log(`AI API listening on http://localhost:${PORT}`);
+    console.log(`AI API (${ATTUNE_ENV}) listening on http://localhost:${PORT}`);
   });
 }
 

@@ -7,6 +7,8 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const publicAppUrl = normalizeBaseUrl(import.meta.env.VITE_PUBLIC_APP_URL);
 const authRedirectUrl = normalizeAbsoluteUrl(import.meta.env.VITE_AUTH_REDIRECT_URL);
 const authCallbackPath = normalizeCallbackPath(import.meta.env.VITE_AUTH_CALLBACK_PATH || "/auth/callback");
+const nativeAuthScheme = normalizeScheme(import.meta.env.VITE_NATIVE_AUTH_SCHEME || "com.attune.app");
+const nativeAuthHost = normalizeHost(import.meta.env.VITE_NATIVE_AUTH_HOST || "login-callback");
 
 export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
 
@@ -39,6 +41,18 @@ function normalizeCallbackPath(value) {
   if (!trimmed) return "/auth/callback";
 
   return trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
+}
+
+function normalizeScheme(value) {
+  if (typeof value !== "string") return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.replace(/:\/\/$/, "");
+}
+
+function normalizeHost(value) {
+  if (typeof value !== "string") return "";
+  return value.trim();
 }
 
 /**
@@ -83,7 +97,7 @@ export function getSupabaseClient() {
 export function getAuthRedirectUrl() {
   if (authRedirectUrl) return authRedirectUrl;
   if (publicAppUrl) return `${publicAppUrl}${authCallbackPath}`;
-  if (isNativePlatform()) return "com.attune.app://login-callback/";
+  if (isNativePlatform() && nativeAuthScheme && nativeAuthHost) return `${nativeAuthScheme}://${nativeAuthHost}/`;
 
   if (typeof window !== "undefined") {
     return `${window.location.origin}/`;

@@ -1,8 +1,11 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
+const appId = String(process.env.ATTUNE_APP_ID || "com.attune.app").trim() || "com.attune.app";
+const appName = String(process.env.ATTUNE_APP_NAME || "Attune").trim() || "Attune";
+
 const config: CapacitorConfig = {
-  appId: "com.attune.app",
-  appName: "Attune",
+  appId,
+  appName,
   webDir: "dist",
   bundledWebRuntime: false,
 
