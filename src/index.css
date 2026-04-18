@@ -445,7 +445,7 @@
 
     /* Login */
     .authPage{
-      min-height: 100dvh;
+      min-height: 100svh;
       display:flex;
       align-items: stretch;
       justify-content: center;
@@ -479,7 +479,7 @@
       width: 100%;
       max-width: 980px;
       margin: 0 auto;
-      min-height: 100dvh;
+      min-height: 100svh;
       padding: clamp(20px, 5vh, 44px) 0;
     }
     .loginCard{
@@ -2344,7 +2344,7 @@
     }
     .modalCard{
       width: min(520px, 100%);
-      max-height: min(calc(100dvh - 36px), 720px);
+      max-height: min(calc(100svh - 36px), 720px);
       background: var(--card98);
       border: 1px solid var(--line);
       border-radius: 18px;
@@ -2493,7 +2493,7 @@
     @media (max-width: 640px){
       .modalOverlay{
         align-items:flex-start;
-        padding: 10px 8px max(10px, env(safe-area-inset-bottom));
+        padding: max(10px, env(safe-area-inset-top)) 8px max(10px, env(safe-area-inset-bottom));
       }
       .modalOverlay.weekDetailsOverlay{
         align-items:center;
@@ -2509,7 +2509,7 @@
       }
       .modalCard{
         width: 100%;
-        max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
+        max-height: calc(100svh - 20px - env(safe-area-inset-bottom));
         border-radius: 16px;
       }
       .modalCard.weekSheetModal{

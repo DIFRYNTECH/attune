@@ -71,7 +71,7 @@ export default function PaywallSheet({ state, actions }) {
 
   return (
     <div
-      className="modalOverlay"
+      className="modalOverlay modalOverlayCentered"
       role="dialog"
       aria-modal="true"
       aria-label="Attune Plus"

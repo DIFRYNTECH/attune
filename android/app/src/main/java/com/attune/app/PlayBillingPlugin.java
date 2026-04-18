@@ -29,7 +29,7 @@ import java.util.Map;
 public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListener {
     private BillingClient billingClient;
     private final Map<String, ProductDetails> productDetailsCache = new HashMap<>();
-    private String pendingPurchaseCallId;
+    private boolean hasPendingPurchase = false;
 
     @Override
     public void load() {
@@ -187,7 +187,7 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
 
         call.setKeepAlive(true);
         saveCall(call);
-        pendingPurchaseCallId = call.getCallbackId();
+        hasPendingPurchase = true;
 
         BillingResult result = billingClient.launchBillingFlow(
             getActivity(),
@@ -201,12 +201,12 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
 
     @Override
     public void onPurchasesUpdated(@NonNull BillingResult billingResult, List<Purchase> purchases) {
-        if (pendingPurchaseCallId == null) return;
+        if (!hasPendingPurchase) return;
 
         if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && purchases != null && !purchases.isEmpty()) {
-            PluginCall savedCall = getSavedCall(pendingPurchaseCallId);
+            PluginCall savedCall = getSavedCall();
             if (savedCall == null) {
-                pendingPurchaseCallId = null;
+                hasPendingPurchase = false;
                 return;
             }
 
@@ -218,8 +218,7 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
             JSObject result = new JSObject();
             result.put("purchases", purchasesJson);
             savedCall.resolve(result);
-            releaseCall(savedCall);
-            pendingPurchaseCallId = null;
+            hasPendingPurchase = false;
             return;
         }
 
@@ -232,13 +231,12 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
     }
 
     private void rejectPendingPurchase(String message) {
-        if (pendingPurchaseCallId == null) return;
-        PluginCall savedCall = getSavedCall(pendingPurchaseCallId);
+        if (!hasPendingPurchase) return;
+        PluginCall savedCall = getSavedCall();
         if (savedCall != null) {
             savedCall.reject(message == null || message.trim().isEmpty() ? "purchase_failed" : message);
-            releaseCall(savedCall);
         }
-        pendingPurchaseCallId = null;
+        hasPendingPurchase = false;
     }
 
     @PluginMethod

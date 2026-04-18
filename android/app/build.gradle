@@ -12,13 +12,13 @@ if (attuneEnvFile.exists()) {
 
 def resolveAttuneSetting = { key, fallback ->
     def projectValue = project.findProperty(key)
-    if (projectValue != null && String(projectValue).trim()) return String(projectValue).trim()
+    if (projectValue != null && projectValue.toString().trim()) return projectValue.toString().trim()
 
     def envValue = System.getenv(key)
-    if (envValue != null && String(envValue).trim()) return String(envValue).trim()
+    if (envValue != null && envValue.toString().trim()) return envValue.toString().trim()
 
     def fileValue = attuneEnvProps.getProperty(key)
-    if (fileValue != null && String(fileValue).trim()) return String(fileValue).trim()
+    if (fileValue != null && fileValue.toString().trim()) return fileValue.toString().trim()
 
     return fallback
 }
@@ -27,12 +27,29 @@ def attuneAppId = resolveAttuneSetting('ATTUNE_APP_ID', 'com.attune.app')
 def attuneAppName = resolveAttuneSetting('ATTUNE_APP_NAME', 'Attune')
 def attuneAuthScheme = resolveAttuneSetting('ATTUNE_AUTH_SCHEME', attuneAppId)
 def attuneAuthCustomHost = resolveAttuneSetting('ATTUNE_AUTH_CUSTOM_HOST', 'login-callback')
-def attuneAuthHost = resolveAttuneSetting('ATTUNE_AUTH_HOST', 'app.attune.app')
+def attuneAuthHost = resolveAttuneSetting('ATTUNE_AUTH_HOST', 'app.useattune.co')
 def attuneAuthPathPrefix = resolveAttuneSetting('ATTUNE_AUTH_PATH_PREFIX', '/auth/callback')
 
 android {
     namespace = "com.attune.app"
     compileSdk = rootProject.ext.compileSdkVersion
+
+    signingConfigs {
+        release {
+            def ksPath = project.findProperty('ATTUNE_KEYSTORE_PATH') ?: System.getenv('ATTUNE_KEYSTORE_PATH') ?: ''
+            def ksPass = project.findProperty('ATTUNE_KEYSTORE_PASSWORD') ?: System.getenv('ATTUNE_KEYSTORE_PASSWORD') ?: ''
+            def ksAlias = project.findProperty('ATTUNE_KEY_ALIAS') ?: System.getenv('ATTUNE_KEY_ALIAS') ?: 'attune'
+            def ksKeyPass = project.findProperty('ATTUNE_KEY_PASSWORD') ?: System.getenv('ATTUNE_KEY_PASSWORD') ?: ksPass
+
+            if (ksPath && file(ksPath).exists()) {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksKeyPass
+            }
+        }
+    }
+
     defaultConfig {
         applicationId attuneAppId
         minSdkVersion rootProject.ext.minSdkVersion
@@ -57,6 +74,9 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (signingConfigs.release.storeFile != null) {
+                signingConfig signingConfigs.release
+            }
         }
     }
 }

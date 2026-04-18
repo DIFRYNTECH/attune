@@ -15,6 +15,7 @@ This is implemented as a small API layer (so your OpenAI key is never shipped to
 
 ### Production AI API on Vercel
 
+- Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to the Vercel project environment so the frontend can initialize Supabase auth.
 - Add `OPENAI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and optionally `SUPABASE_ANON_KEY` to the Vercel project environment.
 - Add `ALLOWED_ORIGINS=https://your-domain.example` so the API accepts browser calls from the live site.
 - Set `TRUST_PROXY=1` on Vercel so request IP handling is correct.
