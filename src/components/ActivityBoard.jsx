@@ -116,20 +116,30 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     return smartPickPool(base, state?.events, { nowMs });
   }, [options, canSmartPick, state?.events]);
 
+  // Snapshot attune picks when options change, not on every event update.
+  // This prevents markers from jumping to different tiles after picking.
+  const attunePicksRef = useRef([]);
   const attunePicks = useMemo(() => {
-    if (!canSmartPick) return [];
-    return getAttuneRecommendedPicks(options, state?.events, { limit: 3 });
-  }, [options, canSmartPick, state?.events]);
+    if (!canSmartPick) {
+      attunePicksRef.current = [];
+      return [];
+    }
+    const picks = getAttuneRecommendedPicks(options, state?.events, { limit: 3 });
+    attunePicksRef.current = picks;
+    return picks;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options, canSmartPick]);
 
   const attunePickOrder = useMemo(() => {
     const map = new Map();
-    for (let i = 0; i < attunePicks.length; i += 1) {
-      const text = typeof attunePicks[i]?.text === "string" ? attunePicks[i].text : "";
+    for (let i = 0; i < attunePicksRef.current.length; i += 1) {
+      const text = typeof attunePicksRef.current[i]?.text === "string" ? attunePicksRef.current[i].text : "";
       if (!text || map.has(text)) continue;
       map.set(text, i);
     }
     return map;
-  }, [attunePicks]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options, canSmartPick]);
 
   const [revealed, setRevealed] = useState(() => Array(TILE_COUNT).fill(false));
   const [revealFx, setRevealFx] = useState(() => Array(TILE_COUNT).fill(false));
