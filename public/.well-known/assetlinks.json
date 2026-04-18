@@ -1,0 +1,10 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.attune.app",
+    "sha256_cert_fingerprints": [
+      "06:2C:A9:F0:38:2A:11:7A:A1:48:7A:BF:97:BB:CA:74:8C:2B:1C:9B:C7:75:FF:A0:BE:8A:74:68:D2:31:3B:0C"
+    ]
+  }
+}]
