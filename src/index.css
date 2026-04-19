@@ -2209,6 +2209,7 @@
       transition: transform .18s ease, border-color .22s ease, box-shadow .22s ease, background .22s ease;
       -webkit-tap-highlight-color: transparent;
       box-shadow: inset 0 1px 0 rgba(255,255,255,.30);
+      touch-action: pan-y;
     }
     .boardTile:hover{border-color:var(--lineStrong); box-shadow: var(--shadowSoft); transform: translateY(-1px)}
     .boardTile:active{transform: translateY(1px)}
