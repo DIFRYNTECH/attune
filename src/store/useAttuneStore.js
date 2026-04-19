@@ -11,6 +11,7 @@ import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertW
 import { ensureProfile, updateProfile } from "../lib/profileApi";
 import { listWeeklySummaries as listWeeklySummariesRemote, upsertWeeklySummary as upsertWeeklySummaryRemote } from "../lib/weeklySummariesApi";
 import { deleteAllNoteMemory as deleteAllNoteMemoryRemote, listNoteMemory as listNoteMemoryRemote, upsertNoteMemory as upsertNoteMemoryRemote } from "../lib/noteMemoryApi";
+import { fetchDeviceState, upsertDeviceState } from "../lib/deviceStateApi";
 import { getApiUrl } from "../lib/api";
 import {
   createPaddlePortalSession,
@@ -494,6 +495,88 @@ function weeklyRowToLocal(row){
     momentum: clamp(Number(metrics.momentum) || 0, 0, 100),
     weekNote: typeof row?.summary === "string" ? row.summary : "",
     weekNoteUpdatedAt: updatedAtMs,
+  };
+}
+
+/**
+ * Merge a remote device-state snapshot into local state.
+ * Remote wins on fields the local device doesn't have yet;
+ * local wins when the user has already made progress today.
+ */
+function mergeRemoteDeviceState(local, remote){
+  if(!remote) return local;
+
+  const localToday = local.today || todayKey();
+  const remoteDate = typeof remote.date === "string" ? remote.date : "";
+
+  // Always merge events (90-day history is always useful).
+  let mergedEvents = local.events && typeof local.events === "object" ? { ...local.events } : {};
+  if(remote.events && typeof remote.events === "object"){
+    for(const [day, arr] of Object.entries(remote.events)){
+      if(!Array.isArray(arr)) continue;
+      const existing = Array.isArray(mergedEvents[day]) ? mergedEvents[day] : [];
+      const combined = [...existing];
+      for(const ev of arr){
+        if(!combined.some((e) => e.id === ev.id)) combined.push(ev);
+      }
+      mergedEvents[day] = combined;
+    }
+  }
+
+  // Today-specific fields: only apply if remote snapshot is also from today.
+  if(remoteDate !== localToday){
+    return { ...local, events: mergedEvents };
+  }
+
+  // checkedInToday: if remote checked in and local hasn't, adopt remote checkin.
+  const remoteCheckedIn = remote.checked_in_today === true;
+  const localCheckedIn = local.checkedInToday === true;
+  const checkedInToday = localCheckedIn || remoteCheckedIn;
+  const checkin = (!localCheckedIn && remoteCheckedIn && remote.checkin && typeof remote.checkin === "object")
+    ? remote.checkin
+    : local.checkin;
+  const level = (!localCheckedIn && remoteCheckedIn && typeof remote.level === "string")
+    ? remote.level
+    : local.level;
+
+  // boardAssigned: use remote if local is empty.
+  const localBoard = Array.isArray(local.boardAssigned) ? local.boardAssigned : [];
+  const remoteBoard = Array.isArray(remote.board_assigned) ? remote.board_assigned : [];
+  const boardAssigned = localBoard.length === 0 && remoteBoard.length > 0 ? remoteBoard : localBoard;
+
+  // options: use remote if local is empty.
+  const localOptions = Array.isArray(local.options) ? local.options : [];
+  const remoteOptions = Array.isArray(remote.options) ? remote.options : [];
+  const options = localOptions.length === 0 && remoteOptions.length > 0 ? remoteOptions : localOptions;
+  const optionsSource = localOptions.length === 0 && remoteOptions.length > 0
+    ? (remote.options_source || local.optionsSource)
+    : local.optionsSource;
+
+  // myDay: union by text; prefer done=true.
+  const localMyDay = Array.isArray(local.myDay) ? local.myDay : [];
+  const remoteMyDay = Array.isArray(remote.my_day) ? remote.my_day : [];
+  const myDayMap = new Map();
+  for(const t of localMyDay) if(t && t.text) myDayMap.set(t.text, t);
+  for(const t of remoteMyDay){
+    if(!t || !t.text) continue;
+    const existing = myDayMap.get(t.text);
+    if(!existing) myDayMap.set(t.text, t);
+    else if(t.done && !existing.done) myDayMap.set(t.text, { ...existing, done: true });
+  }
+  const myDay = Array.from(myDayMap.values());
+  const myDayCap = Math.max(local.myDayCap || 5, remote.my_day_cap || 5);
+
+  return {
+    ...local,
+    checkedInToday,
+    checkin,
+    level,
+    boardAssigned,
+    options,
+    optionsSource,
+    myDay,
+    myDayCap,
+    events: mergedEvents,
   };
 }
 
@@ -1261,6 +1344,40 @@ export function useAttuneStore(){
     saveState(state);
   }, [state]);
 
+  // Debounced push of board / check-in / events to Supabase for cross-device sync.
+  const devicePushTimerRef = useRef(null);
+  useEffect(() => {
+    const userId = state?.auth?.userId;
+    if(!userId) return;
+    if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
+    devicePushTimerRef.current = setTimeout(() => {
+      upsertDeviceState(userId, {
+        date: state.today || todayKey(),
+        checkin: state.checkin || {},
+        level: state.level || "gentle",
+        checkedInToday: state.checkedInToday || false,
+        boardAssigned: state.boardAssigned || [],
+        myDay: state.myDay || [],
+        myDayCap: state.myDayCap || 5,
+        options: state.options || [],
+        optionsSource: state.optionsSource || "default",
+        events: state.events || {},
+      }).catch(() => {});
+    }, 2000);
+    return () => {
+      if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
+    };
+  }, [
+    state?.auth?.userId,
+    state?.today,
+    state?.checkedInToday,
+    state?.checkin,
+    state?.level,
+    state?.boardAssigned,
+    state?.myDay,
+    state?.events,
+  ]);
+
   // Supabase auth bootstrap + listener
   useEffect(() => {
     const supabase = getSupabaseClient();
@@ -1312,6 +1429,16 @@ export function useAttuneStore(){
         }
       } catch {
         // ignore
+      }
+
+      // Merge cross-device board / check-in / events snapshot.
+      try {
+        const remoteDevice = await fetchDeviceState(userId);
+        if(remoteDevice){
+          setState((s) => mergeRemoteDeviceState(s, remoteDevice));
+        }
+      } catch {
+        // ignore — device sync is best-effort
       }
 
       if(!canSyncNoteMemory){
