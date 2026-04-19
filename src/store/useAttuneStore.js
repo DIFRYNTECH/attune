@@ -2824,16 +2824,20 @@ export function useAttuneStore(){
       }),
 
     resetToday: () =>
-      setState(s => ({
-        ...s,
-        options: [],
-        optionsSource: "default",
-        boardAssigned: [],
-        myDay: [],
-        currentSpin: null,
-        myDayCap: 5,
-        toast: { text: "Reset done. Fresh start, gently.", good: false, screen: s.screen }
-      })),
+      setState(s => {
+        // Keep tasks the user has already completed — they earned those.
+        const doneTasks = Array.isArray(s.myDay) ? s.myDay.filter(t => t?.done) : [];
+        return {
+          ...s,
+          options: [],
+          optionsSource: "default",
+          boardAssigned: [],
+          myDay: doneTasks,
+          currentSpin: null,
+          myDayCap: 5,
+          toast: { text: "Reset done. Fresh start, gently.", good: false, screen: s.screen }
+        };
+      }),
   }), []);
 
   const actionsRef = useRef(actions);
