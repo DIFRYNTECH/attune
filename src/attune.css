@@ -586,22 +586,15 @@ html[data-theme="dark"] .bottomNavBtn.active {
     scrollbar-gutter: stable;
   }
 
-  /* Activity Picker board: allow tiles to scroll within the card.
-     Prevents the bottom row from being clipped on shorter viewports
-     (especially when toast space is reserved). */
+  /* Activity Picker board: let tiles extend the page height naturally so
+     the outer .grid handles scrolling. Avoids nested-scroll touch issues on
+     Android WebView where gestures starting on buttons don't propagate. */
   .boardWrap {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+    flex: none;
   }
 
   .boardGrid {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
+    overflow: visible;
     padding-bottom: 8px;
   }
 
