@@ -156,7 +156,7 @@ export default function Today({ state, actions }) {
 								type="text"
 								value={customInput}
 								maxLength={120}
-										placeholder="Something to do today…"
+										placeholder="Type a task…"
 								onChange={(e) => setCustomInput(e.target.value)}
 								onKeyDown={(e) => {
 									if (e.key === "Enter") { e.preventDefault(); submitCustomTask(); }
