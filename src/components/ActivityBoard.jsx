@@ -355,13 +355,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     });
   }, [boardAssigned, takenTexts]);
 
-  const onAdd = (idx) => {
-    if (loading) return;
-
-    const opt = boardAssigned[idx];
-    if (!opt?.text) return;
-
-    // Single-click behavior: reveal the tile when selecting.
+  const revealTile = (idx) => {
     let didReveal = false;
     setRevealed((prev) => {
       if (prev[idx]) return prev;
@@ -370,8 +364,14 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       next[idx] = true;
       return next;
     });
-
     if (didReveal) triggerRevealFx(idx);
+  };
+
+  const onAdd = (idx) => {
+    if (loading) return;
+
+    const opt = boardAssigned[idx];
+    if (!opt?.text) return;
 
     if (takenTexts.has(opt.text)) {
       actions.setToast?.("Already in your day. Trying is enough.", true);
@@ -389,6 +389,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       return;
     }
 
+    // Reveal the tile then add it.
+    revealTile(idx);
     actions.addOption({ text: opt.text, level: opt.level });
   };
 
@@ -408,6 +410,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       return;
     }
     actions.setMyDayCap?.(HARD_CAP);
+    revealTile(pendingAdd.idx);
     actions.addOption({ text: pendingAdd.opt.text, level: pendingAdd.opt.level });
     closeConfirm();
   };
