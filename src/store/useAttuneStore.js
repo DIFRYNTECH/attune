@@ -1333,6 +1333,7 @@ export function useAttuneStore(){
     }
 
     let unsub = null;
+    let bootSyncDone = false;
     (async () => {
       try {
         const { data } = await supabase.auth.getSession();
@@ -1366,12 +1367,17 @@ export function useAttuneStore(){
 
         const billingState = await syncBillingState(userId).catch(() => normalizeBillingState(defaultBillingState()));
         syncFromSupabase({ userId, canSyncNoteMemory: hasVerifiedPlusNoteMemoryAccess(billingState), force: true });
+        bootSyncDone = true;
       } catch {
         // Ignore; app can still run without auth.
+        bootSyncDone = true;
       }
     })();
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange((event, session) => {
+      // INITIAL_SESSION fires synchronously on subscribe — boot getSession() already
+      // handles the initial sync, so skip it here to avoid duplicate Supabase calls.
+      const isInitialFire = event === "INITIAL_SESSION" || !bootSyncDone;
       const email = session?.user?.email ? String(session.user.email) : "";
       const userId = session?.user?.id ? String(session.user.id) : "";
 
@@ -1395,11 +1401,10 @@ export function useAttuneStore(){
         screen: session ? (s.screen || "checkin") : "checkin",
       }));
 
-      if(userId){
+      if(userId && !isInitialFire){
         hydrateProfileNameFromAccount({ userId, email })
           .then((remoteProfileName) => {
             if(!remoteProfileName) return;
-
             setState((s) => {
               if(s?.auth?.signedIn !== true || s?.auth?.userId !== userId) return s;
               const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
