@@ -168,7 +168,6 @@ export default function CheckIn({ state, actions }) {
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const previousLevelRef = useRef(level);
-  const paceStepRevealedRef = useRef(hasInitialProgress.current);
   const paceTraceTimeoutRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
@@ -227,6 +226,7 @@ export default function CheckIn({ state, actions }) {
     level !== DEFAULT_LEVEL ||
     !(selectedMoodWords.length === 1 && selectedMoodWords[0] === "Okay" && checkin.mood === "okay")
   );
+  const paceStepRevealedRef = useRef(hasInitialProgress.current);
   const [stepState, setStepState] = useState(() => ({
     mood: hasInitialProgress.current,
     energy: hasInitialProgress.current,
