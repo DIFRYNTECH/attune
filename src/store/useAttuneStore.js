@@ -1421,10 +1421,12 @@ export function useAttuneStore(){
             syncFromSupabase({ userId, canSyncNoteMemory: hasVerifiedPlusNoteMemoryAccess(billingState) });
           })
           .catch(() => {});
-      }else{
+      }else if(!userId){
+        // User is signed out — reset billing to free.
         supabaseSyncRef.current = { inFlightKey: "", lastCompletedKey: "", lastCompletedAt: 0 };
         syncBillingState("").catch(() => {});
       }
+      // If isInitialFire && userId — boot getSession() already handles billing sync; skip.
     });
     unsub = data?.subscription?.unsubscribe || null;
 
