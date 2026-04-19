@@ -2963,6 +2963,31 @@
       opacity: 1;
       transform: translateX(1px) rotate(-45deg);
     }
+
+    html[data-theme="dark"] .weeklyDigestStat{
+      background:
+        radial-gradient(80px 60px at 20% 0%, rgba(107,89,247,.10), transparent 70%),
+        linear-gradient(180deg, rgba(107,89,247,.07), rgba(107,89,247,.03)),
+        color-mix(in oklab, var(--card98) 60%, rgba(20,24,48,1));
+      border-color: color-mix(in oklab, var(--brand) 18%, rgba(255,255,255,.06));
+      box-shadow:
+        0 10px 24px rgba(10,14,28,.18),
+        inset 0 1px 0 rgba(255,255,255,.05);
+      color: rgba(255,255,255,.96);
+    }
+    html[data-theme="dark"] .weeklyDigestStat:hover{
+      background:
+        radial-gradient(80px 60px at 20% 0%, rgba(107,89,247,.16), transparent 70%),
+        linear-gradient(180deg, rgba(107,89,247,.10), rgba(107,89,247,.05)),
+        color-mix(in oklab, var(--card98) 60%, rgba(20,24,48,1));
+      border-color: color-mix(in oklab, var(--brand) 28%, rgba(255,255,255,.08));
+    }
+    html[data-theme="dark"] .weeklyDigestStatValue{
+      color: rgba(255,255,255,.97);
+    }
+    html[data-theme="dark"] .weeklyDigestStatLabel{
+      color: color-mix(in oklab, rgba(255,255,255,.72) 100%, transparent);
+    }
     .weeklyUpgradeCard{
       display: flex;
       align-items: center;
