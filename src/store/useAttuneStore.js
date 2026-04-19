@@ -999,8 +999,6 @@ function normalizeLoadedState(loaded){
   if(next.profile.theme !== "light" && next.profile.theme !== "dark") next.profile.theme = "light";
   if(typeof next.profile.plan !== "string") next.profile.plan = "free";
   if(next.profile.plan !== "free" && next.profile.plan !== "plus") next.profile.plan = "free";
-  // Dark mode is a Plus feature; fall back to light for free plan.
-  if(next.profile.plan !== "plus") next.profile.theme = "light";
 
   if(!next.noteMemory || typeof next.noteMemory !== "object" || Array.isArray(next.noteMemory)) next.noteMemory = { notes: [] };
   if(!Array.isArray(next.noteMemory.notes)) next.noteMemory.notes = [];
@@ -1008,6 +1006,8 @@ function normalizeLoadedState(loaded){
   next.billing = normalizeBillingState(next.billing);
   const normalizedPlanId = next.billing.planId === "plus" ? "plus" : "free";
   next.profile.plan = normalizedPlanId;
+  // Dark mode is a Plus feature; fall back to light for free plan.
+  if(normalizedPlanId !== "plus") next.profile.theme = "light";
   // Free plan should not keep historical note memory.
   if(normalizedPlanId !== "plus") next.noteMemory = { notes: [] };
   // Trim just in case older builds kept more.
