@@ -164,6 +164,19 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     return set;
   }, [myDay]);
 
+  // Visual display order: always float attune picks to the first slots so they
+  // never drift down the grid after picks or board rebuilds.
+  const displayOrder = useMemo(() => {
+    const indices = Array.from({ length: TILE_COUNT }, (_, i) => i);
+    return indices.sort((a, b) => {
+      const aIsAttune = attunePickOrder.has(boardAssigned[a]?.text || "");
+      const bIsAttune = attunePickOrder.has(boardAssigned[b]?.text || "");
+      if (aIsAttune && !bIsAttune) return -1;
+      if (!aIsAttune && bIsAttune) return 1;
+      return a - b;
+    });
+  }, [boardAssigned, attunePickOrder]);
+
   const pickedCount = myDay?.length || 0;
   const atHardCap = pickedCount >= HARD_CAP;
 
@@ -472,7 +485,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       )}
 
       <div className="boardGrid" role="grid" aria-label="Activity tiles">
-        {Array.from({ length: TILE_COUNT }).map((_, idx) => {
+        {displayOrder.map((idx) => {
           const opt = boardAssigned[idx];
           const isPlaceholder = !!opt?.placeholder || !opt?.text;
           const isTaken = !!opt?.text && takenTexts.has(opt.text);
