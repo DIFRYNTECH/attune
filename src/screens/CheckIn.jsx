@@ -238,7 +238,7 @@ export default function CheckIn({ state, actions }) {
   const showEnergyStep = hasInitialProgress.current || stepState.mood;
   const showBodyStep = hasInitialProgress.current || stepState.energy;
   const showPaceStep = hasInitialProgress.current || stepState.body;
-  const showNoteStep = hasInitialProgress.current || stepState.pace;
+  const showNoteStep = showPaceStep;
   const visibleEnergyValue = hasInitialProgress.current || stepState.energy ? checkin.energy : "";
   const visibleBodyValue = hasInitialProgress.current || stepState.body ? checkin.body : "";
   const visibleLevel = showPaceStep ? level : "";
