@@ -76,6 +76,13 @@ const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
   .map((s) => s.trim())
   .filter(Boolean);
 const allowedOrigins = Array.from(new Set([...DEFAULT_ALLOWED_ORIGINS, ...ALLOWED_ORIGINS]));
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/attune-[a-z0-9-]+-difryngrouppgmailcoms-projects\.vercel\.app$/,
+];
+function isOriginAllowed(origin) {
+  if (allowedOrigins.includes(origin)) return true;
+  return ALLOWED_ORIGIN_PATTERNS.some((re) => re.test(origin));
+}
 
 function createRequestId() {
   try {
@@ -211,7 +218,7 @@ app.use((req, res, next) => {
   }
 
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && isOriginAllowed(origin)) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Vary", "Origin");
     res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
@@ -242,7 +249,7 @@ function enforceAllowedOrigin(req, res, next) {
   // Non-browser clients may omit Origin; rate limiting is the primary control.
   const origin = req.headers.origin;
   if (!origin) return next();
-  if (allowedOrigins.includes(origin)) return next();
+  if (isOriginAllowed(origin)) return next();
   setRequestErrorCode(req, "forbidden_origin");
   logEvent("warn", "origin_rejected", {
     requestId: getRequestLogContext(req).requestId,
