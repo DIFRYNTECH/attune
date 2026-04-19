@@ -67,6 +67,9 @@ const DEFAULT_ALLOWED_ORIGINS = [
   "http://localhost",
   "https://localhost",
   "capacitor://localhost",
+  "https://uat.useattune.co",
+  "https://www.useattune.co",
+  "https://useattune.co",
 ];
 const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || "")
   .split(",")
