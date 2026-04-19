@@ -168,6 +168,7 @@ export default function CheckIn({ state, actions }) {
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const previousLevelRef = useRef(level);
+  const paceStepRevealedRef = useRef(hasInitialProgress.current);
   const paceTraceTimeoutRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
@@ -247,6 +248,9 @@ export default function CheckIn({ state, actions }) {
     const didLevelChange = previousLevel !== level;
     previousLevelRef.current = level;
 
+    const isFirstReveal = !paceStepRevealedRef.current;
+    if (showPaceStep) paceStepRevealedRef.current = true;
+
     if (paceTraceTimeoutRef.current) {
       clearTimeout(paceTraceTimeoutRef.current);
       paceTraceTimeoutRef.current = null;
@@ -258,7 +262,7 @@ export default function CheckIn({ state, actions }) {
       return undefined;
     }
 
-    if (didLevelChange) {
+    if (didLevelChange || isFirstReveal) {
       const prefersReducedMotion = typeof window !== "undefined"
         && typeof window.matchMedia === "function"
         && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
