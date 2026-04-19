@@ -64,6 +64,23 @@ async function main() {
   };
 
   const androidEnvFile = path.resolve(rootDir, "android", "attune.env.properties");
+
+  // Preserve signing vars — read from environment, fall through to existing file if present.
+  const existingProps = {};
+  if (fs.existsSync(androidEnvFile)) {
+    for (const line of fs.readFileSync(androidEnvFile, "utf8").split("\n")) {
+      const [k, ...rest] = line.split("=");
+      if (k && rest.length) existingProps[k.trim()] = rest.join("=").trim();
+    }
+  }
+  const signingVars = ["ATTUNE_KEYSTORE_PATH", "ATTUNE_KEYSTORE_PASSWORD", "ATTUNE_KEY_ALIAS", "ATTUNE_KEY_PASSWORD"];
+  const signingLines = signingVars
+    .map((k) => {
+      const val = normalize(process.env[k]) || existingProps[k] || "";
+      return val ? `${k}=${val}` : null;
+    })
+    .filter(Boolean);
+
   fs.writeFileSync(
     androidEnvFile,
     [
@@ -73,6 +90,7 @@ async function main() {
       `ATTUNE_AUTH_CUSTOM_HOST=${nextEnv.ATTUNE_AUTH_CUSTOM_HOST}`,
       `ATTUNE_AUTH_HOST=${nextEnv.ATTUNE_AUTH_HOST}`,
       `ATTUNE_AUTH_PATH_PREFIX=${nextEnv.ATTUNE_AUTH_PATH_PREFIX}`,
+      ...signingLines,
     ].join("\n") + "\n",
     "utf8",
   );

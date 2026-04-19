@@ -485,6 +485,8 @@ html {
     --bottomNavSpace: 56px;
 
     padding: 12px;
+    /* Push content below the status bar on Android/iOS edge-to-edge displays. */
+    padding-top: max(12px, env(safe-area-inset-top, 12px));
     /* Keep content clear of the fixed bottom nav without creating a huge blank band. */
     /* Reserve nav space here so cards don't slide under the fixed bottom nav. */
     padding-bottom: calc(12px + 4px + var(--bottomNavSpace) + env(safe-area-inset-bottom));

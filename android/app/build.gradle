@@ -36,10 +36,10 @@ android {
 
     signingConfigs {
         release {
-            def ksPath = project.findProperty('ATTUNE_KEYSTORE_PATH') ?: System.getenv('ATTUNE_KEYSTORE_PATH') ?: ''
-            def ksPass = project.findProperty('ATTUNE_KEYSTORE_PASSWORD') ?: System.getenv('ATTUNE_KEYSTORE_PASSWORD') ?: ''
-            def ksAlias = project.findProperty('ATTUNE_KEY_ALIAS') ?: System.getenv('ATTUNE_KEY_ALIAS') ?: 'attune'
-            def ksKeyPass = project.findProperty('ATTUNE_KEY_PASSWORD') ?: System.getenv('ATTUNE_KEY_PASSWORD') ?: ksPass
+            def ksPath = resolveAttuneSetting('ATTUNE_KEYSTORE_PATH', '')
+            def ksPass = resolveAttuneSetting('ATTUNE_KEYSTORE_PASSWORD', '')
+            def ksAlias = resolveAttuneSetting('ATTUNE_KEY_ALIAS', 'attune')
+            def ksKeyPass = resolveAttuneSetting('ATTUNE_KEY_PASSWORD', ksPass)
 
             if (ksPath && file(ksPath).exists()) {
                 storeFile file(ksPath)

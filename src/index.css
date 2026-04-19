@@ -239,6 +239,8 @@
       width:min(100%, 1160px);
       margin:0 auto;
       padding: 18px;
+      padding-top: max(18px, env(safe-area-inset-top, 18px));
+      padding-bottom: max(18px, env(safe-area-inset-bottom, 18px));
       height: 100%;
       display: flex;
       flex-direction: column;
