@@ -1031,9 +1031,18 @@ function normalizeLoadedState(loaded){
   // Paywall is ephemeral; don't restore it across reloads.
   next.paywall = null;
 
-  // Treat the Check-in screen as a fresh form on app start.
-  // This avoids confusing "defaults" that persist from an old selection.
-  if(next.today === todayKey() && next.screen === "checkin"){
+  // Treat the Check-in screen as a fresh form on app start — but only if
+  // nothing has been filled in yet. If the user already changed mood, energy,
+  // body, note, or pace from the defaults, preserve their work so a cold
+  // restart (e.g. after sign-out) doesn't wipe a partially-filled check-in.
+  const checkinIsDefault =
+    next.checkin?.mood === DEFAULT_CHECKIN.mood &&
+    next.checkin?.energy === DEFAULT_CHECKIN.energy &&
+    next.checkin?.body === DEFAULT_CHECKIN.body &&
+    (!next.checkin?.note || next.checkin.note.trim() === "") &&
+    (next.level === "gentle" || next.level === DEFAULT_CHECKIN.level);
+
+  if(next.today === todayKey() && next.screen === "checkin" && checkinIsDefault){
     next.checkedInToday = false;
     next.checkin = { ...DEFAULT_CHECKIN };
     next.level = "gentle";
