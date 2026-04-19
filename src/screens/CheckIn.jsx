@@ -241,7 +241,7 @@ export default function CheckIn({ state, actions }) {
   const showNoteStep = hasInitialProgress.current || stepState.pace;
   const visibleEnergyValue = hasInitialProgress.current || stepState.energy ? checkin.energy : "";
   const visibleBodyValue = hasInitialProgress.current || stepState.body ? checkin.body : "";
-  const visibleLevel = hasInitialProgress.current || stepState.pace ? level : "";
+  const visibleLevel = showPaceStep ? level : "";
 
   useEffect(() => {
     const previousLevel = previousLevelRef.current;
