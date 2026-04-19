@@ -2723,6 +2723,34 @@ export function useAttuneStore(){
         return next;
       }),
 
+    addCustomTask: (text) =>
+      setState(s => {
+        const trimmed = typeof text === "string" ? text.trim() : "";
+        if(!trimmed) return s;
+        if(trimmed.length > 120){
+          return { ...s, toast: { text: "Keep it brief — try a shorter task.", good: false, screen: s.screen } };
+        }
+        if((s.myDay?.length || 0) >= 10){
+          return { ...s, toast: { text: "That's plenty for today. Let's cap it at 10.", good: false, screen: s.screen } };
+        }
+        const alreadyAdded = (s.myDay || []).some(t => t.text.toLowerCase() === trimmed.toLowerCase());
+        if(alreadyAdded){
+          return { ...s, toast: { text: "That's already in your day.", good: false, screen: s.screen } };
+        }
+        const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        const next = {
+          ...s,
+          myDay: [...s.myDay, { id, text: trimmed, done: false, custom: true }],
+          toast: { text: "Added to your day.", good: true, screen: s.screen },
+        };
+        return recordEventOnState(
+          next,
+          "activityPicked",
+          { text: trimmed, pace: s.level, source: "custom" },
+          { maxDays: EVENT_DAYS_TO_KEEP }
+        );
+      }),
+
     removeTask: (id) =>
       setState(s => {
         const prevTask = (s.myDay || []).find(t => t.id === id);

@@ -3707,6 +3707,133 @@
     }
     .myDayCard .item.done .txt{color: color-mix(in oklab, var(--ink) 76%, var(--muted))}
 
+    /* Custom (user-added) tasks — subtle differentiation */
+    .myDayCard .item.customTask{
+      border-style: dashed;
+      border-color: color-mix(in oklab, var(--brand) 28%, var(--line));
+      background: color-mix(in oklab, var(--brand) 4%, var(--myDayItemBg));
+    }
+    .myDayCard .item.customTask:hover{
+      border-color: color-mix(in oklab, var(--brand) 44%, var(--line));
+    }
+    .myDayCard .item.customTask.done{
+      border-style: dashed;
+      border-color: var(--successLine);
+    }
+    .customTaskBadge{
+      display: inline-block;
+      margin-top: 3px;
+      padding: 1px 6px;
+      border-radius: 99px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+      color: color-mix(in oklab, var(--brand) 80%, var(--ink));
+      background: color-mix(in oklab, var(--brand) 10%, transparent);
+      border: 1px solid color-mix(in oklab, var(--brand) 22%, transparent);
+      line-height: 1.5;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Add-your-own trigger row */
+    .customTaskRow{
+      padding: 6px 0 2px;
+    }
+    .customTaskTrigger{
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      padding: 6px 0;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 700;
+      color: color-mix(in oklab, var(--brand) 72%, var(--muted));
+      letter-spacing: -.01em;
+      transition: color .15s;
+    }
+    .customTaskTrigger:hover{
+      color: var(--brand);
+    }
+    .customTaskTriggerIcon{
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1.5px solid color-mix(in oklab, var(--brand) 40%, transparent);
+      font-size: 15px;
+      line-height: 1;
+      color: color-mix(in oklab, var(--brand) 72%, var(--muted));
+      transition: border-color .15s, color .15s;
+    }
+    .customTaskTrigger:hover .customTaskTriggerIcon{
+      border-color: var(--brand);
+      color: var(--brand);
+    }
+
+    /* Expanded input row */
+    .customTaskInputWrap{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 0 4px;
+    }
+    .customTaskInput{
+      flex: 1;
+      min-width: 0;
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 10px;
+      border: 1.5px solid color-mix(in oklab, var(--brand) 36%, var(--line));
+      background: color-mix(in oklab, var(--brand) 4%, var(--surface));
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 600;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+      -webkit-appearance: none;
+    }
+    .customTaskInput::placeholder{
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .customTaskInput:focus{
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand) 14%, transparent);
+    }
+    .btn.small.customTaskAdd{
+      height: 40px;
+      padding: 0 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 800;
+      background: var(--brand);
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: opacity .15s;
+    }
+    .btn.small.customTaskAdd:disabled{
+      opacity: .4;
+      cursor: default;
+    }
+    .btn.small.customTaskCancel{
+      height: 40px;
+      padding: 0 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
     /* My Day: scroll only the task list area */
     .myDayScroll{
       overflow: visible;

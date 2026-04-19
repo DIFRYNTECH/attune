@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import InfoTip from "../components/InfoTip";
 import { getTodayEmptyStateCopy } from "../lib/personalization";
 
@@ -6,12 +6,21 @@ export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
 	const aiNote = state.aiDailyNote;
 	const [noteExpanded, setNoteExpanded] = useState(false);
+	const [customInput, setCustomInput] = useState("");
+	const [showCustomInput, setShowCustomInput] = useState(false);
+	const customInputRef = useRef(null);
 	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
 
 	useEffect(() => {
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, []);
+
+	useEffect(() => {
+		if (showCustomInput) {
+			setTimeout(() => customInputRef.current?.focus(), 50);
+		}
+	}, [showCustomInput]);
 
 	const noteIsAi = aiNote?.status === "ready";
 	const noteIsLoading = aiNote?.status === "loading";
@@ -22,6 +31,16 @@ export default function Today({ state, actions }) {
 	const togglePersonalNote = () => {
 		if (canToggleNote) setNoteExpanded((v) => !v);
 	};
+
+	const atCap = (myDay?.length || 0) >= 10;
+
+	function submitCustomTask() {
+		const text = customInput.trim();
+		if (!text) return;
+		actions.addCustomTask(text);
+		setCustomInput("");
+		setShowCustomInput(false);
+	}
 
 	return (
 		<div className="card myDayCard">
@@ -81,7 +100,7 @@ export default function Today({ state, actions }) {
 				)}
 			</div>
 
-			{myDay.length === 0 ? (
+			{myDay.length === 0 && (
 				<div className="hint">
 					{emptyStateCopy.beforeCta}
 					<button
@@ -94,11 +113,13 @@ export default function Today({ state, actions }) {
 					</button>
 					{emptyStateCopy.afterCta}
 				</div>
-			) : (
+			)}
+
+			{myDay.length > 0 && (
 				<div className="myDayScroll" aria-label="My Day tasks">
 					<ul className="list" aria-label="My Day">
 						{myDay.map((t) => (
-							<li key={t.id} className={"item" + (t.done ? " done" : "") }>
+							<li key={t.id} className={"item" + (t.done ? " done" : "") + (t.custom ? " customTask" : "")}>
 								<label className="left itemMain">
 									<input
 										type="checkbox"
@@ -108,6 +129,7 @@ export default function Today({ state, actions }) {
 									/>
 									<span className="itemTextWrap">
 										<span className="txt">{t.text}</span>
+										{t.custom && <span className="customTaskBadge" aria-hidden="true">yours</span>}
 									</span>
 								</label>
 								<button
@@ -121,6 +143,56 @@ export default function Today({ state, actions }) {
 							</li>
 						))}
 					</ul>
+				</div>
+			)}
+
+			{!atCap && (
+				<div className="customTaskRow">
+					{showCustomInput ? (
+						<div className="customTaskInputWrap">
+							<input
+								ref={customInputRef}
+								className="customTaskInput"
+								type="text"
+								value={customInput}
+								maxLength={120}
+								placeholder="What else needs doing today?"
+								onChange={(e) => setCustomInput(e.target.value)}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") { e.preventDefault(); submitCustomTask(); }
+									if (e.key === "Escape") { setShowCustomInput(false); setCustomInput(""); }
+								}}
+								aria-label="Add your own task"
+							/>
+							<button
+								type="button"
+								className="btn small customTaskAdd"
+								onClick={submitCustomTask}
+								disabled={!customInput.trim()}
+								aria-label="Add task"
+							>
+								Add
+							</button>
+							<button
+								type="button"
+								className="btn small quiet customTaskCancel"
+								onClick={() => { setShowCustomInput(false); setCustomInput(""); }}
+								aria-label="Cancel"
+							>
+								Cancel
+							</button>
+						</div>
+					) : (
+						<button
+							type="button"
+							className="customTaskTrigger"
+							onClick={() => setShowCustomInput(true)}
+							aria-label="Add your own task"
+						>
+							<span className="customTaskTriggerIcon" aria-hidden="true">+</span>
+							Add your own
+						</button>
+					)}
 				</div>
 			)}
 		</div>
