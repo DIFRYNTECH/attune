@@ -1,29 +1,29 @@
 :root{
       --fontUi: "Manrope", "Segoe UI", sans-serif;
-      --bg:#f5f3fb;
-      --card:#ffffff;
-      --ink:#191b28;
-      --muted:#61667d;
-      --line:rgba(43,49,78,.10);
-      --divider: rgba(43,49,78,.08);
-      --lineStrong:rgba(43,49,78,.16);
-      --brand:#6b59f7;
-      --brand2:#8c7bff;
-      --brandSoft:rgba(107,89,247,.12);
-      --brandGlow:rgba(107,89,247,.22);
+  --bg:#eef2f6;
+  --card:#fafcff;
+  --ink:#1b2430;
+  --muted:#637180;
+  --line:rgba(27,36,48,.10);
+  --divider: rgba(27,36,48,.08);
+  --lineStrong:rgba(27,36,48,.16);
+  --brand:#486f96;
+  --brand2:#6f8fad;
+  --brandSoft:rgba(72,111,150,.12);
+  --brandGlow:rgba(72,111,150,.22);
       --successSoft:rgba(131,223,191,.16);
       --successLine:rgba(102,200,168,.34);
       --warn:#f59e0b;
       --danger:#ef4444;
-      --shadow: 0 16px 44px rgba(28,34,62,.10);
-      --shadowSoft: 0 10px 24px rgba(28,34,62,.06);
-      --modalShadow: 0 30px 80px rgba(23,27,46,.20);
+  --shadow: 0 16px 44px rgba(27,36,48,.10);
+  --shadowSoft: 0 10px 24px rgba(27,36,48,.06);
+  --modalShadow: 0 30px 80px rgba(20,28,40,.18);
       --radius: 24px;
 
       --surface1: rgba(255,255,255,.90);
       --surface2: rgba(255,255,255,.76);
-      --surface3: rgba(250,248,255,.94);
-      --surfaceInset: rgba(246,244,255,.95);
+  --surface3: rgba(250,252,255,.94);
+  --surfaceInset: rgba(244,248,252,.95);
 
       --card60: rgba(255,255,255,.60);
       --card78: rgba(255,255,255,.78);
@@ -39,16 +39,16 @@
 
       --heroBg:
         radial-gradient(120px 80px at 14% 0%, rgba(255,255,255,.68), transparent 68%),
-        linear-gradient(135deg, rgba(255,255,255,.62), rgba(245,244,255,.34)),
+        linear-gradient(135deg, rgba(255,255,255,.62), rgba(237,243,249,.40)),
         rgba(255,255,255,.52);
       --bodyBg:
-        radial-gradient(1100px 720px at 8% -6%, rgba(107,89,247,.18), transparent 58%),
-        radial-gradient(980px 680px at 88% 4%, rgba(143,224,198,.16), transparent 56%),
-        linear-gradient(180deg, #f7f4ff 0%, #f3f6fb 52%, #f7fbff 100%);
+        radial-gradient(1100px 720px at 8% -6%, rgba(72,111,150,.16), transparent 58%),
+        radial-gradient(980px 680px at 88% 4%, rgba(185,202,217,.24), transparent 56%),
+        linear-gradient(180deg, #f5f8fb 0%, #eef2f6 52%, #f7fafc 100%);
 
       --scrollTrack: rgba(219,223,240,.74);
-      --scrollThumb: rgba(107,89,247,.34);
-      --scrollThumbHover: rgba(107,89,247,.52);
+      --scrollThumb: rgba(72,111,150,.34);
+      --scrollThumbHover: rgba(72,111,150,.52);
 
       --switchTrack: rgba(25,28,42,.10);
 
@@ -63,25 +63,25 @@
 
       --authCardBg: rgba(255,255,255,.70);
       --authCardBorder: rgba(255,255,255,.60);
-      --authCardShadow: 0 30px 80px rgba(124,58,237,.18), 0 4px 12px rgba(0,0,0,.05);
+      --authCardShadow: 0 30px 80px rgba(72,111,150,.16), 0 4px 12px rgba(0,0,0,.05);
       --authCardInner: rgba(255,255,255,.38);
       --authInputBg: rgba(255,255,255,.60);
-      --authInputBorder: rgba(124,58,237,.15);
+      --authInputBorder: rgba(72,111,150,.15);
       --authSecondaryBg: rgba(255,255,255,.44);
-      --authSecondaryBorder: rgba(98,97,150,.14);
+      --authSecondaryBorder: rgba(72,111,150,.14);
       --authHintBg: rgba(255,255,255,.34);
-      --authHintBorder: rgba(119,109,199,.16);
+      --authHintBorder: rgba(72,111,150,.16);
       --authCheckboxBg: rgba(255,255,255,.62);
-      --authCheckboxBorder: rgba(108,93,208,.22);
+      --authCheckboxBorder: rgba(72,111,150,.22);
 
-      --logoTileTop: #7a68ff;
-      --logoTileBottom: #9788ff;
+      --logoTileTop: #486f96;
+      --logoTileBottom: #6f8fad;
       --logoTileHighlight: rgba(255,255,255,.34);
       --logoTileSheen: rgba(255,255,255,.12);
       --logoTileBorder: rgba(255,255,255,.46);
       --logoTileBorderStrong: rgba(255,255,255,.30);
-      --logoTileShadow: 0 10px 18px rgba(86,72,204,.18);
-      --logoTileShadowStrong: 0 12px 24px rgba(86,72,204,.24);
+      --logoTileShadow: 0 10px 18px rgba(38,66,94,.18);
+      --logoTileShadowStrong: 0 12px 24px rgba(38,66,94,.24);
       --logoMarkColor: #ffffff;
 
       --s-1: 4px;
@@ -97,34 +97,34 @@
 
     html[data-theme="dark"]{
       color-scheme: dark;
-      --bg:#0b1020;
-      --card:#141b33;
-      --ink:#f2f4ff;
-      --muted: rgba(235,239,255,.72);
-      --line: rgba(240,244,255,.10);
-      --divider: rgba(240,244,255,.08);
-      --lineStrong: rgba(240,244,255,.16);
-      --brand:#7a68ff;
-      --brand2:#9c88ff;
-      --brandSoft: rgba(122,104,255,.16);
-      --brandGlow: rgba(122,104,255,.28);
+      --bg:#131723;
+      --card:#1a2030;
+      --ink:#eef3ff;
+      --muted: rgba(181,191,212,.82);
+      --line: rgba(238,243,255,.10);
+      --divider: rgba(238,243,255,.08);
+      --lineStrong: rgba(238,243,255,.16);
+      --brand:#7f8fcf;
+      --brand2:#9ca9df;
+      --brandSoft: rgba(127,143,207,.17);
+      --brandGlow: rgba(127,143,207,.30);
       --successSoft: rgba(87,204,165,.14);
       --successLine: rgba(106,221,185,.30);
       --shadow: 0 24px 56px rgba(0,0,0,.34);
       --shadowSoft: 0 12px 26px rgba(0,0,0,.24);
       --modalShadow: 0 36px 90px rgba(0,0,0,.56);
 
-      --surface1: rgba(20,27,51,.92);
-      --surface2: rgba(25,33,62,.78);
-      --surface3: rgba(28,37,70,.94);
-      --surfaceInset: rgba(24,31,58,.98);
+      --surface1: rgba(26,32,48,.92);
+      --surface2: rgba(34,42,61,.80);
+      --surface3: rgba(30,38,56,.94);
+      --surfaceInset: rgba(24,30,45,.98);
 
-      --card60: rgba(20,27,51,.60);
-      --card78: rgba(20,27,51,.78);
-      --card85: rgba(20,27,51,.85);
-      --card90: rgba(20,27,51,.90);
-      --card92: rgba(20,27,51,.92);
-      --card98: rgba(20,27,51,.98);
+      --card60: rgba(26,32,48,.60);
+      --card78: rgba(26,32,48,.78);
+      --card85: rgba(26,32,48,.85);
+      --card90: rgba(26,32,48,.90);
+      --card92: rgba(26,32,48,.92);
+      --card98: rgba(26,32,48,.98);
 
       --shine1: rgba(255,255,255,.12);
       --shine2: rgba(255,255,255,.08);
@@ -133,16 +133,16 @@
 
       --heroBg:
         radial-gradient(140px 90px at 16% 0%, rgba(255,255,255,.08), transparent 70%),
-        linear-gradient(135deg, rgba(122,104,255,.16), rgba(24,31,58,.48)),
-        rgba(15,21,41,.56);
+        linear-gradient(135deg, rgba(127,143,207,.18), rgba(26,32,48,.50)),
+        rgba(19,23,35,.56);
       --bodyBg:
-        radial-gradient(1200px 760px at 10% -4%, rgba(122,104,255,.26), transparent 58%),
-        radial-gradient(980px 680px at 88% 2%, rgba(70,118,255,.14), transparent 54%),
-        linear-gradient(180deg, #0a1021 0%, #101735 52%, #0d1430 100%);
+        radial-gradient(1200px 760px at 10% -4%, rgba(127,143,207,.24), transparent 58%),
+        radial-gradient(980px 680px at 88% 2%, rgba(67,82,118,.22), transparent 54%),
+        linear-gradient(180deg, #131723 0%, #171c2a 52%, #141924 100%);
 
       --scrollTrack: rgba(235,239,255,.08);
-      --scrollThumb: rgba(122,104,255,.34);
-      --scrollThumbHover: rgba(122,104,255,.54);
+      --scrollThumb: rgba(127,143,207,.34);
+      --scrollThumbHover: rgba(127,143,207,.54);
 
       --switchTrack: rgba(240,244,255,.14);
 
@@ -153,30 +153,30 @@
       --toastWarnBorder: rgba(251,191,36,.22);
       --toastWarnText: rgba(255,244,223,.92);
 
-      --myDayItemBg: rgba(29,38,69,.88);
+      --myDayItemBg: rgba(34,42,61,.88);
 
-      --authCardBg: rgba(16,23,44,.62);
-      --authCardBorder: rgba(231,236,255,.10);
+      --authCardBg: rgba(21,26,39,.64);
+      --authCardBorder: rgba(238,243,255,.10);
       --authCardShadow: 0 22px 64px rgba(6,10,24,.48), 0 4px 12px rgba(0,0,0,.22);
       --authCardInner: rgba(255,255,255,.04);
-      --authInputBg: rgba(25,33,62,.66);
-      --authInputBorder: rgba(145,130,255,.16);
-      --authSecondaryBg: rgba(24,31,58,.48);
-      --authSecondaryBorder: rgba(231,236,255,.10);
-      --authHintBg: rgba(24,31,58,.46);
-      --authHintBorder: rgba(145,130,255,.16);
-      --authCheckboxBg: rgba(20,27,51,.82);
-      --authCheckboxBorder: rgba(153,138,255,.24);
+      --authInputBg: rgba(34,42,61,.66);
+      --authInputBorder: rgba(127,143,207,.16);
+      --authSecondaryBg: rgba(26,32,48,.48);
+      --authSecondaryBorder: rgba(238,243,255,.10);
+      --authHintBg: rgba(26,32,48,.46);
+      --authHintBorder: rgba(127,143,207,.16);
+      --authCheckboxBg: rgba(26,32,48,.82);
+      --authCheckboxBorder: rgba(156,169,223,.24);
 
-      --logoTileTop: #5d49da;
-      --logoTileBottom: #7d69ff;
+      --logoTileTop: #6679bc;
+      --logoTileBottom: #8d9ddb;
       --logoTileHighlight: rgba(255,255,255,.16);
       --logoTileSheen: rgba(255,255,255,.08);
-      --logoTileBorder: rgba(220,216,255,.22);
-      --logoTileBorderStrong: rgba(220,216,255,.18);
+      --logoTileBorder: rgba(230,237,255,.20);
+      --logoTileBorderStrong: rgba(230,237,255,.16);
       --logoTileShadow: 0 14px 24px rgba(5,8,24,.38);
       --logoTileShadowStrong: 0 14px 28px rgba(5,8,24,.42);
-      --logoMarkColor: #fff8ff;
+      --logoMarkColor: #f7f9ff;
     }
 
     *{box-sizing:border-box}
@@ -335,16 +335,16 @@
       color: color-mix(in oklab, var(--brand) 72%, #1f2230);
       background:
         radial-gradient(16px 14px at 30% 25%, rgba(255,255,255,.76), transparent 60%),
-        linear-gradient(135deg, rgba(107,89,247,.20), rgba(143,124,255,.18));
-      border: 1px solid rgba(107,89,247,.18);
+        linear-gradient(135deg, color-mix(in oklab, var(--brand) 24%, transparent), color-mix(in oklab, var(--brand2) 24%, transparent));
+      border: 1px solid color-mix(in oklab, var(--brand) 18%, transparent);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.44);
     }
 
     html[data-theme="dark"] .planTag{
       color: rgba(255,255,255,.96);
-      background: linear-gradient(135deg, rgba(107,89,247,.96), rgba(143,124,255,.92));
-      border-color: rgba(143,124,255,.30);
-      box-shadow: 0 12px 28px rgba(107,89,247,.24);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      border-color: color-mix(in oklab, var(--brand2) 30%, transparent);
+      box-shadow: 0 12px 28px color-mix(in oklab, var(--brand) 24%, transparent);
     }
     .tag{margin:0; color:var(--muted); font-size:14px; line-height:1.4; max-width: 54ch;}
     .nav{
@@ -376,7 +376,7 @@
     .btn.primary{
       background:
         radial-gradient(circle at 28% 20%, rgba(255,255,255,.22), transparent 30%),
-        linear-gradient(135deg, var(--brand), #8c79ff);
+        linear-gradient(135deg, var(--brand), var(--brand2));
       border-color: rgba(255,255,255,.14); color:white;
       box-shadow: 0 16px 36px var(--brandGlow);
     }
@@ -432,7 +432,7 @@
     .card{
       background:
         linear-gradient(180deg, rgba(255,255,255,.72), rgba(255,255,255,.94)) padding-box,
-        linear-gradient(180deg, rgba(255,255,255,.60), rgba(107,89,247,.08)) border-box;
+        linear-gradient(180deg, rgba(255,255,255,.60), rgba(72,111,150,.08)) border-box;
       border:1px solid transparent;
       border-radius: var(--radius);
       padding: 22px;
@@ -632,9 +632,9 @@
     }
     .input::placeholder{color: color-mix(in oklab, var(--muted) 72%, transparent); font-weight: 560;}
     .input:focus{
-      border-color: #7c3aed;
+      border-color: var(--brand);
       background: color-mix(in oklab, var(--authInputBg) 92%, var(--card) 8%);
-      box-shadow: 0 0 0 3px rgba(124,58,237,.15), 0 14px 30px rgba(20,30,60,.08);
+      box-shadow: 0 0 0 3px var(--brandSoft), 0 14px 30px rgba(20,30,60,.08);
       transform: translateY(-1px);
     }
     .input[aria-invalid="true"]{
@@ -932,8 +932,8 @@
       height:72px;
       border-radius:24px;
       background:
-        radial-gradient(80px 48px at 0% 10%, rgba(107,89,247,.10), transparent 72%),
-        linear-gradient(180deg, rgba(107,89,247,.04), rgba(107,89,247,0));
+        radial-gradient(80px 48px at 0% 10%, rgba(72,111,150,.10), transparent 72%),
+        linear-gradient(180deg, rgba(72,111,150,.04), rgba(72,111,150,0));
       pointer-events:none;
       z-index:0;
     }
@@ -1005,7 +1005,7 @@
     }
     @keyframes checkinPaceAutoPulse{
       0%{box-shadow: 0 16px 32px var(--brandGlow)}
-      38%{box-shadow: 0 0 0 6px rgba(107,89,247,.12), 0 20px 38px rgba(107,89,247,.24)}
+      38%{box-shadow: 0 0 0 6px rgba(72,111,150,.12), 0 20px 38px rgba(72,111,150,.24)}
       100%{box-shadow: 0 16px 32px var(--brandGlow)}
     }
     .sub{
@@ -1099,14 +1099,14 @@
       color: color-mix(in oklab, var(--brand) 70%, var(--ink));
       background:
         radial-gradient(14px 14px at 30% 25%, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(79,109,245,.16), rgba(139,92,246,.12));
-      border-color: rgba(79,109,245,.22);
+        linear-gradient(135deg, rgba(72,111,150,.16), rgba(111,143,173,.12));
+      border-color: rgba(72,111,150,.22);
     }
 
     html[data-theme="dark"] .badge.plus{
       color: rgba(255,255,255,.92);
-      background: linear-gradient(135deg, rgba(79,109,245,.38), rgba(139,92,246,.30));
-      border-color: rgba(139,92,246,.30);
+      background: linear-gradient(135deg, rgba(72,111,150,.38), rgba(111,143,173,.30));
+      border-color: rgba(111,143,173,.30);
     }
 
     .settingsBullets{
@@ -1258,14 +1258,14 @@
       transition: transform .15s ease;
     }
     .switchInput:checked{
-      background: linear-gradient(135deg, rgba(79,109,245,.95), rgba(139,92,246,.90));
-      border-color: rgba(79,109,245,.25);
+      background: linear-gradient(135deg, rgba(72,111,150,.95), rgba(111,143,173,.90));
+      border-color: rgba(72,111,150,.25);
     }
     .switchInput:checked:before{
       transform: translateX(18px);
     }
     .switchInput:focus-visible{
-      box-shadow: 0 0 0 4px rgba(79,109,245,.14);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.14);
     }
     .switchInput:disabled{
       cursor: default;
@@ -1318,7 +1318,7 @@
     }
 
     .settingsActions .btn.primary{
-      box-shadow: 0 12px 24px rgba(79,109,245,.22);
+      box-shadow: 0 12px 24px rgba(72,111,150,.22);
     }
 
     .settingsMetaCompact{
@@ -1348,7 +1348,7 @@
       border-radius: 18px;
       background:
         radial-gradient(22px 20px at 18px 16px, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(107,89,247,.10), rgba(143,124,255,.06));
+        linear-gradient(135deg, rgba(72,111,150,.10), rgba(111,143,173,.06));
     }
 
     .settingsFeatureStatusTop{
@@ -1372,10 +1372,10 @@
       align-items:center;
       padding: 5px 10px;
       border-radius: 999px;
-      border: 1px solid rgba(107,89,247,.18);
+      border: 1px solid rgba(72,111,150,.18);
       background:
         radial-gradient(14px 14px at 30% 25%, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(107,89,247,.10), rgba(143,124,255,.08));
+        linear-gradient(135deg, rgba(72,111,150,.10), rgba(111,143,173,.08));
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 0;
@@ -1436,7 +1436,7 @@
       color: var(--ink);
       box-shadow: inset 0 1px 0 rgba(255,255,255,.36);
     }
-    select:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus{border-color:rgba(107,89,247,.34); box-shadow:0 0 0 4px rgba(107,89,247,.14)}
+    select:focus, input[type="text"]:focus, input[type="email"]:focus, textarea:focus{border-color:rgba(72,111,150,.34); box-shadow:0 0 0 4px rgba(72,111,150,.14)}
 
     .checkinNoteBlock,
     .noteDetails{
@@ -1622,17 +1622,17 @@
     }
     .choicePill[data-tone="okay"]{
       background:
-        linear-gradient(180deg, rgba(107,89,247,.08), rgba(131,223,191,.04)),
+        linear-gradient(180deg, rgba(72,111,150,.08), rgba(131,223,191,.04)),
         linear-gradient(180deg, color-mix(in oklab, var(--surface2) 88%, var(--bg) 12%), var(--surface2));
     }
     .choicePill[data-tone="high"]{
       background:
-        linear-gradient(180deg, rgba(56,189,248,.10), rgba(107,89,247,.04)),
+        linear-gradient(180deg, rgba(56,189,248,.10), rgba(72,111,150,.04)),
         linear-gradient(180deg, color-mix(in oklab, var(--surface2) 88%, var(--bg) 12%), var(--surface2));
     }
     .choicePill[data-tone="soft"]{
       background:
-        linear-gradient(180deg, rgba(244,114,182,.08), rgba(107,89,247,.03)),
+        linear-gradient(180deg, rgba(244,114,182,.08), rgba(72,111,150,.03)),
         linear-gradient(180deg, color-mix(in oklab, var(--surface2) 88%, var(--bg) 12%), var(--surface2));
     }
     html[data-theme="dark"] .choicePill{
@@ -1652,18 +1652,18 @@
     .choicePill:focus-visible{
       outline:none;
       border:1px solid transparent;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.14), 0 14px 24px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.14), 0 14px 24px rgba(72,111,150,.10);
     }
     .choicePill.active{
       border:1px solid transparent;
       background:
         linear-gradient(var(--surface1), var(--surface1)) padding-box,
-        linear-gradient(135deg, rgba(107,89,247,.88), rgba(131,223,191,.72)) border-box;
-      box-shadow: 0 0 0 4px rgba(107,89,247,.10), 0 14px 26px rgba(107,89,247,.14);
+        linear-gradient(135deg, rgba(72,111,150,.88), rgba(131,223,191,.72)) border-box;
+      box-shadow: 0 0 0 4px rgba(72,111,150,.10), 0 14px 26px rgba(72,111,150,.14);
       animation: checkinChoiceSettle .26s cubic-bezier(.2,.86,.28,1);
     }
     html[data-theme="dark"] .choicePill.active{
-      box-shadow: 0 0 0 4px rgba(79,109,245,.14), 0 18px 28px rgba(0,0,0,.34);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.14), 0 18px 28px rgba(0,0,0,.34);
     }
     .choicePillText{
       display:flex;
@@ -1722,7 +1722,7 @@
     .checkinPaceStep .pill.tracing{
       border-color: transparent;
       background: var(--surface2);
-      box-shadow: 0 12px 24px rgba(107,89,247,.08);
+      box-shadow: 0 12px 24px rgba(72,111,150,.08);
     }
     html[data-theme="dark"] .checkinPaceStep .pill.tracing{
       box-shadow: 0 16px 28px rgba(0,0,0,.28);
@@ -1752,13 +1752,13 @@
     }
     .paceTraceBase{
       fill:none;
-      stroke: rgba(143,124,255,.24);
+      stroke: rgba(111,143,173,.24);
       stroke-width: 1.2;
       stroke-linecap: round;
       stroke-linejoin: round;
     }
     html[data-theme="dark"] .paceTraceBase{
-      stroke: rgba(170,154,255,.3);
+      stroke: rgba(111,143,173,.3);
     }
     .paceTraceReveal{
       fill:none;
@@ -1766,7 +1766,7 @@
       stroke-linecap: round;
       stroke-linejoin: round;
       stroke-dasharray: 0 100;
-      filter: drop-shadow(0 0 5px rgba(143,124,255,.28));
+      filter: drop-shadow(0 0 5px rgba(111,143,173,.28));
     }
     .paceTraceDot{
       opacity:.96;
@@ -1776,11 +1776,11 @@
     }
     .paceTraceSparkle path{
       fill:none;
-      stroke: rgba(219,211,255,.9);
+      stroke: rgba(189,202,217,.9);
       stroke-width: 1.15;
       stroke-linecap: round;
       stroke-linejoin: round;
-      filter: drop-shadow(0 0 4px rgba(143,124,255,.26));
+      filter: drop-shadow(0 0 4px rgba(111,143,173,.26));
     }
     .checkinPaceStep .pill .pillIcon,
     .checkinPaceStep .pill .pillLabel{
@@ -1831,7 +1831,7 @@
     .pill.active{
       border-color: transparent;
       color:white;
-      background: linear-gradient(135deg, var(--brand), #8f77ff);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
       box-shadow: 0 16px 32px var(--brandGlow);
       animation: checkinChoiceSettle .26s cubic-bezier(.2,.86,.28,1);
     }
@@ -1851,8 +1851,8 @@
       gap:10px;
     }
     .moodBtn{
-      --moodA: rgba(107,89,247,.12);
-      --moodB: rgba(143,124,255,.10);
+      --moodA: rgba(72,111,150,.12);
+      --moodB: rgba(111,143,173,.10);
 
       appearance:none;
       border:1px solid var(--line);
@@ -1885,8 +1885,8 @@
       pointer-events:none;
     }
     .moodBtn[data-tone="tough"]{ --moodA: rgba(245,158,11,.16); --moodB: rgba(244,63,94,.10); }
-    .moodBtn[data-tone="okay"]{ --moodA: rgba(107,89,247,.12); --moodB: rgba(131,223,191,.12); }
-    .moodBtn[data-tone="good"]{ --moodA: rgba(131,223,191,.16); --moodB: rgba(107,89,247,.10); }
+    .moodBtn[data-tone="okay"]{ --moodA: rgba(72,111,150,.12); --moodB: rgba(131,223,191,.12); }
+    .moodBtn[data-tone="good"]{ --moodA: rgba(131,223,191,.16); --moodB: rgba(72,111,150,.10); }
 
     .moodEmoji{
       --moodEmojiSize: 32px;
@@ -1972,17 +1972,17 @@
       border:1px solid transparent;
       background:
         linear-gradient(var(--surface1), var(--surface1)) padding-box,
-        linear-gradient(135deg, rgba(107,89,247,.88), rgba(143,124,255,.66)) border-box;
-      box-shadow: 0 0 0 4px rgba(107,89,247,.12), 0 18px 34px rgba(107,89,247,.14);
+        linear-gradient(135deg, rgba(72,111,150,.88), rgba(111,143,173,.66)) border-box;
+      box-shadow: 0 0 0 4px rgba(72,111,150,.12), 0 18px 34px rgba(72,111,150,.14);
       animation: checkinChoiceSettle .26s cubic-bezier(.2,.86,.28,1);
     }
     html[data-theme="dark"] .moodBtn.active{
-      box-shadow: 0 0 0 4px rgba(79,109,245,.14), 0 20px 36px rgba(0,0,0,.36);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.14), 0 20px 36px rgba(0,0,0,.36);
     }
     .moodBtn:focus-visible{
       outline:none;
       border:1px solid transparent;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.18), 0 18px 34px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.18), 0 18px 34px rgba(72,111,150,.10);
     }
     .moodCheck{
       position:absolute;
@@ -1997,8 +1997,8 @@
       font-size:12px;
       font-weight:950;
       color:white;
-      background: linear-gradient(135deg, rgba(107,89,247,.98), rgba(143,124,255,.90));
-      box-shadow: 0 12px 22px rgba(107,89,247,.24);
+      background: linear-gradient(135deg, rgba(72,111,150,.98), rgba(111,143,173,.90));
+      box-shadow: 0 12px 22px rgba(72,111,150,.24);
       opacity:0;
       transform: scale(.9);
       transition: opacity .12s ease, transform .12s ease;
@@ -2050,11 +2050,11 @@
       border-color: rgba(238,241,255,.14);
     }
     .moodBadge[data-tone="tough"]{border-color: rgba(245,158,11,.35); background: linear-gradient(180deg, rgba(245,158,11,.10), rgba(245,158,11,.02));}
-    .moodBadge[data-tone="okay"]{border-color: rgba(79,109,245,.30); background: linear-gradient(180deg, rgba(79,109,245,.10), rgba(79,109,245,.02));}
+    .moodBadge[data-tone="okay"]{border-color: rgba(72,111,150,.30); background: linear-gradient(180deg, rgba(72,111,150,.10), rgba(72,111,150,.02));}
     .moodBadge[data-tone="good"]{border-color: rgba(110,231,183,.30); background: linear-gradient(180deg, rgba(110,231,183,.12), rgba(110,231,183,.02));}
 
     html[data-theme="dark"] .moodBadge[data-tone="tough"]{border-color: rgba(245,158,11,.26); background: linear-gradient(180deg, rgba(245,158,11,.12), rgba(0,0,0,0));}
-    html[data-theme="dark"] .moodBadge[data-tone="okay"]{border-color: rgba(79,109,245,.26); background: linear-gradient(180deg, rgba(79,109,245,.13), rgba(0,0,0,0));}
+    html[data-theme="dark"] .moodBadge[data-tone="okay"]{border-color: rgba(72,111,150,.26); background: linear-gradient(180deg, rgba(72,111,150,.13), rgba(0,0,0,0));}
     html[data-theme="dark"] .moodBadge[data-tone="good"]{border-color: rgba(110,231,183,.24); background: linear-gradient(180deg, rgba(110,231,183,.14), rgba(0,0,0,0));}
 
     .hint{
@@ -2065,7 +2065,7 @@
       color:var(--muted);
       font-size:14px;
       line-height:1.5;
-      background: linear-gradient(180deg, rgba(107,89,247,.06), rgba(255,255,255,0));
+      background: linear-gradient(180deg, rgba(72,111,150,.06), rgba(255,255,255,0));
     }
 
     .emojiIcon{
@@ -2113,7 +2113,7 @@
       width:min(360px, 100%);
       padding:18px 20px;
       border-radius:24px;
-      border:1px solid rgba(107,89,247,.12);
+      border:1px solid rgba(72,111,150,.12);
       background: color-mix(in srgb, var(--card98) 92%, white 8%);
       box-shadow: 0 22px 50px rgba(25,35,68,.12);
       backdrop-filter: blur(14px);
@@ -2129,8 +2129,8 @@
       width:10px;
       height:10px;
       border-radius:999px;
-      background: linear-gradient(135deg, rgba(79,109,245,.72), rgba(139,92,246,.55));
-      box-shadow: 0 8px 18px rgba(79,109,245,.16);
+      background: linear-gradient(135deg, rgba(72,111,150,.72), rgba(111,143,173,.55));
+      box-shadow: 0 8px 18px rgba(72,111,150,.16);
       animation: boardLoaderPulse 1.5s ease-in-out infinite;
     }
     .boardLoadingPulse span:nth-child(2){animation-delay:.16s;}
@@ -2159,14 +2159,14 @@
       42%{
         transform: scale(1.028);
         box-shadow:
-          0 0 0 4px rgba(107,89,247,.08),
-          0 18px 30px rgba(107,89,247,.14),
+          0 0 0 4px rgba(72,111,150,.08),
+          0 18px 30px rgba(72,111,150,.14),
           inset 0 1px 0 rgba(255,255,255,.36);
       }
       100%{
         transform: scale(1);
         box-shadow:
-          0 8px 18px rgba(107,89,247,.06),
+          0 8px 18px rgba(72,111,150,.06),
           inset 0 1px 0 rgba(255,255,255,.34);
       }
     }
@@ -2213,7 +2213,7 @@
     }
     .boardTile:hover{border-color:var(--lineStrong); box-shadow: var(--shadowSoft); transform: translateY(-1px)}
     .boardTile:active{transform: translateY(1px)}
-    .boardTile:focus-visible{outline:none; box-shadow: 0 0 0 4px rgba(79,109,245,.12)}
+    .boardTile:focus-visible{outline:none; box-shadow: 0 0 0 4px rgba(72,111,150,.12)}
 
     .boardTile .tileFace{
       height:100%;
@@ -2226,15 +2226,15 @@
       border-radius:7px;
       background:
         radial-gradient(circle at 30% 30%, var(--shine2), rgba(255,255,255,0) 60%),
-        linear-gradient(135deg, rgba(107,89,247,.36), rgba(143,124,255,.30));
-      box-shadow: 0 12px 22px rgba(107,89,247,.12);
+        linear-gradient(135deg, rgba(72,111,150,.36), rgba(111,143,173,.30));
+      box-shadow: 0 12px 22px rgba(72,111,150,.12);
     }
     .boardTile::before{
       content:"";
       position:absolute;
       inset:-40%;
       background:
-        radial-gradient(circle at 35% 40%, rgba(107,89,247,.12), transparent 55%),
+        radial-gradient(circle at 35% 40%, rgba(72,111,150,.12), transparent 55%),
         radial-gradient(circle at 70% 60%, rgba(131,223,191,.10), transparent 58%);
       transform: rotate(18deg);
       opacity:.85;
@@ -2248,7 +2248,7 @@
     .boardTile.attunePick{
       border-color: color-mix(in oklab, var(--brand) 14%, var(--line));
       box-shadow:
-        0 8px 16px rgba(79,109,245,.045),
+        0 8px 16px rgba(72,111,150,.045),
         inset 0 1px 0 rgba(255,255,255,.34);
     }
     .boardTile.attunePick::after{
@@ -2259,7 +2259,7 @@
       width:30px;
       height:4px;
       border-radius:999px;
-      background: linear-gradient(90deg, rgba(107,89,247,.62), rgba(131,223,191,.44));
+      background: linear-gradient(90deg, rgba(72,111,150,.62), rgba(131,223,191,.44));
       opacity:.72;
       pointer-events:none;
     }
@@ -2432,7 +2432,7 @@
 
     html[data-theme="light"] .modalCard.weekDetailsModal{
       background:
-        linear-gradient(180deg, rgba(79,109,245,.08), rgba(255,255,255,0) 55%),
+        linear-gradient(180deg, rgba(72,111,150,.08), rgba(255,255,255,0) 55%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 18%, var(--line));
       box-shadow: 0 24px 60px rgba(15,18,28,.12);
@@ -2448,8 +2448,8 @@
 
     html[data-theme="dark"] .modalCard.weekDetailsModal{
       background:
-        radial-gradient(circle at 20% 0%, rgba(79,109,245,.18), rgba(0,0,0,0) 55%),
-        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 60%),
+        radial-gradient(circle at 20% 0%, rgba(72,111,150,.18), rgba(0,0,0,0) 55%),
+        linear-gradient(180deg, rgba(72,111,150,.10), rgba(0,0,0,0) 60%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 26%, var(--line));
     }
@@ -2557,7 +2557,7 @@
 
     html[data-theme="light"] .modalCard.weekActivitiesModal{
       background:
-        linear-gradient(180deg, rgba(79,109,245,.08), rgba(255,255,255,0) 55%),
+        linear-gradient(180deg, rgba(72,111,150,.08), rgba(255,255,255,0) 55%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 18%, var(--line));
       box-shadow: 0 24px 60px rgba(15,18,28,.12);
@@ -2565,7 +2565,7 @@
 
     html[data-theme="light"] .weekActivitiesDayCard{
       background:
-        linear-gradient(180deg, rgba(79,109,245,.05), rgba(255,255,255,0) 70%),
+        linear-gradient(180deg, rgba(72,111,150,.05), rgba(255,255,255,0) 70%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 10%, var(--line));
     }
@@ -2578,14 +2578,14 @@
 
     html[data-theme="dark"] .modalCard.weekActivitiesModal{
       background:
-        radial-gradient(circle at 20% 0%, rgba(79,109,245,.18), rgba(0,0,0,0) 55%),
-        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 60%),
+        radial-gradient(circle at 20% 0%, rgba(72,111,150,.18), rgba(0,0,0,0) 55%),
+        linear-gradient(180deg, rgba(72,111,150,.10), rgba(0,0,0,0) 60%),
         var(--card98);
       border-color: color-mix(in oklab, var(--brand) 26%, var(--line));
     }
     html[data-theme="dark"] .weekActivitiesDayCard{
       background:
-        linear-gradient(180deg, rgba(79,109,245,.10), rgba(0,0,0,0) 72%),
+        linear-gradient(180deg, rgba(72,111,150,.10), rgba(0,0,0,0) 72%),
         var(--card90);
       border-color: color-mix(in oklab, var(--brand) 16%, var(--line));
     }
@@ -2614,15 +2614,15 @@
       border: 10px solid var(--card90);
       background:
         conic-gradient(
-          rgba(79,109,245,.92) 0 36deg,
+          rgba(72,111,150,.92) 0 36deg,
           rgba(110,231,183,.92) 36deg 72deg,
-          rgba(139,92,246,.88) 72deg 108deg,
+          rgba(111,143,173,.88) 72deg 108deg,
           rgba(245,158,11,.84) 108deg 144deg,
-          rgba(79,109,245,.84) 144deg 180deg,
+          rgba(72,111,150,.84) 144deg 180deg,
           rgba(110,231,183,.86) 180deg 216deg,
-          rgba(139,92,246,.84) 216deg 252deg,
+          rgba(111,143,173,.84) 216deg 252deg,
           rgba(245,158,11,.82) 252deg 288deg,
-          rgba(79,109,245,.78) 288deg 324deg,
+          rgba(72,111,150,.78) 288deg 324deg,
           rgba(110,231,183,.78) 324deg 360deg
         );
       box-shadow: 0 18px 40px rgba(20,30,60,.14);
@@ -2694,8 +2694,8 @@
     .meterFill{
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(135deg, var(--brand), #8f77ff);
-      box-shadow: 0 10px 18px rgba(107,89,247,.18);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 10px 18px var(--brandSoft);
     }
 
     .meterBand{
@@ -2704,11 +2704,11 @@
       bottom: 0;
       border-radius: 999px;
       background:
-        linear-gradient(135deg, rgba(79,109,245,.55), rgba(139,92,246,.45)),
+        linear-gradient(135deg, rgba(72,111,150,.55), rgba(111,143,173,.45)),
         repeating-linear-gradient(45deg, rgba(255,255,255,.38) 0, rgba(255,255,255,.38) 8px, rgba(255,255,255,0) 8px, rgba(255,255,255,0) 16px);
       background-blend-mode: overlay;
-      box-shadow: 0 10px 18px rgba(79,109,245,.12);
-      border: 1px solid rgba(79,109,245,.22);
+      box-shadow: 0 10px 18px rgba(72,111,150,.12);
+      border: 1px solid rgba(72,111,150,.22);
     }
 
     .meterBand::before,
@@ -2718,7 +2718,7 @@
       top: -2px;
       bottom: -2px;
       width: 2px;
-      background: rgba(79,109,245,.55);
+      background: rgba(72,111,150,.55);
       border-radius: 999px;
       opacity: .9;
     }
@@ -2748,10 +2748,10 @@
       cursor: pointer;
       text-align: left;
     }
-    .miniPillBtn:hover{border-color: rgba(79,109,245,.22)}
+    .miniPillBtn:hover{border-color: rgba(72,111,150,.22)}
     .miniPillBtn:focus-visible{
       outline: none;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.10);
     }
 
     /* Weekly */
@@ -2782,10 +2782,10 @@
     .weeklyDigestHero{
       padding: 18px;
       border-radius: 22px;
-      border: 1px solid rgba(79,109,245,.16);
+      border: 1px solid rgba(72,111,150,.16);
       background:
         radial-gradient(130px 90px at 100% 0, rgba(249,197,124,.18), transparent 58%),
-        radial-gradient(140px 96px at 0 0, rgba(79,109,245,.14), transparent 64%),
+        radial-gradient(140px 96px at 0 0, rgba(72,111,150,.14), transparent 64%),
         linear-gradient(180deg, var(--card92), var(--surface2));
       box-shadow: var(--shadowSoft);
     }
@@ -2816,7 +2816,7 @@
       background: color-mix(in oklab, var(--card98) 74%, white 26%);
       border-color: color-mix(in oklab, var(--brand) 14%, var(--line));
       color: color-mix(in oklab, var(--brand) 42%, var(--muted));
-      box-shadow: 0 8px 18px rgba(79,109,245,.08);
+      box-shadow: 0 8px 18px rgba(72,111,150,.08);
       flex: 0 0 auto;
     }
     .weeklyDigestTitleRow{
@@ -2883,7 +2883,7 @@
       position: absolute;
       inset: 0 0 auto 0;
       height: 3px;
-      background: linear-gradient(90deg, rgba(107,89,247,.82), rgba(131,223,191,.52));
+      background: linear-gradient(90deg, rgba(72,111,150,.82), rgba(131,223,191,.52));
       opacity: .9;
     }
     .weeklyDigestStat:hover{
@@ -2897,7 +2897,7 @@
     }
     .weeklyDigestStat:focus-visible{
       outline: none;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.10);
     }
     .weeklyDigestStatHeader{
       display:flex;
@@ -2967,8 +2967,8 @@
 
     html[data-theme="dark"] .weeklyDigestStat{
       background:
-        radial-gradient(80px 60px at 20% 0%, rgba(107,89,247,.10), transparent 70%),
-        linear-gradient(180deg, rgba(107,89,247,.07), rgba(107,89,247,.03)),
+        radial-gradient(80px 60px at 20% 0%, rgba(72,111,150,.10), transparent 70%),
+        linear-gradient(180deg, rgba(72,111,150,.07), rgba(72,111,150,.03)),
         color-mix(in oklab, var(--card98) 60%, rgba(20,24,48,1));
       border-color: color-mix(in oklab, var(--brand) 18%, rgba(255,255,255,.06));
       box-shadow:
@@ -2978,8 +2978,8 @@
     }
     html[data-theme="dark"] .weeklyDigestStat:hover{
       background:
-        radial-gradient(80px 60px at 20% 0%, rgba(107,89,247,.16), transparent 70%),
-        linear-gradient(180deg, rgba(107,89,247,.10), rgba(107,89,247,.05)),
+        radial-gradient(80px 60px at 20% 0%, rgba(72,111,150,.16), transparent 70%),
+        linear-gradient(180deg, rgba(72,111,150,.10), rgba(72,111,150,.05)),
         color-mix(in oklab, var(--card98) 60%, rgba(20,24,48,1));
       border-color: color-mix(in oklab, var(--brand) 28%, rgba(255,255,255,.08));
     }
@@ -3022,10 +3022,10 @@
     .weekInsight{
       padding: 14px 16px;
       border-radius: 18px;
-      border: 1px solid rgba(79,109,245,.14);
+      border: 1px solid rgba(72,111,150,.14);
       background:
         radial-gradient(18px 18px at 16px 16px, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(79,109,245,.08), rgba(249,197,124,.08));
+        linear-gradient(135deg, rgba(72,111,150,.08), rgba(249,197,124,.08));
       color: var(--ink);
       font-size: 14px;
       line-height: 1.48;
@@ -3034,7 +3034,7 @@
     }
     .weekInsightPrimary{
       padding: 16px 18px;
-      border-color: rgba(79,109,245,.18);
+      border-color: rgba(72,111,150,.18);
       box-shadow: var(--shadowSoft);
     }
     .weekInsightSecondary{
@@ -3057,8 +3057,8 @@
     }
     .weekInsightTag[data-category="pacing"]{
       color: color-mix(in oklab, #5b47d6 78%, var(--ink) 22%);
-      background: linear-gradient(180deg, rgba(107,89,247,.14), rgba(131,223,191,.08));
-      border-color: rgba(107,89,247,.24);
+      background: linear-gradient(180deg, rgba(72,111,150,.14), rgba(131,223,191,.08));
+      border-color: rgba(72,111,150,.24);
     }
     .weekInsightTag[data-category="schedule"]{
       color: color-mix(in oklab, #6f5b2e 80%, var(--ink) 20%);
@@ -3237,7 +3237,7 @@
     }
     .weeklyNoteCollapsedBtn:focus-visible{
       outline: none;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.10);
     }
     .weeklyNoteCollapsedEmpty{
       color: var(--muted);
@@ -3289,19 +3289,19 @@
       box-shadow: none;
       touch-action: pan-x;
     }
-    .weekStripItem:hover{border-color: rgba(79,109,245,.22)}
+    .weekStripItem:hover{border-color: rgba(72,111,150,.22)}
     .weekStripItem.current{
-      border-color: rgba(79,109,245,.28);
+      border-color: rgba(72,111,150,.28);
       background:
         radial-gradient(18px 18px at 18px 16px, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(79,109,245,.08), rgba(139,92,246,.04));
+        linear-gradient(135deg, rgba(72,111,150,.08), rgba(111,143,173,.04));
     }
     .weekStripItem.active{
-      border-color: rgba(107,89,247,.34);
-      box-shadow: 0 0 0 3px rgba(107,89,247,.10), var(--shadowSoft);
+      border-color: rgba(72,111,150,.34);
+      box-shadow: 0 0 0 3px rgba(72,111,150,.10), var(--shadowSoft);
       background:
         radial-gradient(18px 18px at 18px 16px, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(107,89,247,.08), rgba(143,124,255,.04));
+        linear-gradient(135deg, rgba(72,111,150,.08), rgba(111,143,173,.04));
     }
     .weekStripTop{
       display: flex;
@@ -3348,8 +3348,8 @@
     .weekStripBarFill{
       height: 100%;
       border-radius: 999px;
-      background: linear-gradient(135deg, var(--brand), #8b5cf6);
-      box-shadow: 0 10px 18px rgba(79,109,245,.10);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      box-shadow: 0 10px 18px var(--brandSoft);
     }
 
     /* Info tooltip */
@@ -3370,8 +3370,8 @@
       line-height: 1;
       user-select: none;
     }
-    .infoBtn:hover{border-color: rgba(79,109,245,.22)}
-    .infoTip.open .infoBtn{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
+    .infoBtn:hover{border-color: rgba(72,111,150,.22)}
+    .infoTip.open .infoBtn{box-shadow: 0 0 0 4px rgba(72,111,150,.10)}
     .infoBubble{
       position: fixed;
       width: min(280px, 82vw);
@@ -3380,7 +3380,7 @@
       padding: 12px 14px 13px;
       background:
         linear-gradient(180deg, rgba(255,255,255,.68), rgba(255,255,255,.94)) padding-box,
-        linear-gradient(180deg, rgba(255,255,255,.64), rgba(107,89,247,.14)) border-box;
+        linear-gradient(180deg, rgba(255,255,255,.64), rgba(72,111,150,.14)) border-box;
       border: 1px solid transparent;
       border-radius: 16px;
       box-shadow: 0 18px 44px rgba(20,30,60,.16);
@@ -3480,19 +3480,21 @@
     }
     .itemMain input{
       appearance:none;
+      -webkit-appearance:none;
       width:20px;
       height:20px;
       margin:2px 0 0;
-      border-radius:6px;
-      border:1px solid var(--lineStrong);
-      background: rgba(255,255,255,.44);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.42);
+      border-radius:50%;
+      border:1.5px solid var(--lineStrong);
+      background: transparent;
+      box-shadow: none;
       display:grid;
       place-items:center;
       cursor:pointer;
+      flex-shrink: 0;
     }
     .itemMain input:checked{
-      background: linear-gradient(135deg, var(--brand), #8f77ff);
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
       border-color: transparent;
     }
     .itemMain input:checked::after{
@@ -3521,8 +3523,8 @@
       top:-120px;
       height:160px;
       background:
-        radial-gradient(circle at 30% 20%, rgba(79,109,245,.16), transparent 55%),
-        radial-gradient(circle at 70% 10%, rgba(139,92,246,.12), transparent 60%),
+        radial-gradient(circle at 30% 20%, rgba(72,111,150,.16), transparent 55%),
+        radial-gradient(circle at 70% 10%, rgba(111,143,173,.12), transparent 60%),
         radial-gradient(circle at 55% 60%, rgba(110,231,183,.10), transparent 55%);
       pointer-events:none;
       filter: blur(2px);
@@ -3530,9 +3532,9 @@
     .myDayCard > *{position:relative; z-index:1;}
 
     .myDayCard .result{
-      border-color: rgba(107,89,247,.12);
+      border-color: rgba(72,111,150,.12);
       background:
-        linear-gradient(180deg, rgba(107,89,247,.08), transparent),
+        linear-gradient(180deg, rgba(72,111,150,.08), transparent),
         var(--surfaceInset);
     }
     .myDayCard .resultTitle{
@@ -3558,12 +3560,12 @@
       cursor: pointer;
     }
     .personalNote.tappable:hover{
-      border-color: rgba(79,109,245,.18);
-      box-shadow: 0 10px 26px rgba(79,109,245,.08);
+      border-color: rgba(72,111,150,.18);
+      box-shadow: 0 10px 26px rgba(72,111,150,.08);
     }
     .personalNote.tappable:focus-visible{
       outline: none;
-      box-shadow: 0 0 0 4px rgba(79,109,245,.10);
+      box-shadow: 0 0 0 4px rgba(72,111,150,.10);
     }
     .personalNoteMeta{
       font-size: 12px;
@@ -3587,10 +3589,10 @@
     }
     .sourceChip.ai{
       color: color-mix(in oklab, var(--brand) 72%, var(--ink));
-      border-color: rgba(79,109,245,.22);
+      border-color: rgba(72,111,150,.22);
       background:
         radial-gradient(14px 14px at 30% 25%, var(--shine1), transparent 60%),
-        linear-gradient(135deg, rgba(79,109,245,.16), rgba(139,92,246,.12));
+        linear-gradient(135deg, rgba(72,111,150,.16), rgba(111,143,173,.12));
     }
     .sourceChip.loading{opacity: .85}
     .personalNoteTitle{
@@ -3651,8 +3653,8 @@
       background: var(--myDayItemBg);
       border-color: var(--line);
     }
-    .myDayCard .item:hover{border-color: rgba(79,109,245,.22)}
-    .myDayCard .item:focus-within{box-shadow: 0 0 0 4px rgba(79,109,245,.10)}
+    .myDayCard .item:hover{border-color: rgba(72,111,150,.22)}
+    .myDayCard .item:focus-within{box-shadow: 0 0 0 4px rgba(72,111,150,.10)}
 
     /* My Day: activity text runs a bit large by default */
     .myDayCard .item .txt{
@@ -3707,35 +3709,7 @@
     }
     .myDayCard .item.done .txt{color: color-mix(in oklab, var(--ink) 76%, var(--muted))}
 
-    /* Custom (user-added) tasks — subtle differentiation */
-    .myDayCard .item.customTask{
-      border-style: dashed;
-      border-color: color-mix(in oklab, var(--brand) 28%, var(--line));
-      background: color-mix(in oklab, var(--brand) 4%, var(--myDayItemBg));
-    }
-    .myDayCard .item.customTask:hover{
-      border-color: color-mix(in oklab, var(--brand) 44%, var(--line));
-    }
-    .myDayCard .item.customTask.done{
-      border-style: dashed;
-      border-color: var(--successLine);
-    }
-    .customTaskBadge{
-      display: inline-block;
-      margin-top: 3px;
-      padding: 1px 6px;
-      border-radius: 99px;
-      font-size: 10px;
-      font-weight: 700;
-      letter-spacing: .04em;
-      text-transform: uppercase;
-      color: color-mix(in oklab, var(--brand) 80%, var(--ink));
-      background: color-mix(in oklab, var(--brand) 10%, transparent);
-      border: 1px solid color-mix(in oklab, var(--brand) 22%, transparent);
-      line-height: 1.5;
-      user-select: none;
-      -webkit-user-select: none;
-    }
+    /* Custom (user-added) tasks — no visual differentiation from board tasks */
 
     /* Add-your-own trigger row */
     .customTaskRow{

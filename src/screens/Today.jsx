@@ -119,7 +119,7 @@ export default function Today({ state, actions }) {
 				<div className="myDayScroll" aria-label="My Day tasks">
 					<ul className="list" aria-label="My Day">
 						{myDay.map((t) => (
-							<li key={t.id} className={"item" + (t.done ? " done" : "") + (t.custom ? " customTask" : "")}>
+							<li key={t.id} className={"item" + (t.done ? " done" : "")}>
 								<label className="left itemMain">
 									<input
 										type="checkbox"
@@ -129,7 +129,6 @@ export default function Today({ state, actions }) {
 									/>
 									<span className="itemTextWrap">
 										<span className="txt">{t.text}</span>
-										{t.custom && <span className="customTaskBadge" aria-hidden="true">yours</span>}
 									</span>
 								</label>
 								<button
