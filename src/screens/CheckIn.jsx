@@ -341,6 +341,7 @@ export default function CheckIn({ state, actions }) {
                   "moodBtn" + (visibleMoodWords.includes(w.label) ? " active" : "")
                 }
                 title={w.label}
+                data-mood-label={w.label}
                 data-tone={w.tone}
                 aria-pressed={visibleMoodWords.includes(w.label)}
                 onClick={() => toggleMoodWord(w.label)}
@@ -503,7 +504,7 @@ export default function CheckIn({ state, actions }) {
       </div>
 
       <div className="checkinBottom">
-        {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Your check-in is saved brother. You can update it anytime today.</div> : null}
+        {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Your check-in is saved. You can update it anytime today.</div> : null}
       </div>
     </div>
   );

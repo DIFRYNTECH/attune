@@ -307,7 +307,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
             return updated;
           });
           attunePickTimeoutsRef.current.delete(i);
-        }, 1200 + attunePickOrder.get(text) * 90);
+        }, 3000 + attunePickOrder.get(text) * 90);
 
         attunePickTimeoutsRef.current.set(i, timeoutId);
       }
@@ -430,6 +430,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
           </button>
         </div>
       </div>
+
+      <div className="boardRevealHint">Tap any tile to reveal a small step.</div>
 
       {canSmartPick && attunePicks.length > 0 && (
         <div className="boardSmartHint" aria-label="Attune recommendations">

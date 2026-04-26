@@ -2082,6 +2082,13 @@
     .boardTitle{font-weight:800; letter-spacing:-.03em; font-size:22px;}
     .boardRight{display:flex; align-items:center; gap:10px; margin-left:auto;}
     .boardMeta{font-size:12px; color:var(--muted); font-weight:800;}
+    .boardRevealHint{
+      margin:-8px 0 12px;
+      font-size:12px;
+      line-height:1.35;
+      font-weight:700;
+      color: color-mix(in oklab, var(--muted) 90%, var(--ink) 10%);
+    }
     .boardSmartHint{
       margin:-4px 0 14px;
       font-size:12px;
@@ -2096,6 +2103,9 @@
     }
     @media (max-width: 640px){
       .boardMeta{display:none;}
+      .boardWrap{margin-top:10px;}
+      .boardTop{margin-bottom:10px;}
+      .boardRevealHint{margin:-4px 0 10px;}
       .boardTile{min-height:84px;}
       .boardGrid{align-content: stretch; grid-auto-rows: minmax(84px, 1fr);}
       .boardTile{height:100%;}
@@ -2264,7 +2274,7 @@
       pointer-events:none;
     }
     .boardTile.attunePickIntro{
-      animation: boardTileAttuneShudder 1.44s ease var(--board-pick-delay, 0ms) 1;
+      animation: boardTileAttuneShudder 3s ease var(--board-pick-delay, 0ms) 1;
     }
     .boardTile.revealing::before{
       opacity:.72;
@@ -3929,6 +3939,7 @@
       .moodBtn{min-height:54px; padding:7px 4px 6px; border-radius:14px;}
       .moodEmoji{--moodEmojiSize: 24px;}
       .moodLabel{font-size:10.2px;}
+      .moodBtn[data-mood-label="Motivated"] .moodLabel{font-size:8.8px;}
     }
 
     @media (max-width: 380px){
@@ -3936,6 +3947,7 @@
       .moodBtn{min-height:50px; padding:6px 3px 5px;}
       .moodEmoji{--moodEmojiSize: 22px;}
       .moodLabel{font-size:9.7px;}
+      .moodBtn[data-mood-label="Motivated"] .moodLabel{font-size:8.4px;}
 
       .settingsFeatureStatusCard{
         padding: 12px;
