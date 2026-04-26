@@ -74,8 +74,8 @@
       --authCheckboxBg: rgba(255,255,255,.62);
       --authCheckboxBorder: rgba(72,111,150,.22);
 
-      --logoTileTop: #486f96;
-      --logoTileBottom: #6f8fad;
+      --logoTileTop: var(--brand);
+      --logoTileBottom: var(--brand2);
       --logoTileHighlight: rgba(255,255,255,.34);
       --logoTileSheen: rgba(255,255,255,.12);
       --logoTileBorder: rgba(255,255,255,.46);
@@ -168,8 +168,8 @@
       --authCheckboxBg: rgba(26,32,48,.82);
       --authCheckboxBorder: rgba(156,169,223,.24);
 
-      --logoTileTop: #6679bc;
-      --logoTileBottom: #8d9ddb;
+      --logoTileTop: var(--brand);
+      --logoTileBottom: var(--brand2);
       --logoTileHighlight: rgba(255,255,255,.16);
       --logoTileSheen: rgba(255,255,255,.08);
       --logoTileBorder: rgba(230,237,255,.20);
@@ -250,9 +250,9 @@
       align-items:center;
       justify-content:space-between;
       gap:18px;
-      padding:16px 18px;
+      padding:14px 16px;
       margin-bottom: 16px;
-      border-radius: 28px;
+      border-radius: 26px;
       border:1px solid rgba(255,255,255,.34);
       background: var(--heroBg);
       box-shadow: var(--shadowSoft);
@@ -261,17 +261,17 @@
     .brand{
       display:flex;
       align-items:center;
-      gap:14px;
+      gap:12px;
       min-width:0;
     }
     .brandMark{
-      --logoMarkScale: 132%;
+      --logoMarkScale: 188%;
       --logoMarkX: 48%;
       --logoMarkY: 56%;
-      --logoMarkInset: 9%;
-      width:46px;
-      height:46px;
-      border-radius:15px;
+      --logoMarkInset: 5%;
+      width:44px;
+      height:44px;
+      border-radius:16px;
       background:
         radial-gradient(22px 20px at 30% 24%, var(--logoTileHighlight), transparent 58%),
         linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom));
@@ -306,7 +306,7 @@
     .brandText{
       min-width:0;
       display:grid;
-      gap:3px;
+      gap:4px;
     }
     .brandTitleRow{
       display:flex;
@@ -315,7 +315,7 @@
       flex-wrap:wrap;
       min-width:0;
     }
-    h1{font-size:28px;margin:0; letter-spacing:-.04em; line-height:1; font-weight:800}
+    h1{font-size:26px;margin:0; letter-spacing:-.04em; line-height:1; font-weight:850}
     .versionTag{
       padding:3px 8px;
       border-radius:999px;
@@ -346,7 +346,7 @@
       border-color: color-mix(in oklab, var(--brand2) 30%, transparent);
       box-shadow: 0 12px 28px color-mix(in oklab, var(--brand) 24%, transparent);
     }
-    .tag{margin:0; color:var(--muted); font-size:14px; line-height:1.4; max-width: 54ch;}
+    .tag{margin:0; color:var(--muted); font-size:13px; line-height:1.32; max-width: 54ch;}
     .nav{
       display:flex;
       gap:6px;
@@ -526,8 +526,8 @@
     }
     .loginBrand{display:flex; justify-content:center; margin: 4px 0 4px;}
     .loginBrand .brandMark{
-      --logoMarkScale: 138%;
-      --logoMarkInset: 8%;
+      --logoMarkScale: 206%;
+      --logoMarkInset: 3%;
       width:58px;
       height:58px;
       border-radius: 18px;

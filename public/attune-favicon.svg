@@ -1,16 +1,20 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
   <defs>
     <linearGradient id="tile" x1="52" y1="34" x2="206" y2="222" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7562ff" />
-      <stop offset="1" stop-color="#a18cff" />
+      <stop offset="0" stop-color="#7480d8" />
+      <stop offset="1" stop-color="#54b9c6" />
     </linearGradient>
     <radialGradient id="gloss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(86 74) rotate(42) scale(76 64)">
       <stop offset="0" stop-color="#ffffff" stop-opacity=".72" />
       <stop offset=".68" stop-color="#ffffff" stop-opacity="0" />
     </radialGradient>
+    <filter id="whiteMark" color-interpolation-filters="sRGB">
+      <feFlood flood-color="#ffffff" />
+      <feComposite in2="SourceAlpha" operator="in" />
+    </filter>
   </defs>
   <rect x="18" y="18" width="220" height="220" rx="68" fill="url(#tile)" />
   <rect x="18.5" y="18.5" width="219" height="219" rx="67.5" stroke="#ffffff" stroke-opacity=".34" />
   <rect x="18" y="18" width="220" height="220" rx="68" fill="url(#gloss)" />
-  <image href="/attune-logo-final.svg" x="52" y="52" width="152" height="152" preserveAspectRatio="xMidYMid meet" />
+  <image href="/attune-logo-final.svg" x="4" y="28" width="248" height="198" preserveAspectRatio="xMidYMid meet" filter="url(#whiteMark)" />
 </svg>

@@ -21,7 +21,6 @@ function TopNav({ screen, go, entitlements, hideNav = false }) {
         <div className="brandText">
           <div className="brandTitleRow">
             <h1>Attune</h1>
-            <span className="versionTag">v0</span>
             {entitlements?.isPlus ? <span className="planTag">Plus</span> : null}
           </div>
           <div className="tag">
