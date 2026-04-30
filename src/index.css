@@ -1325,6 +1325,80 @@
       margin-top: 12px;
     }
 
+    .settingsPlusPanel{
+      display: grid;
+      gap: 12px;
+    }
+
+    .settingsFeatureSummaryBtn{
+      width: 100%;
+      min-width: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      background:
+        radial-gradient(28px 24px at 18px 14px, var(--shine1), transparent 65%),
+        linear-gradient(135deg, rgba(72,111,150,.10), rgba(111,143,173,.06));
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .settingsFeatureSummaryBtn:hover{
+      border-color: color-mix(in oklab, var(--brand) 24%, var(--line));
+    }
+
+    .settingsFeatureSummaryBtn:focus-visible{
+      outline: 2px solid color-mix(in oklab, var(--brand) 34%, transparent);
+      outline-offset: 2px;
+    }
+
+    .settingsFeatureSummaryCopy{
+      min-width: 0;
+      display: grid;
+      gap: 4px;
+    }
+
+    .settingsFeatureSummaryTitle{
+      color: var(--ink);
+      font-size: 14px;
+      font-weight: 900;
+      line-height: 1.25;
+    }
+
+    .settingsFeatureSummaryText{
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.38;
+    }
+
+    .settingsFeatureSummaryMeta{
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+      line-height: 1.25;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .settingsFeatureDetails{
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(180px, .74fr);
+      gap: 14px;
+      align-items: start;
+    }
+
     .settingsFeaturePanel{
       display: grid;
       gap: 14px;
@@ -1403,9 +1477,25 @@
         justify-content: flex-start;
         align-self: stretch;
       }
+
+      .settingsFeatureDetails{
+        grid-template-columns: 1fr;
+      }
     }
 
     @media (max-width: 640px){
+      .settingsFeatureSummaryBtn{
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .settingsFeatureSummaryMeta{
+        width: 100%;
+        justify-content: space-between;
+        text-align: left;
+        white-space: normal;
+      }
+
       .settingsActions .btn{
         width: 100%;
       }

@@ -6,6 +6,7 @@ import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } f
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
+import { buildBoardHistoryForAi } from "../lib/boardHistory";
 import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj, extractThemes } from "../lib/noteMemory";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
 import { ensureProfile, updateProfile } from "../lib/profileApi";
@@ -32,7 +33,7 @@ import { isNativePlatform } from "../lib/platform";
 const SCHEMA_VERSION = 8;
 
 // Bump this when the AI prompt/validation changes and you want fresh boards.
-const AI_BOARD_VERSION = 4;
+const AI_BOARD_VERSION = 5;
 
 // Bump this when the AI daily note prompt changes.
 const AI_DAILY_NOTE_VERSION = 2;
@@ -1965,6 +1966,7 @@ export function useAttuneStore(){
       try {
         const token = await getSupabaseAccessToken();
         const checkinForAi = includeNote ? checkin : { ...(checkin || {}), note: "" };
+        const boardHistory = buildBoardHistoryForAi(stateRef.current?.events, { maxDays: 21 });
         const resp = await fetch(getApiUrl("/api/generate-board"), {
           method: "POST",
           headers: {
@@ -1972,7 +1974,7 @@ export function useAttuneStore(){
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
           signal: controller.signal,
-          body: JSON.stringify({ checkin: checkinForAi, level }),
+          body: JSON.stringify({ checkin: checkinForAi, level, boardHistory }),
         });
 
         if(!resp.ok){

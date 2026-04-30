@@ -6,6 +6,8 @@ import OpenAI from "openai";
 import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
+import { TASKS } from "../src/data/tasks.js";
+import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
 import {
   ensurePaddlePortalConfigured,
@@ -25,8 +27,8 @@ const BOARD_FALLBACK_MODEL = process.env.OPENAI_BOARD_FALLBACK_MODEL || MODEL;
 const BOARD_MODEL_CANDIDATES = Array.from(
   new Set([BOARD_MODEL, BOARD_FALLBACK_MODEL].map((value) => String(value || "").trim()).filter(Boolean))
 );
-const BOARD_AI_TASK_COUNT = BOARD_TOTAL_TASK_COUNT;
-const BOARD_MAX_COMPLETION_TOKENS = Math.max(220, Math.min(420, Number(process.env.OPENAI_BOARD_MAX_COMPLETION_TOKENS) || 320));
+const BOARD_AI_CANDIDATE_COUNT = 24;
+const BOARD_MAX_COMPLETION_TOKENS = Math.max(360, Math.min(900, Number(process.env.OPENAI_BOARD_MAX_COMPLETION_TOKENS) || 620));
 const openAiClient = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -1351,6 +1353,49 @@ function fillAndSanitizeTasks(tasks, targetCount = BOARD_TOTAL_TASK_COUNT) {
   return out.slice(0, targetCount);
 }
 
+function sanitizeBoardHistoryPayload(value) {
+  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
+  const cleanList = (list, limit) =>
+    (Array.isArray(list) ? list : [])
+      .map((item) => clampString(typeof item === "string" ? item : item?.text, 120))
+      .filter(Boolean)
+      .slice(0, limit);
+
+  return {
+    recentShown: cleanList(input.recentShown, 45),
+    recentPicked: cleanList(input.recentPicked, 30),
+    recentCompleted: cleanList(input.recentCompleted, 30),
+    recentRemoved: cleanList(input.recentRemoved, 30),
+  };
+}
+
+function buildCuratedFallbackTasks(level) {
+  const orderByLevel = {
+    rest: ["rest", "gentle", "light"],
+    gentle: ["gentle", "rest", "light", "steady"],
+    light: ["light", "gentle", "steady", "rest"],
+    steady: ["steady", "light", "gentle", "capable"],
+    capable: ["capable", "steady", "light", "gentle"],
+    brave: ["brave", "capable", "steady", "light"],
+  };
+  const levels = orderByLevel[level] || orderByLevel.gentle;
+  const out = [];
+  const seen = new Set();
+
+  for (const taskLevel of levels) {
+    const tasks = Array.isArray(TASKS[taskLevel]) ? TASKS[taskLevel] : [];
+    for (const text of tasks) {
+      const clean = clampString(text, 120);
+      const key = clean.toLowerCase();
+      if (!clean || seen.has(key)) continue;
+      seen.add(key);
+      out.push({ text: clean, level: taskLevel });
+    }
+  }
+
+  return out;
+}
+
 function stableHash(str) {
   const s = String(str || "");
   let h = 2166136261;
@@ -1560,13 +1605,15 @@ function containsAnyFragment(text, fragments) {
   return fragments.some((f) => f && t.includes(f));
 }
 
-function validateBoardPayload(payload, allowedContextLower, groundingFragments, expectedCount = BOARD_TOTAL_TASK_COUNT) {
+function validateBoardPayload(payload, allowedContextLower, groundingFragments, expectedCount = BOARD_TOTAL_TASK_COUNT, opts = {}) {
   const warnings = [];
   if (!payload || typeof payload !== "object") return { ok: false, error: "Invalid JSON" };
 
   const tasks = payload.tasks;
   if (!Array.isArray(tasks)) return { ok: false, error: "Missing tasks[]" };
-  if (tasks.length !== expectedCount) return { ok: false, error: `tasks[] must have length ${expectedCount}` };
+  const minCount = Number.isFinite(opts.minCount) ? Math.max(1, Math.floor(opts.minCount)) : expectedCount;
+  if (tasks.length < minCount) return { ok: false, error: `tasks[] must have at least ${minCount} items` };
+  if (tasks.length > expectedCount) return { ok: false, error: `tasks[] must have no more than ${expectedCount} items` };
 
   const seen = new Set();
   const tokenLists = [];
@@ -1600,10 +1647,11 @@ function validateBoardPayload(payload, allowedContextLower, groundingFragments, 
   return { ok: true, warnings };
 }
 
-async function generateBoardWithRetries(client, { system, userPayload, models, targetCount, maxCompletionTokens }) {
+async function generateBoardWithRetries(client, { system, userPayload, models, candidateCount, finalCount, fallbackTasks, boardHistory, maxCompletionTokens }) {
   let lastError = "";
   let lastWarnings = [];
-  const desiredCount = Math.max(1, Number(targetCount) || BOARD_TOTAL_TASK_COUNT);
+  const desiredCandidateCount = Math.max(BOARD_TOTAL_TASK_COUNT, Number(candidateCount) || BOARD_AI_CANDIDATE_COUNT);
+  const desiredFinalCount = Math.max(1, Number(finalCount) || BOARD_TOTAL_TASK_COUNT);
   const modelList = Array.from(
     new Set(
       (Array.isArray(models) ? models : [models])
@@ -1668,11 +1716,17 @@ async function generateBoardWithRetries(client, { system, userPayload, models, t
       ? userPayload.grounding.fragments
       : [];
 
-    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, desiredCount);
+    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, desiredCandidateCount);
 
     const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
 
-    const validated = validateBoardPayload(sanitizedPayload, allowedContextLower, groundingFragments, desiredCount);
+    const validated = validateBoardPayload(
+      sanitizedPayload,
+      allowedContextLower,
+      groundingFragments,
+      desiredCandidateCount,
+      { minCount: desiredFinalCount },
+    );
     if (!validated.ok) {
       lastError = validated.error || "Invalid board";
       modelErrors.push({ model, error: lastError });
@@ -1680,13 +1734,28 @@ async function generateBoardWithRetries(client, { system, userPayload, models, t
     }
 
     lastWarnings = Array.isArray(validated.warnings) ? validated.warnings : [];
+    const selected = selectQualityBoard({
+      candidates: sanitizedTasks,
+      fallbackTasks,
+      checkin: userPayload?.checkin,
+      boardHistory,
+      targetCount: desiredFinalCount,
+    });
+    if (!Array.isArray(selected.tasks) || selected.tasks.length !== desiredFinalCount) {
+      lastError = "Quality layer could not select enough tasks";
+      modelErrors.push({ model, error: lastError });
+      continue;
+    }
+
     const removed = Array.isArray(parsed?.tasks) ? parsed.tasks.length - sanitizedTasks.length : 0;
     if (removed > 0) lastWarnings = [...lastWarnings, "Removed week-level reflection tasks from today's board."];
-    if (sanitizedTasks.length < desiredCount) lastWarnings = [...lastWarnings, "Filled missing tasks with today-focused fallbacks."];
+    if (selected.meta?.fallbackCount > 0) lastWarnings = [...lastWarnings, "Filled weaker AI candidates with curated fallback tasks."];
+    if (selected.meta?.rejectedCount > 0) lastWarnings = [...lastWarnings, "Rejected low-quality AI candidates before showing the board."];
     return {
       ok: true,
-      tasks: sanitizedTasks,
+      tasks: selected.tasks,
       warnings: lastWarnings,
+      quality: selected.meta,
       model,
       attemptedModels,
       modelErrors,
@@ -1744,8 +1813,9 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
     const note = aiContext.useNoteForAi ? clampString(checkin.note, 200) : "";
+    const boardHistory = sanitizeBoardHistoryPayload(req.body?.boardHistory);
 
-    const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note });
+    const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note, boardHistory });
     const cached = boardCache.get(cacheKey);
     if (cached) {
       logEvent("info", "ai_generate_board_cache_hit", {
@@ -1792,6 +1862,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       .filter((t) => !genericNoteTokens.has(t))
       .slice(0, 4);
     groundingFragments.push(...noteTokens);
+    const fallbackTasks = buildCuratedFallbackTasks(level);
 
     const system =
       "You generate a calm, emotionally-safe list of micro-activities for a wellbeing app. " +
@@ -1809,6 +1880,8 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         "Avoid formulaic lead-ins like 'With low energy, ...', 'With a gentle pace, ...', 'If your body feels tight, ...', or 'If you're feeling {moodWord}, ...'. " +
         "Do NOT add grounding that introduces new emotional assumptions. " +
         "Aim for concise, editorial phrasing that sounds written by a thoughtful coach, not assembled from placeholders. " +
+      "Use recent board history to keep the board valuable day after day: avoid repeating recentShown or recentPicked items unless the idea is clearly one the user completes often. " +
+      "Treat recentRemoved as a strong signal to avoid that kind of task today. " +
       "Favor specific verbs and concrete details over generic productivity language. " +
       "Do not lean on filler tasks like drinking water, closing tabs, clearing a surface, taking a walk, or setting a timer unless the check-in clearly supports them. " +
       "Vary the mix across body reset, environment reset, emotional regulation, and practical next-step tasks so the board does not collapse into one pattern. " +
@@ -1830,12 +1903,15 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       grounding: {
         fragments: groundingFragments,
       },
+      recentBoardHistory: boardHistory,
       taskRequirements: {
-        count: BOARD_AI_TASK_COUNT,
+        count: BOARD_AI_CANDIDATE_COUNT,
+        finalBoardCountAfterServerCuration: BOARD_TOTAL_TASK_COUNT,
         style: "short, actionable, editorial, grounded in today's check-in",
         maxTextChars: 120,
         avoidAssumptions: true,
         avoidNearDuplicates: true,
+        avoidRecentRepeats: true,
         pacingHint: preferences,
         examples: [
           "Drop your shoulders and lengthen the back of your neck.",
@@ -1851,7 +1927,10 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       system,
       userPayload,
       models: BOARD_MODEL_CANDIDATES,
-      targetCount: BOARD_AI_TASK_COUNT,
+      candidateCount: BOARD_AI_CANDIDATE_COUNT,
+      finalCount: BOARD_TOTAL_TASK_COUNT,
+      fallbackTasks,
+      boardHistory,
       maxCompletionTokens: BOARD_MAX_COMPLETION_TOKENS,
     });
     const generationMs = Date.now() - generationStartedMs;
@@ -1907,6 +1986,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         fallbackUsed: boardFallbackUsed,
         createdAt: new Date().toISOString(),
         warnings,
+        quality: generated.quality || null,
         strategy: "ai",
         cached: false,
       },
@@ -1925,6 +2005,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         attemptedModels: attemptedBoardModels,
         fallbackUsed: boardFallbackUsed,
         strategy: "ai",
+        quality: generated.quality || null,
       },
     }).catch(() => {});
 
@@ -1944,6 +2025,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       generationMs,
       totalMs: Date.now() - totalStartedMs,
       aiTaskCount: generated.tasks.length,
+      quality: generated.quality || null,
       warnings: warnings.length,
     });
 

@@ -205,6 +205,7 @@ export default function Profile({ state, actions }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [clearMemoryOpen, setClearMemoryOpen] = useState(false);
   const [signOutOpen, setSignOutOpen] = useState(false);
+  const [plusOpen, setPlusOpen] = useState(false);
 
   const profileName = state.profile?.name || "";
   const profileEmail = state.profile?.email || "";
@@ -225,6 +226,13 @@ export default function Profile({ state, actions }) {
   const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
   const showBillingStatusPill = !isPlus || billingStatus !== "Active";
   const showUpgradeButton = !isPlus && canUpgrade;
+  const billingSummary = billingRenewsOn
+    ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
+    : signedIn
+      ? isNative
+        ? "Purchases are linked to your signed-in Attune account."
+        : "Subscriptions are linked to your signed-in Attune account."
+      : "Sign in to link billing to your Attune account.";
 
   const doExportUserData = () => {
     if(!isPlus){
@@ -283,108 +291,123 @@ export default function Profile({ state, actions }) {
           helper={
             <div style={{ display: "grid", gap: 10, maxWidth: 320 }}>
               <div>
-                Plus helps Attune respond to your rhythms with better suggestions, while keeping planning flexible.
+                Plus makes Attune more personal over time without turning it into another heavy planning app.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                Plus adds dark mode, exports, note memory, smarter picking, and deeper Weekly insights.
+                It adds adaptive boards, note memory, exports, dark mode, and deeper Weekly insights.
               </div>
             </div>
           }
           helperLabel="About Plus"
         >
-          <div className="settingsFeaturePanel">
-            <div className="settingsFeatureBody">
-              <ul className="settingsBullets" aria-label="Attune Plus features">
-                <li>
-                  <b>Dark mode</b> for a calmer, darker look.
-                </li>
-                <li>
-                  <b>Exports</b> to download your data.
-                </li>
-                <li>
-                  <b>Note memory</b> from your check-in note.
-                </li>
-                <li>
-                  <b>Smarter picking</b> that adapts to what you complete/skip.
-                </li>
-                <li>
-                  <b>Weekly insights</b> that help you notice your rhythms over time.
-                </li>
-              </ul>
+          <div className="settingsPlusPanel">
+            <button
+              type="button"
+              className="settingsFeatureSummaryBtn"
+              aria-expanded={plusOpen ? "true" : "false"}
+              aria-controls="attunePlusDetails"
+              onClick={() => setPlusOpen((open) => !open)}
+            >
+              <span className="settingsFeatureSummaryCopy">
+                <span className="settingsFeatureSummaryTitle">
+                  {isPlus ? "Plus is active on this account." : "Unlock the fuller Attune experience."}
+                </span>
+                <span className="settingsFeatureSummaryText">
+                  {isPlus
+                    ? "Adaptive boards, note memory, exports, dark mode, and Weekly insight."
+                    : "Smarter boards, note memory, exports, dark mode, and deeper Weekly insight."}
+                </span>
+              </span>
+              <span className="settingsFeatureSummaryMeta">
+                <span>{billingSummary}</span>
+                <span className={"checkinNoteChevron" + (plusOpen ? " open" : "")} aria-hidden="true" />
+              </span>
+            </button>
 
-              <div className="settingsMeta settingsMetaCompact">
-                <div>
-                  {billingRenewsOn
-                    ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
-                    : signedIn
-                      ? isNative
-                        ? "Purchases are linked to your signed-in Attune account."
-                        : "Subscriptions are linked to your signed-in Attune account."
-                      : "Sign in to link billing to your Attune account."}
+            {plusOpen ? (
+              <div id="attunePlusDetails" className="settingsFeatureDetails">
+                <div className="settingsFeatureBody">
+                  <ul className="settingsBullets" aria-label="Attune Plus features">
+                    <li>
+                      <b>Adaptive boards</b> tuned by your check-ins, picks, completions, and skips.
+                    </li>
+                    <li>
+                      <b>Note memory</b> to use your check-in notes for more personal suggestions.
+                    </li>
+                    <li>
+                      <b>Weekly insights</b> that turn check-ins into patterns you can understand.
+                    </li>
+                    <li>
+                      <b>Data exports</b> when you want a readable copy or backup.
+                    </li>
+                    <li>
+                      <b>Dark mode</b> for a calmer, evening-friendly interface.
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="settingsFeatureRail">
+                  <div className="settingsFeatureStatusCard">
+                    <div className="settingsFeatureStatusTop">
+                      <div className="settingsFeatureStatusLabel">Billing</div>
+                      {showBillingStatusPill ? <div className="settingsFeatureStatusPill">{billingStatus}</div> : null}
+                    </div>
+                    <div className="settingsFeatureStatusNote">
+                      {signedIn
+                        ? isNative
+                          ? "Your purchase is linked to this signed-in Attune account."
+                          : "Your subscription is linked to this signed-in Attune account."
+                        : "Sign in to link billing to your Attune account."}
+                    </div>
+                  </div>
+
+                  <div className="settingsActions settingsFeatureActions">
+                    {showUpgradeButton ? (
+                      <button
+                        type="button"
+                        className="btn primary"
+                        onClick={() => actions?.startBillingUpgrade?.()}
+                        aria-label="Upgrade to Attune Plus"
+                        disabled={billingSyncing}
+                        title=""
+                      >
+                        {billingSyncing ? "Working..." : isNative ? "Upgrade on Google Play" : "Upgrade on the web"}
+                      </button>
+                    ) : null}
+                    {isNative ? (
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={() => actions?.restoreBillingPurchases?.()}
+                        disabled={billingSyncing}
+                        aria-label="Restore Attune Plus purchase"
+                      >
+                        Restore purchase
+                      </button>
+                    ) : canOpenPortal ? (
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={() => actions?.openBillingPortal?.()}
+                        disabled={billingSyncing}
+                        aria-label="Manage web billing"
+                      >
+                        Manage billing
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={() => actions?.refreshBilling?.()}
+                      disabled={billingSyncing}
+                      aria-label="Refresh billing status"
+                    >
+                      Refresh billing
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="settingsFeatureRail">
-              <div className="settingsFeatureStatusCard">
-                <div className="settingsFeatureStatusTop">
-                  <div className="settingsFeatureStatusLabel">Billing</div>
-                  {showBillingStatusPill ? <div className="settingsFeatureStatusPill">{billingStatus}</div> : null}
-                </div>
-                <div className="settingsFeatureStatusNote">
-                  {signedIn
-                    ? isNative
-                      ? "Your purchase is linked to this signed-in Attune account."
-                      : "Your subscription is linked to this signed-in Attune account."
-                    : "Sign in to link billing to your Attune account."}
-                </div>
-              </div>
-
-              <div className="settingsActions settingsFeatureActions">
-                {showUpgradeButton ? (
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={() => actions?.startBillingUpgrade?.()}
-                    aria-label="Upgrade to Attune Plus"
-                    disabled={billingSyncing}
-                    title=""
-                  >
-                    {billingSyncing ? "Working..." : isNative ? "Upgrade on Google Play" : "Upgrade on the web"}
-                  </button>
-                ) : null}
-                {isNative ? (
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() => actions?.restoreBillingPurchases?.()}
-                    disabled={billingSyncing}
-                    aria-label="Restore Attune Plus purchase"
-                  >
-                    Restore purchase
-                  </button>
-                ) : canOpenPortal ? (
-                  <button
-                    type="button"
-                    className="btn ghost"
-                    onClick={() => actions?.openBillingPortal?.()}
-                    disabled={billingSyncing}
-                    aria-label="Manage web billing"
-                  >
-                    Manage billing
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="btn ghost"
-                  onClick={() => actions?.refreshBilling?.()}
-                  disabled={billingSyncing}
-                  aria-label="Refresh billing status"
-                >
-                  Refresh billing
-                </button>
-              </div>
-            </div>
+            ) : null}
           </div>
         </SettingsSection>
 
