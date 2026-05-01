@@ -2,6 +2,89 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAttuneStore } from "../store/useAttuneStore";
 import { getAttuneRecommendedPicks, smartPickPool } from "../lib/smartPick";
 
+const PACE_LABELS = {
+  rest: "rest",
+  gentle: "gentle",
+  light: "light",
+  steady: "steady",
+  capable: "capable",
+  brave: "brave",
+};
+
+const FALLBACK_TIME_BY_PACE = {
+  rest: "2-5 min",
+  gentle: "3-5 min",
+  light: "5-8 min",
+  steady: "8-10 min",
+  capable: "10-15 min",
+  brave: "5-20 min",
+};
+
+function normalizeMoodWord(word) {
+  if (word === "Steady") return "Settled";
+  if (word === "Anxious") return "Overwhelmed";
+  if (word === "Flat") return "Tired";
+  return word;
+}
+
+function getActivityTimeCue(text, level) {
+  const source = String(text || "");
+  const explicit = source.match(/(\d+)\s*(?:-\s*(\d+))?\s*(?:min|minute)/i);
+  if (explicit) return explicit[2] ? `${explicit[1]}-${explicit[2]} min` : `${explicit[1]} min`;
+  if (/\bone\b|\b1\b/i.test(source)) return "One small thing";
+  return FALLBACK_TIME_BY_PACE[level] || "5 min";
+}
+
+function getActivitySetupCue(text) {
+  const source = String(text || "").toLowerCase();
+  if (/walk|outside|fresh air|sky|sunlight|window/.test(source)) return "Step outside";
+  if (/write|list|note|plan|proud|wins|looking forward|boundary/.test(source)) return "Just notes";
+  if (/message|call|voice/.test(source)) return "Phone optional";
+  if (/song|music|podcast|video|watch|listen/.test(source)) return "Audio cue";
+  if (/drink|snack|meal|cook|water/.test(source)) return "Kitchen cue";
+  if (/tidy|organize|sort|fold|clear|drawer|surface|pile|space/.test(source)) return "Small space";
+  if (/stretch|yoga|mobility|movement|breath|body scan|strength/.test(source)) return "Body reset";
+  if (/blanket|candle|lotion|oil|comfort|warm|shower|wash/.test(source)) return "Comfort cue";
+  return "No setup";
+}
+
+function getActivityFitLine({ opt, state, isAttunePick }) {
+  const checkin = state?.checkin || {};
+  const moodWords = Array.isArray(checkin.moodWords)
+    ? checkin.moodWords.map(normalizeMoodWord)
+    : [];
+  const hasMood = (word) => moodWords.includes(word);
+  const level = typeof opt?.level === "string" ? opt.level : state?.level;
+  const pace = PACE_LABELS[level] || "today";
+  const prefix = isAttunePick ? "Attune marked this because it " : "This ";
+
+  if (checkin.energy === "verylow" || hasMood("Worn out")) {
+    return `${prefix}keeps the first move low-friction for very low energy.`;
+  }
+  if (checkin.energy === "low" || hasMood("Tired")) {
+    return `${prefix}keeps the start small, so it does not ask too much of you.`;
+  }
+  if (hasMood("Overwhelmed")) {
+    return `${prefix}gives you one clear step instead of a whole plan.`;
+  }
+  if (hasMood("Restless")) {
+    return `${prefix}gives restless energy somewhere gentle to go.`;
+  }
+  if (checkin.body === "tender") {
+    return `${prefix}stays gentle on a tender body.`;
+  }
+  if (checkin.body === "achey") {
+    return `${prefix}keeps the strain low for a sore body.`;
+  }
+  if (hasMood("Motivated")) {
+    return `${prefix}uses today's motivation without turning it into pressure.`;
+  }
+  if (hasMood("Hopeful") || hasMood("Settled")) {
+    return `${prefix}builds on the steadier mood you checked in with.`;
+  }
+  return `${prefix}fits your ${pace} pace today.`;
+}
+
 function shuffle(arr) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -153,6 +236,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pendingAdd, setPendingAdd] = useState(null); // { idx, opt }
+  const [selectedTileIdx, setSelectedTileIdx] = useState(null);
   const revealTimeoutsRef = useRef(new Map());
   const attunePickTimeoutsRef = useRef(new Map());
 
@@ -183,6 +267,18 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   const effectiveCap =
     typeof myDayCap === "number" ? Math.min(Math.max(myDayCap, 0), HARD_CAP) : 5;
 
+  const selectedTile = selectedTileIdx === null ? null : boardAssigned[selectedTileIdx];
+  const selectedIsTaken = !!selectedTile?.text && takenTexts.has(selectedTile.text);
+  const selectedAttuneRank = selectedTile?.text ? attunePickOrder.get(selectedTile.text) : undefined;
+  const selectedIsAttunePick = typeof selectedAttuneRank === "number";
+  const selectedFitLine = selectedTile?.text
+    ? getActivityFitLine({ opt: selectedTile, state, isAttunePick: selectedIsAttunePick })
+    : "";
+  const selectedTimeCue = selectedTile?.text
+    ? getActivityTimeCue(selectedTile.text, selectedTile.level || state.level)
+    : "";
+  const selectedSetupCue = selectedTile?.text ? getActivitySetupCue(selectedTile.text) : "";
+
   const clearBoard = () => {
     revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
     revealTimeoutsRef.current.clear();
@@ -190,6 +286,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     setRevealFx(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
+    setSelectedTileIdx(null);
     actions.trackEvent?.("boardCleared", {
       pickedCount: myDay?.length || 0,
       pace: state.level,
@@ -316,6 +413,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     });
     setConfirmOpen(false);
     setPendingAdd(null);
+    setSelectedTileIdx(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);
 
@@ -367,6 +465,10 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     if (didReveal) triggerRevealFx(idx);
   };
 
+  const closeDetail = () => {
+    setSelectedTileIdx(null);
+  };
+
   const onAdd = (idx) => {
     if (loading) return;
 
@@ -392,6 +494,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     // Reveal the tile then add it.
     revealTile(idx);
     actions.addOption({ text: opt.text, level: opt.level });
+    setSelectedTileIdx(idx);
   };
 
   const closeConfirm = () => {
@@ -412,6 +515,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     actions.setMyDayCap?.(HARD_CAP);
     revealTile(pendingAdd.idx);
     actions.addOption({ text: pendingAdd.opt.text, level: pendingAdd.opt.level });
+    setSelectedTileIdx(pendingAdd.idx);
     closeConfirm();
   };
 
@@ -536,12 +640,12 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                 }
 
                 if (isTaken) {
-                  actions.setToast?.("Already in your day. Trying is enough.", true);
+                  setSelectedTileIdx(idx);
                   return;
                 }
 
-                // Single click selects/adds the tile.
-                return onAdd(idx);
+                revealTile(idx);
+                setSelectedTileIdx(idx);
               }}
               aria-pressed={isTaken}
               aria-disabled={isDisabled ? "true" : undefined}
@@ -570,6 +674,63 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
           );
         })}
       </div>
+
+      {selectedTile?.text && (
+        <div
+          className="activityDetailOverlay"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closeDetail();
+          }}
+        >
+          <section
+            className="activityDetailSheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="activityDetailTitle"
+            aria-describedby="activityDetailWhy"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <div className="activityDetailHandle" aria-hidden="true" />
+
+            <div className="activityDetailKicker">
+              <span>{selectedIsAttunePick ? "Attune pick" : "Small step"}</span>
+              {selectedIsTaken ? <span className="activityDetailState">In My Day</span> : null}
+            </div>
+
+            <h3 className="activityDetailTitle" id="activityDetailTitle">
+              {selectedTile.text}
+            </h3>
+
+            <div className="activityDetailWhy" id="activityDetailWhy">
+              <span>Why this fits</span>
+              <p>{selectedFitLine}</p>
+            </div>
+
+            <div className="activityDetailChips" aria-label="Activity details">
+              <span>{selectedTimeCue}</span>
+              <span>{selectedSetupCue}</span>
+              <span>{PACE_LABELS[selectedTile.level || state.level] || "today"} pace</span>
+            </div>
+
+            <div className="activityDetailActions">
+              <button
+                type="button"
+                className="btn primary activityDetailPrimary"
+                onClick={() => {
+                  if (selectedTileIdx !== null) onAdd(selectedTileIdx);
+                }}
+                disabled={selectedIsTaken}
+              >
+                {selectedIsTaken ? "Added to My Day" : "Add to My Day"}
+              </button>
+              <button type="button" className="btn ghost activityDetailSecondary" onClick={closeDetail}>
+                Pick something else
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
     </div>
   );

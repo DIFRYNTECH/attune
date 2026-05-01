@@ -2431,6 +2431,163 @@
     .boardTile.disabled:active{transform:none}
     .boardTop .btn[disabled]{opacity:.55; cursor:not-allowed;}
 
+    .activityDetailOverlay{
+      position:fixed;
+      inset:0;
+      z-index:72;
+      display:flex;
+      align-items:flex-end;
+      justify-content:center;
+      padding:18px;
+      background:rgba(13,17,31,.26);
+      backdrop-filter:blur(7px);
+    }
+    .activityDetailSheet{
+      width:min(430px, 100%);
+      max-height:min(52svh, 430px);
+      overflow:auto;
+      -webkit-overflow-scrolling:touch;
+      border:1px solid color-mix(in oklab, var(--brand) 22%, var(--line));
+      border-radius:26px 26px 22px 22px;
+      background:
+        radial-gradient(circle at 16% 0%, rgba(132,145,226,.18), transparent 42%),
+        linear-gradient(180deg, color-mix(in oklab, var(--card98) 94%, white 6%), var(--card98));
+      box-shadow:
+        0 24px 70px rgba(12,16,31,.28),
+        inset 0 1px 0 rgba(255,255,255,.22);
+      padding:10px 18px 18px;
+      color:var(--ink);
+    }
+    .activityDetailHandle{
+      width:44px;
+      height:5px;
+      border-radius:999px;
+      margin:0 auto 14px;
+      background:color-mix(in oklab, var(--muted) 34%, transparent);
+    }
+    .activityDetailKicker{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+      font-size:11px;
+      line-height:1;
+      font-weight:950;
+      letter-spacing:.12px;
+      color:color-mix(in oklab, var(--brand) 70%, var(--ink));
+    }
+    .activityDetailKicker span{
+      min-height:22px;
+      display:inline-flex;
+      align-items:center;
+      border-radius:999px;
+      padding:6px 9px;
+      border:1px solid color-mix(in oklab, var(--brand) 22%, var(--line));
+      background:color-mix(in oklab, var(--surface2) 72%, transparent);
+    }
+    .activityDetailKicker .activityDetailState{
+      color:color-mix(in oklab, var(--success) 78%, var(--ink));
+      border-color:var(--successLine);
+      background:var(--successSoft);
+    }
+    .activityDetailTitle{
+      margin:0;
+      font-size:22px;
+      line-height:1.08;
+      letter-spacing:-.035em;
+      font-weight:950;
+      color:var(--ink);
+      text-wrap:balance;
+    }
+    .activityDetailWhy{
+      margin-top:16px;
+      padding:13px 14px;
+      border:1px solid color-mix(in oklab, var(--line) 84%, transparent);
+      border-radius:18px;
+      background:color-mix(in oklab, var(--surface2) 78%, transparent);
+    }
+    .activityDetailWhy span{
+      display:block;
+      margin-bottom:7px;
+      font-size:11px;
+      line-height:1;
+      font-weight:950;
+      color:color-mix(in oklab, var(--muted) 72%, var(--ink));
+    }
+    .activityDetailWhy p{
+      margin:0;
+      font-size:13px;
+      line-height:1.42;
+      font-weight:700;
+      color:var(--muted);
+    }
+    .activityDetailChips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:7px;
+      margin-top:12px;
+    }
+    .activityDetailChips span{
+      min-height:28px;
+      display:inline-flex;
+      align-items:center;
+      padding:7px 10px;
+      border-radius:999px;
+      border:1px solid color-mix(in oklab, var(--line) 84%, transparent);
+      background:color-mix(in oklab, var(--surface3) 68%, transparent);
+      color:color-mix(in oklab, var(--muted) 82%, var(--ink));
+      font-size:11px;
+      line-height:1;
+      font-weight:900;
+    }
+    .activityDetailActions{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:9px;
+      margin-top:16px;
+    }
+    .activityDetailPrimary,
+    .activityDetailSecondary{
+      width:100%;
+      min-height:44px;
+      justify-content:center;
+    }
+    .activityDetailPrimary:disabled{
+      opacity:.72;
+      cursor:default;
+    }
+    html[data-theme="dark"] .activityDetailOverlay{
+      background:rgba(5,8,20,.34);
+    }
+    html[data-theme="dark"] .activityDetailSheet{
+      background:
+        radial-gradient(circle at 18% 0%, rgba(132,145,226,.16), transparent 44%),
+        linear-gradient(180deg, color-mix(in oklab, var(--card98) 92%, white 8%), var(--card98));
+      box-shadow:
+        0 24px 70px rgba(0,0,0,.44),
+        inset 0 1px 0 rgba(255,255,255,.07);
+    }
+    html[data-theme="dark"] .activityDetailWhy{
+      background:rgba(255,255,255,.035);
+      border-color:rgba(255,255,255,.08);
+    }
+    @media (max-width: 640px){
+      .activityDetailOverlay{
+        padding:0 12px calc(72px + env(safe-area-inset-bottom));
+      }
+      .activityDetailSheet{
+        max-height:min(48svh, 390px);
+        padding:9px 16px 16px;
+      }
+      .activityDetailTitle{
+        font-size:20px;
+      }
+      .activityDetailWhy{
+        margin-top:13px;
+      }
+    }
+
     /* Minimal modal */
     .modalOverlay{
       position:fixed;
