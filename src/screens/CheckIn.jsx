@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
 import InfoTip from "../components/InfoTip";
+import AttunePrimer from "../components/AttunePrimer";
+import { shouldShowAttunePrimer } from "../lib/attunePrimer";
 import { getCheckInHeading } from "../lib/personalization";
 
 const MOOD_WORDS = [
@@ -121,13 +123,6 @@ function normalizeMoodWord(word) {
   return MOOD_WORD_ALIASES[word] || word;
 }
 
-function moodMeta(word) {
-  const label = normalizeMoodWord(word);
-  const found = MOOD_WORDS.find((x) => x.label === label);
-  if (found) return found;
-  return { label, tone: "okay" };
-}
-
 function moodCategoryFromWords(words) {
   if (!words?.length) return null;
 
@@ -170,6 +165,7 @@ export default function CheckIn({ state, actions }) {
   const previousLevelRef = useRef(level);
   const paceTraceTimeoutRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
+  const showPrimer = shouldShowAttunePrimer(state);
   const compactHeading = checkInHeading.length > 32;
   const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
   const [paceSuggestionFlash, setPaceSuggestionFlash] = useState(false);
@@ -218,7 +214,7 @@ export default function CheckIn({ state, actions }) {
         : [];
 
   const selectedMoodWords = selectedMoodWordsRaw.map(normalizeMoodWord);
-  const hasInitialProgress = useRef(
+  const [hasInitialProgress] = useState(() =>
     checkedInToday ||
     trimmedNote.length > 0 ||
     checkin.energy !== DEFAULT_ENERGY ||
@@ -226,21 +222,21 @@ export default function CheckIn({ state, actions }) {
     level !== DEFAULT_LEVEL ||
     !(selectedMoodWords.length === 1 && selectedMoodWords[0] === "Okay" && checkin.mood === "okay")
   );
-  const paceStepRevealedRef = useRef(hasInitialProgress.current);
+  const paceStepRevealedRef = useRef(hasInitialProgress);
   const [stepState, setStepState] = useState(() => ({
-    mood: hasInitialProgress.current,
-    energy: hasInitialProgress.current,
-    body: hasInitialProgress.current,
-    pace: hasInitialProgress.current,
+    mood: hasInitialProgress,
+    energy: hasInitialProgress,
+    body: hasInitialProgress,
+    pace: hasInitialProgress,
   }));
 
-  const visibleMoodWords = hasInitialProgress.current || stepState.mood ? selectedMoodWords : [];
-  const showEnergyStep = hasInitialProgress.current || stepState.mood;
-  const showBodyStep = hasInitialProgress.current || stepState.energy;
-  const showPaceStep = hasInitialProgress.current || stepState.body;
+  const visibleMoodWords = hasInitialProgress || stepState.mood ? selectedMoodWords : [];
+  const showEnergyStep = hasInitialProgress || stepState.mood;
+  const showBodyStep = hasInitialProgress || stepState.energy;
+  const showPaceStep = hasInitialProgress || stepState.body;
   const showNoteStep = showPaceStep;
-  const visibleEnergyValue = hasInitialProgress.current || stepState.energy ? checkin.energy : "";
-  const visibleBodyValue = hasInitialProgress.current || stepState.body ? checkin.body : "";
+  const visibleEnergyValue = hasInitialProgress || stepState.energy ? checkin.energy : "";
+  const visibleBodyValue = hasInitialProgress || stepState.body ? checkin.body : "";
   const visibleLevel = showPaceStep ? level : "";
 
   useEffect(() => {
@@ -328,6 +324,8 @@ export default function CheckIn({ state, actions }) {
       <div className="checkinIntro">
         <h2 className={"checkinHeading" + (compactHeading ? " compact" : "")}>{checkInHeading}</h2>
       </div>
+
+      {showPrimer ? <AttunePrimer /> : null}
 
       <div className="checkinFlow">
         <div className="checkinStep checkinStepMood" data-step="mood">

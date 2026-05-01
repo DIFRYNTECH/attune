@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import AttunePrimer from "../components/AttunePrimer";
 import InfoTip from "../components/InfoTip";
 import { buildBackupExport, buildUserDataExport } from "../lib/exportData";
 import { isNativePlatform } from "../lib/platform";
@@ -281,6 +282,10 @@ export default function Profile({ state, actions }) {
       </div>
 
       <div className="settingsMain">
+        <SettingsSection title="About Attune" helper="A quick reminder of the loop Attune is built around." helperLabel="About Attune">
+          <AttunePrimer compact className="settingsPrimer" />
+        </SettingsSection>
+
         <SettingsSection
           title={
             <div className="settingsSectionTitleRow">

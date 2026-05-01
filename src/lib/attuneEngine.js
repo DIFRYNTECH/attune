@@ -34,6 +34,15 @@ export function shuffle(arr, randomFn = Math.random){
 }
 
 const PACE_ORDER = ["rest", "gentle", "light", "steady", "capable", "brave"];
+const MIN_BOARD_OPTION_POOL = 18;
+const PACE_FILL_ORDER = {
+  rest: ["rest", "gentle", "light"],
+  gentle: ["gentle", "rest", "light", "steady"],
+  light: ["light", "gentle", "steady", "rest", "capable"],
+  steady: ["steady", "light", "capable", "gentle", "brave"],
+  capable: ["capable", "steady", "brave", "light"],
+  brave: ["brave", "capable", "steady", "light"],
+};
 
 function clampPace(key, maxKey){
   const keyIndex = PACE_ORDER.indexOf(key);
@@ -179,8 +188,33 @@ export function suggestActivities(checkin, level, seed = "") {
     pool.push(...TASKS.brave);
   }
 
-  // 3. Create a unique set of tasks, then convert back to an array.
-  const uniquePool = [...new Set(pool)];
+  // 3. Create a unique pool and top up short pace lists with nearby paces.
+  // The board renders 15 tiles, so every generated board needs at least 15
+  // real options. A small buffer prevents one empty placeholder from sneaking
+  // in after pinned or repeated activities are removed.
+  const seen = new Set();
+  const uniquePool = [];
+  const addUnique = (tasks) => {
+    for (const task of tasks || []) {
+      if (!task || seen.has(task)) continue;
+      seen.add(task);
+      uniquePool.push(task);
+    }
+  };
+
+  addUnique(pool);
+
+  const fillOrder = PACE_FILL_ORDER[level] || PACE_ORDER;
+  for (const pace of fillOrder) {
+    if (uniquePool.length >= MIN_BOARD_OPTION_POOL) break;
+    addUnique(TASKS[pace]);
+  }
+
+  for (const pace of PACE_ORDER) {
+    if (uniquePool.length >= MIN_BOARD_OPTION_POOL) break;
+    addUnique(TASKS[pace]);
+  }
+
   const randomFn = seed ? createSeededRandom(seed) : Math.random;
 
   // 4. Shuffle the unique pool and take the first batch.

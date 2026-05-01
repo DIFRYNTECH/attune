@@ -226,6 +226,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
   const [revealed, setRevealed] = useState(() => Array(TILE_COUNT).fill(false));
   const [revealFx, setRevealFx] = useState(() => Array(TILE_COUNT).fill(false));
+  const [passedTiles, setPassedTiles] = useState(() => Array(TILE_COUNT).fill(false));
   const [attunePickFx, setAttunePickFx] = useState(() => Array(TILE_COUNT).fill(false));
   const [boardAssigned, setBoardAssigned] = useState(() => {
     if (Array.isArray(storedBoardAssigned) && storedBoardAssigned.length === TILE_COUNT) {
@@ -284,6 +285,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     revealTimeoutsRef.current.clear();
     setRevealed(Array(TILE_COUNT).fill(false));
     setRevealFx(Array(TILE_COUNT).fill(false));
+    setPassedTiles(Array(TILE_COUNT).fill(false));
     setConfirmOpen(false);
     setPendingAdd(null);
     setSelectedTileIdx(null);
@@ -338,6 +340,17 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       return;
     }
 
+    const uniqueOptionCount = new Set(
+      options
+        .map((option) => (typeof option?.text === "string" ? option.text.trim() : ""))
+        .filter(Boolean)
+    ).size;
+
+    if (state.optionsSource === "default" && uniqueOptionCount < TILE_COUNT) {
+      actions.refreshOptions();
+      return;
+    }
+
     const pinnedTexts = (myDay || [])
       .map((t) => t?.text)
       .filter(Boolean)
@@ -388,6 +401,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     attunePickTimeoutsRef.current.clear();
     setRevealed(Array(TILE_COUNT).fill(false));
     setRevealFx(Array(TILE_COUNT).fill(false));
+    setPassedTiles(Array(TILE_COUNT).fill(false));
     setAttunePickFx(() => {
       const next = Array(TILE_COUNT).fill(false);
       if (!canSmartPick || !attunePickOrder.size) return next;
@@ -469,6 +483,17 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     setSelectedTileIdx(null);
   };
 
+  const passSelectedTile = () => {
+    if (selectedTileIdx !== null && !selectedIsTaken) {
+      setPassedTiles((prev) => {
+        const next = [...prev];
+        next[selectedTileIdx] = true;
+        return next;
+      });
+    }
+    closeDetail();
+  };
+
   const onAdd = (idx) => {
     if (loading) return;
 
@@ -494,7 +519,13 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     // Reveal the tile then add it.
     revealTile(idx);
     actions.addOption({ text: opt.text, level: opt.level });
-    setSelectedTileIdx(idx);
+    setPassedTiles((prev) => {
+      if (!prev[idx]) return prev;
+      const next = [...prev];
+      next[idx] = false;
+      return next;
+    });
+    setSelectedTileIdx(null);
   };
 
   const closeConfirm = () => {
@@ -515,7 +546,13 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     actions.setMyDayCap?.(HARD_CAP);
     revealTile(pendingAdd.idx);
     actions.addOption({ text: pendingAdd.opt.text, level: pendingAdd.opt.level });
-    setSelectedTileIdx(pendingAdd.idx);
+    setPassedTiles((prev) => {
+      if (!prev[pendingAdd.idx]) return prev;
+      const next = [...prev];
+      next[pendingAdd.idx] = false;
+      return next;
+    });
+    setSelectedTileIdx(null);
     closeConfirm();
   };
 
@@ -598,6 +635,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
           const opt = boardAssigned[idx];
           const isPlaceholder = !!opt?.placeholder || !opt?.text;
           const isTaken = !!opt?.text && takenTexts.has(opt.text);
+          const isPassed = !!opt?.text && !isTaken && passedTiles[idx];
           const attunePickRank = opt?.text ? attunePickOrder.get(opt.text) : undefined;
           const isAttunePick = typeof attunePickRank === "number";
 
@@ -618,6 +656,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                 (attunePickFx[idx] ? " attunePickIntro" : "") +
                 (isRevealed ? " revealed" : "") +
                 (revealFx[idx] ? " revealing" : "") +
+                (isPassed ? " passed" : "") +
                 (isTaken ? " taken" : "") +
                 (isDisabled ? " disabled" : "")
               }
@@ -724,7 +763,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
               >
                 {selectedIsTaken ? "Added to My Day" : "Add to My Day"}
               </button>
-              <button type="button" className="btn ghost activityDetailSecondary" onClick={closeDetail}>
+              <button type="button" className="btn ghost activityDetailSecondary" onClick={passSelectedTile}>
                 Pick something else
               </button>
             </div>

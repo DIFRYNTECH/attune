@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import AttunePrimer from "../components/AttunePrimer";
 import InfoTip from "../components/InfoTip";
+import { shouldShowAttunePrimer } from "../lib/attunePrimer";
 import { getTodayEmptyStateCopy } from "../lib/personalization";
 
 export default function Today({ state, actions }) {
@@ -10,6 +12,7 @@ export default function Today({ state, actions }) {
 	const [showCustomInput, setShowCustomInput] = useState(false);
 	const customInputRef = useRef(null);
 	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
+	const showPrimer = shouldShowAttunePrimer(state);
 
 	useEffect(() => {
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
@@ -46,6 +49,8 @@ export default function Today({ state, actions }) {
 		<div className="card myDayCard">
 			<h2 className="myDayHeading">🧭 My Day</h2>
 			<div className="sub">Aim for 2-5 tasks. You can add up to 10 if you’d like.</div>
+
+			{showPrimer ? <AttunePrimer compact /> : null}
 
 			<div
 				className={"result personalNote" + (canToggleNote ? " tappable" : "")}

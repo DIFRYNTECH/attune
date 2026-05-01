@@ -1985,11 +1985,17 @@ export function useAttuneStore(){
         const tasks = Array.isArray(data?.tasks) ? data.tasks : null;
         if(!tasks || tasks.length !== 15) throw new Error("invalid_tasks");
 
-        const nextOptions = tasks
-          .map((x) => (typeof x?.text === "string" ? x.text.trim() : ""))
-          .filter(Boolean)
-          .slice(0, 15)
-          .map((text) => ({ text, level }));
+        const uniqueTexts = [];
+        const seenTexts = new Set();
+        for (const task of tasks) {
+          const text = typeof task?.text === "string" ? task.text.trim() : "";
+          if (!text || seenTexts.has(text)) continue;
+          seenTexts.add(text);
+          uniqueTexts.push(text);
+        }
+
+        const nextOptions = uniqueTexts.slice(0, 15).map((text) => ({ text, level }));
+        const nextTasks = nextOptions.map((option) => ({ text: option.text }));
 
         if(nextOptions.length !== 15) throw new Error("invalid_texts");
 
@@ -2006,7 +2012,7 @@ export function useAttuneStore(){
             optionsSource: "ai",
             boardAssigned: [],
             currentSpin: null,
-            ai: { status: "ready", today: t, sig, tasks, error: "" },
+            ai: { status: "ready", today: t, sig, tasks: nextTasks, error: "" },
           };
         });
       } catch (err) {

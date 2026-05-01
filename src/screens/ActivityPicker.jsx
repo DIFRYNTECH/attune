@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 
+import AttunePrimer from "../components/AttunePrimer.jsx";
 import ActivityBoard from "../components/ActivityBoard.jsx";
+import { shouldShowAttunePrimer } from "../lib/attunePrimer.js";
 
 export default function ActivityPicker({ state, actions }) {
   const isPlus = !!state?.entitlements?.isPlus;
@@ -12,6 +14,7 @@ export default function ActivityPicker({ state, actions }) {
   }, []);
 
   const aiStatus = state.ai?.status;
+  const showPrimer = shouldShowAttunePrimer(state);
   const hasAiBoard = state.optionsSource === "ai";
   const boardLoading = isPlus && !hasAiBoard && aiStatus !== "error";
   const statusLine =
@@ -33,6 +36,7 @@ export default function ActivityPicker({ state, actions }) {
           A small, doable option, based on how you feel today.
           {statusLine ? ` ${statusLine}` : ""}
         </div>
+        {showPrimer ? <AttunePrimer compact /> : null}
         <ActivityBoard state={state} actions={actions} loading={boardLoading} />
       </div>
     </>
