@@ -6,12 +6,22 @@ import { shouldShowAttunePrimer } from "../lib/attunePrimer.js";
 
 export default function ActivityPicker({ state, actions }) {
   const isPlus = !!state?.entitlements?.isPlus;
+  const aiBoardRequestKey = JSON.stringify({
+    today: state?.today || "",
+    level: state?.level || "",
+    useNoteForAi: state?.profile?.useNoteForAi !== false,
+    mood: state?.checkin?.mood || "",
+    moodWords: Array.isArray(state?.checkin?.moodWords) ? state.checkin.moodWords.slice(0, 2) : [],
+    energy: state?.checkin?.energy || "",
+    body: state?.checkin?.body || "",
+    note: state?.profile?.useNoteForAi !== false ? (state?.checkin?.note || "").slice(0, 200) : "",
+  });
 
   useEffect(() => {
     if(!isPlus) return;
     actions.ensureAiBoard?.(state.checkin, state.level, state.today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isPlus, aiBoardRequestKey]);
 
   const aiStatus = state.ai?.status;
   const showPrimer = shouldShowAttunePrimer(state);
