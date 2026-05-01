@@ -270,6 +270,9 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
   const selectedTile = selectedTileIdx === null ? null : boardAssigned[selectedTileIdx];
   const selectedIsTaken = !!selectedTile?.text && takenTexts.has(selectedTile.text);
+  const selectedMyDayTask = selectedTile?.text
+    ? (myDay || []).find((task) => task?.text === selectedTile.text)
+    : null;
   const selectedAttuneRank = selectedTile?.text ? attunePickOrder.get(selectedTile.text) : undefined;
   const selectedIsAttunePick = typeof selectedAttuneRank === "number";
   const selectedFitLine = selectedTile?.text
@@ -484,7 +487,10 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
   };
 
   const passSelectedTile = () => {
-    if (selectedTileIdx !== null && !selectedIsTaken) {
+    if (selectedTileIdx !== null && selectedTile?.text) {
+      if (selectedMyDayTask?.id) {
+        actions.removeTask?.(selectedMyDayTask.id);
+      }
       setPassedTiles((prev) => {
         const next = [...prev];
         next[selectedTileIdx] = true;
@@ -678,6 +684,11 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                   return;
                 }
 
+                if (isPassed) {
+                  actions.setToast?.("Set aside. Pick another tile.", false);
+                  return;
+                }
+
                 if (isTaken) {
                   setSelectedTileIdx(idx);
                   return;
@@ -689,7 +700,9 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
               aria-pressed={isTaken}
               aria-disabled={isDisabled ? "true" : undefined}
               title={
-                isTaken
+                isPassed
+                  ? "Set aside"
+                  : isTaken
                   ? "Already in your day"
                   : isPlaceholder
                     ? "No more options"
