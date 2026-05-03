@@ -3,6 +3,7 @@ import { Suspense, lazy, useEffect, useState } from "react";
 import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
+import Landing from "../screens/Landing.jsx";
 import Login from "../screens/Login.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
 
@@ -99,7 +100,12 @@ function ScreenFallback({ label = "Loading..." }) {
   );
 }
 
-export default function App() {
+function isLandingPath() {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname === "/landing";
+}
+
+function AttuneApp() {
   const { state, actions } = useAttuneStore();
   const signedIn = !!state?.auth?.signedIn;
   const screen = state.screen;
@@ -218,4 +224,9 @@ export default function App() {
       </Suspense>
     </div>
   );
+}
+
+export default function App() {
+  if (isLandingPath()) return <Landing />;
+  return <AttuneApp />;
 }

@@ -21,7 +21,12 @@
     "cap:sync:prod": "node scripts/cap-sync-env.mjs production",
     "cap:open": "npx cap open android",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "video:studio": "remotion studio remotion/index.ts --port=3002",
+    "video:still:opening": "remotion still remotion/index.ts AttuneBrandVertical remotion/renders/opening.png --frame=72 --scale=0.35",
+    "video:still:middle": "remotion still remotion/index.ts AttuneBrandVertical remotion/renders/middle.png --frame=490 --scale=0.35",
+    "video:still:closing": "remotion still remotion/index.ts AttuneBrandVertical remotion/renders/closing.png --frame=1054 --scale=0.35",
+    "video:render": "remotion render remotion/index.ts AttuneBrandVertical remotion/renders/attune-brand-vertical.mp4"
   },
   "dependencies": {
     "@capacitor/android": "^8.2.0",
@@ -45,6 +50,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
+    "@remotion/cli": "^4.0.455",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
@@ -53,6 +59,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "remotion": "^4.0.455",
     "typescript": "^5.9.3",
     "vite": "^7.2.4"
   }

@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
 import InfoTip from "../components/InfoTip";
-import AttunePrimer from "../components/AttunePrimer";
-import { shouldShowAttunePrimer } from "../lib/attunePrimer";
 import { getCheckInHeading } from "../lib/personalization";
 
 const MOOD_WORDS = [
@@ -165,7 +163,6 @@ export default function CheckIn({ state, actions }) {
   const previousLevelRef = useRef(level);
   const paceTraceTimeoutRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
-  const showPrimer = shouldShowAttunePrimer(state);
   const compactHeading = checkInHeading.length > 32;
   const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
   const [paceSuggestionFlash, setPaceSuggestionFlash] = useState(false);
@@ -324,8 +321,6 @@ export default function CheckIn({ state, actions }) {
       <div className="checkinIntro">
         <h2 className={"checkinHeading" + (compactHeading ? " compact" : "")}>{checkInHeading}</h2>
       </div>
-
-      {showPrimer ? <AttunePrimer /> : null}
 
       <div className="checkinFlow">
         <div className="checkinStep checkinStepMood" data-step="mood">
