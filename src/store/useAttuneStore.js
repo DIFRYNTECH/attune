@@ -457,6 +457,8 @@ async function readApiErrorCode(resp){
 
 function getAiBoardErrorMessage(errorCode){
   switch(String(errorCode || "")){
+    case "ai_board_plus_required":
+      return "AI boards are available with Attune Plus. Using built-in suggestions.";
     case "ai_daily_limit_reached":
       return "AI limit reached for today. Using built-in suggestions.";
     case "ai_monthly_limit_reached":

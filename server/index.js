@@ -7,6 +7,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
 import { TASKS } from "../src/data/tasks.js";
+import { getAiBoardAccessError } from "./lib/aiAccess.js";
 import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
 import {
@@ -1819,17 +1820,6 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       return;
     }
 
-    if (!OPENAI_API_KEY) {
-      setRequestErrorCode(req, "ai_not_configured_openai_key_missing");
-      logEvent("error", "ai_generate_board_openai_missing", {
-        requestId: getRequestLogContext(req).requestId,
-        route: req.path,
-        userId: authedUser.id,
-      });
-      res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
-      return;
-    }
-
     const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
     const allowedLevels = new Set(["rest", "gentle", "light", "steady", "capable", "brave"]);
     const levelRaw = (clampString(req.body?.level, 24) || "gentle").toLowerCase();
@@ -1837,6 +1827,33 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const aiContextStartedMs = Date.now();
     const aiContext = await getUserAiContext(authedUser.id);
     const aiContextMs = Date.now() - aiContextStartedMs;
+
+    const accessError = getAiBoardAccessError(aiContext);
+    if (accessError) {
+      setRequestErrorCode(req, accessError);
+      logEvent("warn", "ai_generate_board_plus_required", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        planId: aiContext?.planId,
+        aiContextMs,
+      });
+      res.status(403).json({ error: accessError });
+      return;
+    }
+
+    if (!OPENAI_API_KEY) {
+      setRequestErrorCode(req, "ai_not_configured_openai_key_missing");
+      logEvent("error", "ai_generate_board_openai_missing", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        planId: aiContext.planId,
+        aiContextMs,
+      });
+      res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
+      return;
+    }
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";
