@@ -711,55 +711,6 @@ async function syncNoteMemoryEntryRemote(userId, localNote){
   return upsertNoteMemoryRemote(payload);
 }
 
-async function syncAllLocalNoteMemoryRemote(userId, noteMemory){
-  const notes = Array.isArray(noteMemory?.notes) ? noteMemory.notes : [];
-  if(!userId || !notes.length) return;
-
-  await Promise.all(
-    notes.map((note) =>
-      syncNoteMemoryEntryRemote(userId, note).catch(() => null)
-    )
-  );
-}
-
-function getPendingNoteMemoryUploads(localNoteMemory, remoteRows){
-  const localNotes = Array.isArray(localNoteMemory?.notes) ? localNoteMemory.notes : [];
-  const rows = Array.isArray(remoteRows) ? remoteRows : [];
-  const remoteByDate = new Map();
-
-  for(const row of rows){
-    const remoteNote = noteRowToLocal(row);
-    if(remoteNote?.date) remoteByDate.set(remoteNote.date, remoteNote);
-  }
-
-  return localNotes.filter((localNote) => {
-    if(!localNote || typeof localNote.date !== "string" || !localNote.date) return false;
-
-    const remoteNote = remoteByDate.get(localNote.date);
-    if(!remoteNote) return true;
-
-    const localTs = Number(localNote.ts) || 0;
-    const remoteTs = Number(remoteNote.ts) || 0;
-    if(localTs > remoteTs) return true;
-    if((localNote.text || "") !== (remoteNote.text || "")) return true;
-
-    const localThemes = normalizeThemesArray(localNote.themes).join("|");
-    const remoteThemes = normalizeThemesArray(remoteNote.themes).join("|");
-    return localThemes !== remoteThemes;
-  });
-}
-
-async function syncPendingLocalNoteMemoryRemote(userId, localNoteMemory, remoteRows){
-  const pendingNotes = getPendingNoteMemoryUploads(localNoteMemory, remoteRows);
-  if(!userId || !pendingNotes.length) return;
-
-  await Promise.all(
-    pendingNotes.map((note) =>
-      syncNoteMemoryEntryRemote(userId, note).catch(() => null)
-    )
-  );
-}
-
 const DEFAULT_CHECKIN = {
   mood: "okay",
   moodWords: ["Okay"],
@@ -781,6 +732,84 @@ function patchAffectsSuggestedLevel(patch){
 function clampText(value, maxLen){
   const s = typeof value === "string" ? value.trim() : "";
   return s.length > maxLen ? s.slice(0, maxLen) : s;
+}
+
+function sanitizeCheckinForSync(checkin){
+  const source = checkin && typeof checkin === "object" && !Array.isArray(checkin) ? checkin : {};
+  return {
+    mood: clampText(source.mood, 24) || DEFAULT_CHECKIN.mood,
+    moodWords: Array.isArray(source.moodWords)
+      ? source.moodWords.map((word) => clampText(word, 24)).filter(Boolean).slice(0, 2)
+      : [],
+    energy: clampText(source.energy, 24) || DEFAULT_CHECKIN.energy,
+    body: clampText(source.body, 24) || DEFAULT_CHECKIN.body,
+    note: clampText(source.note, 200),
+  };
+}
+
+function sanitizeTaskListForSync(list, maxItems){
+  return (Array.isArray(list) ? list : [])
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => ({
+      text: clampText(item.text, 140),
+      level: clampText(item.level, 24),
+      done: item.done === true,
+    }))
+    .filter((item) => item.text)
+    .slice(0, maxItems);
+}
+
+function sanitizeOptionsForSync(list){
+  return (Array.isArray(list) ? list : [])
+    .filter((item) => item && typeof item === "object" && !Array.isArray(item))
+    .map((item) => ({
+      text: clampText(item.text, 140),
+      level: clampText(item.level, 24),
+    }))
+    .filter((item) => item.text)
+    .slice(0, 15);
+}
+
+function sanitizeEventsForSync(events){
+  const source = events && typeof events === "object" && !Array.isArray(events) ? events : {};
+  const trimmed = trimEventDays(source, EVENT_DAYS_TO_KEEP);
+  const next = {};
+
+  for(const [day, list] of Object.entries(trimmed)){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(list)) continue;
+    next[day] = list
+      .filter((event) => event && typeof event === "object" && !Array.isArray(event))
+      .map((event) => ({
+        id: clampText(event.id, 80),
+        type: clampText(event.type, 40),
+        at: Number.isFinite(Number(event.at)) ? Number(event.at) : 0,
+        payload: event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
+          ? {
+              text: clampText(event.payload.text, 140),
+              level: clampText(event.payload.level, 24),
+            }
+          : {},
+      }))
+      .filter((event) => event.id && event.type)
+      .slice(-50);
+  }
+
+  return next;
+}
+
+function buildDeviceStateSyncPayload(state){
+  return {
+    date: typeof state?.today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(state.today) ? state.today : todayKey(),
+    checkin: sanitizeCheckinForSync(state?.checkin),
+    level: clampText(state?.level, 24) || "gentle",
+    checkedInToday: state?.checkedInToday === true,
+    boardAssigned: sanitizeTaskListForSync(state?.boardAssigned, 15),
+    myDay: sanitizeTaskListForSync(state?.myDay, 10),
+    myDayCap: state?.myDayCap === 10 ? 10 : 5,
+    options: sanitizeOptionsForSync(state?.options),
+    optionsSource: state?.optionsSource === "ai" ? "ai" : "default",
+    events: sanitizeEventsForSync(state?.events),
+  };
 }
 
 function defaultState(){
@@ -1352,32 +1381,12 @@ export function useAttuneStore(){
     if(!userId) return;
     if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
     devicePushTimerRef.current = setTimeout(() => {
-      upsertDeviceState(userId, {
-        date: state.today || todayKey(),
-        checkin: state.checkin || {},
-        level: state.level || "gentle",
-        checkedInToday: state.checkedInToday || false,
-        boardAssigned: state.boardAssigned || [],
-        myDay: state.myDay || [],
-        myDayCap: state.myDayCap || 5,
-        options: state.options || [],
-        optionsSource: state.optionsSource || "default",
-        events: state.events || {},
-      }).catch(() => {});
+      upsertDeviceState(userId, buildDeviceStateSyncPayload(state)).catch(() => {});
     }, 2000);
     return () => {
       if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
     };
-  }, [
-    state?.auth?.userId,
-    state?.today,
-    state?.checkedInToday,
-    state?.checkin,
-    state?.level,
-    state?.boardAssigned,
-    state?.myDay,
-    state?.events,
-  ]);
+  }, [state]);
 
   // Supabase auth bootstrap + listener
   useEffect(() => {
@@ -1789,18 +1798,21 @@ export function useAttuneStore(){
           otpCode: "",
           error: "",
         },
-        profile: (() => {
-          const currentProfile = s.profile || { name: "", email: "", useNoteForAi: true, theme: "light", plan: "free" };
-          return email ? { ...currentProfile, email } : currentProfile;
-        })(),
       })),
 
-    logout: async () => {
+    logout: async ({ clearLocal = false } = {}) => {
       const supabase = getSupabaseClient();
       try {
         await supabase?.auth?.signOut?.();
       } catch {
         // ignore
+      }
+      if(clearLocal){
+        setState(() => ({
+          ...defaultState(),
+          toast: { text: "Signed out. This device is cleared.", good: true, screen: "checkin" },
+        }));
+        return;
       }
       setState((s) => ({
         ...s,

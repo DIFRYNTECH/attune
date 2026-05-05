@@ -213,6 +213,36 @@ app.post("/api/billing/paddle/webhook", express.raw({ type: "application/json" }
 
 app.use(express.json({ limit: "64kb" }));
 
+app.use((error, req, res, next) => {
+  if (!req.path?.startsWith?.("/api/")) {
+    next(error);
+    return;
+  }
+
+  const errorType = typeof error?.type === "string" ? error.type : "";
+  const errorCode =
+    errorType === "entity.too.large"
+      ? "payload_too_large"
+      : error instanceof SyntaxError || errorType === "entity.parse.failed"
+        ? "malformed_json"
+        : "";
+
+  if (!errorCode) {
+    next(error);
+    return;
+  }
+
+  setRequestErrorCode(req, errorCode);
+  logEvent("warn", "api_json_payload_rejected", {
+    requestId: getRequestLogContext(req).requestId,
+    route: req.path,
+    errorCode,
+    error: summarizeError(error),
+  });
+
+  res.status(errorCode === "payload_too_large" ? 413 : 400).json({ error: errorCode });
+});
+
 app.use((req, res, next) => {
   if (!req.path.startsWith("/api/")) {
     next();

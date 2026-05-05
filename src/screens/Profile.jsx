@@ -168,7 +168,7 @@ function ProfileIdentitySection({ profileName, profileEmail, actions }) {
   );
 }
 
-function ConfirmDialog({ open, label, title, body, confirmText, onCancel, onConfirm }) {
+function ConfirmDialog({ open, label, title, body, confirmText, onCancel, onConfirm, secondaryText, onSecondary }) {
   if (!open || typeof document === "undefined") return null;
 
   return createPortal(
@@ -186,6 +186,16 @@ function ConfirmDialog({ open, label, title, body, confirmText, onCancel, onConf
           <button type="button" className="btn small ghost" onClick={onCancel}>
             Cancel
           </button>
+          {secondaryText ? (
+            <button
+              type="button"
+              className="btn small ghost"
+              onClick={onSecondary}
+              style={{ borderColor: "rgba(239,68,68,.18)", color: "#7f1d1d", fontWeight: 900 }}
+            >
+              {secondaryText}
+            </button>
+          ) : null}
           <button
             type="button"
             className="btn small"
@@ -600,9 +610,14 @@ export default function Profile({ state, actions }) {
         open={signOutOpen}
         label="Sign out confirmation"
         title="Sign out of Attune?"
-        body="This signs you out on this device. Your local data will remain here unless you clear it."
+        body="You can keep this device's local history, or sign out and clear it now. Clearing this device does not delete your account."
+        secondaryText="Sign out and clear"
         confirmText="Sign out"
         onCancel={() => setSignOutOpen(false)}
+        onSecondary={() => {
+          setSignOutOpen(false);
+          actions?.logout?.({ clearLocal: true });
+        }}
         onConfirm={() => {
           setSignOutOpen(false);
           actions?.logout?.();
