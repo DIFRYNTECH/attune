@@ -8,6 +8,7 @@ import com.android.billingclient.api.BillingClientStateListener;
 import com.android.billingclient.api.BillingFlowParams;
 import com.android.billingclient.api.BillingResult;
 import com.android.billingclient.api.ProductDetails;
+import com.android.billingclient.api.PendingPurchasesParams;
 import com.android.billingclient.api.Purchase;
 import com.android.billingclient.api.PurchasesUpdatedListener;
 import com.android.billingclient.api.QueryProductDetailsParams;
@@ -42,7 +43,12 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
 
         billingClient = BillingClient.newBuilder(getContext())
             .setListener(this)
-            .enablePendingPurchases()
+            .enablePendingPurchases(
+                PendingPurchasesParams.newBuilder()
+                    .enableOneTimeProducts()
+                    .enablePrepaidPlans()
+                    .build()
+            )
             .build();
 
         billingClient.startConnection(new BillingClientStateListener() {
@@ -98,12 +104,15 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
             .setProductList(products)
             .build();
 
-        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
+        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsResult) -> {
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 call.reject(billingResult.getDebugMessage());
                 return;
             }
 
+            List<ProductDetails> productDetailsList = productDetailsResult == null
+                ? Collections.emptyList()
+                : productDetailsResult.getProductDetailsList();
             JSArray productsJson = new JSArray();
             for (ProductDetails details : productDetailsList) {
                 productDetailsCache.put(details.getProductId(), details);
@@ -149,12 +158,15 @@ public class PlayBillingPlugin extends Plugin implements PurchasesUpdatedListene
             .setProductList(products)
             .build();
 
-        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
+        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsResult) -> {
             if (billingResult.getResponseCode() != BillingClient.BillingResponseCode.OK) {
                 call.reject(billingResult.getDebugMessage());
                 return;
             }
 
+            List<ProductDetails> productDetailsList = productDetailsResult == null
+                ? Collections.emptyList()
+                : productDetailsResult.getProductDetailsList();
             if (productDetailsList == null || productDetailsList.isEmpty()) {
                 call.reject("play_billing_product_not_found");
                 return;

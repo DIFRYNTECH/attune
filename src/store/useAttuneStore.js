@@ -472,6 +472,8 @@ function getAiBoardErrorMessage(errorCode){
 
 function getAiDailyNoteErrorMessage(errorCode){
   switch(String(errorCode || "")){
+    case "ai_daily_note_plus_required":
+      return "AI daily notes are available with Attune Plus.";
     case "ai_daily_limit_reached":
       return "AI note limit reached for today. Showing your on-device note.";
     case "ai_monthly_limit_reached":

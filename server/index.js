@@ -7,9 +7,10 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
 import { TASKS } from "../src/data/tasks.js";
-import { getAiBoardAccessError } from "./lib/aiAccess.js";
+import { getAiBoardAccessError, getAiDailyNoteAccessError } from "./lib/aiAccess.js";
 import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
+import { getDistributedRateLimitConfigError } from "./lib/rateLimitConfig.js";
 import {
   ensurePaddlePortalConfigured,
   ensurePaddleWebhookConfigured,
@@ -41,6 +42,16 @@ const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
 const upstashRedis = UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN
   ? Redis.fromEnv()
   : null;
+
+const rateLimitConfigError = getDistributedRateLimitConfigError({
+  attuneEnv: ATTUNE_ENV,
+  hasDistributedStore: Boolean(upstashRedis),
+  allowMemoryOverride: process.env.ALLOW_MEMORY_RATE_LIMITING === "1",
+});
+
+if (rateLimitConfigError) {
+  throw new Error(rateLimitConfigError);
+}
 
 const supabaseAuth = SUPABASE_URL && (SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY || SUPABASE_ANON_KEY, {
@@ -439,13 +450,21 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true });
 });
 
+function redactClientErrorText(value, maxLen) {
+  const text = typeof value === "string" ? value.trim().slice(0, maxLen) : "";
+  if (!text) return undefined;
+  return text
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/\b(access_token|refresh_token|code|token|otp)=([^&#\s]+)/gi, "$1=[redacted]")
+    .replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g, "[redacted-jwt]");
+}
+
 app.post("/api/client-error", enforceAllowedOrigin, limitClientError, (req, res) => {
   const payload = req.body && typeof req.body === "object" && !Array.isArray(req.body) ? req.body : {};
 
-  const message = typeof payload.message === "string" ? payload.message.trim().slice(0, 300) : "client_error";
-  const stack = typeof payload.stack === "string" ? payload.stack.trim().slice(0, 2000) : undefined;
+  const message = redactClientErrorText(payload.message, 300) || "client_error";
+  const stack = redactClientErrorText(payload.stack, 1200);
   const source = typeof payload.source === "string" ? payload.source.trim().slice(0, 100) : "window.error";
-  const href = typeof payload.href === "string" ? payload.href.trim().slice(0, 300) : undefined;
   const pathname = typeof payload.pathname === "string" ? payload.pathname.trim().slice(0, 200) : undefined;
   const userAgent = typeof payload.userAgent === "string" ? payload.userAgent.trim().slice(0, 200) : undefined;
 
@@ -456,7 +475,6 @@ app.post("/api/client-error", enforceAllowedOrigin, limitClientError, (req, res)
     source,
     message,
     stack,
-    href,
     pathname,
     userAgent,
   });
@@ -2120,21 +2138,39 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
       return;
     }
 
+    const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
+    const level = clampString(req.body?.level, 24) || "gentle";
+    const today = clampString(req.body?.today, 20) || "";
+    const aiContextStartedMs = Date.now();
+    const aiContext = await getUserAiContext(authedUser.id);
+    const aiContextMs = Date.now() - aiContextStartedMs;
+
+    const accessError = getAiDailyNoteAccessError(aiContext);
+    if (accessError) {
+      setRequestErrorCode(req, accessError);
+      logEvent("warn", "ai_daily_note_plus_required", {
+        requestId: getRequestLogContext(req).requestId,
+        route: req.path,
+        userId: authedUser.id,
+        planId: aiContext?.planId,
+        aiContextMs,
+      });
+      res.status(403).json({ error: accessError });
+      return;
+    }
+
     if (!OPENAI_API_KEY) {
       setRequestErrorCode(req, "ai_not_configured_openai_key_missing");
       logEvent("error", "ai_daily_note_openai_missing", {
         requestId: getRequestLogContext(req).requestId,
         route: req.path,
         userId: authedUser.id,
+        planId: aiContext.planId,
+        aiContextMs,
       });
       res.status(503).json({ error: "AI not configured (missing OPENAI_API_KEY)." });
       return;
     }
-
-    const checkin = req.body?.checkin && typeof req.body.checkin === "object" ? req.body.checkin : {};
-    const level = clampString(req.body?.level, 24) || "gentle";
-    const today = clampString(req.body?.today, 20) || "";
-    const aiContext = await getUserAiContext(authedUser.id);
 
     const moodWords = Array.isArray(checkin.moodWords) ? checkin.moodWords.slice(0, 2).map((w) => clampString(w, 20)) : [];
     const mood = clampString(checkin.mood, 12) || "okay";

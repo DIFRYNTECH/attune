@@ -10,6 +10,21 @@ function trimString(value, maxLen) {
   return text.length > maxLen ? text.slice(0, maxLen) : text;
 }
 
+function redactSensitiveText(value, maxLen) {
+  return trimString(value, maxLen)
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/\b(access_token|refresh_token|code|token|otp)=([^&#\s]+)/gi, "$1=[redacted]")
+    .replace(/\beyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}\b/g, "[redacted-jwt]");
+}
+
+function safeLocationPayload() {
+  if (typeof window === "undefined") return { pathname: "" };
+
+  return {
+    pathname: trimString(window.location.pathname, 200),
+  };
+}
+
 function shouldReport(signature) {
   const now = Date.now();
   const last = recentErrorTs.get(signature) || 0;
@@ -46,12 +61,12 @@ function postClientError(payload) {
 }
 
 function buildPayload({ source, message, stack }) {
+  const location = safeLocationPayload();
   return {
     source: trimString(source, 100) || "window.error",
-    message: trimString(message, 300) || "client_error",
-    stack: trimString(stack, 2000),
-    href: typeof window !== "undefined" ? trimString(window.location.href, 300) : "",
-    pathname: typeof window !== "undefined" ? trimString(window.location.pathname, 200) : "",
+    message: redactSensitiveText(message, 300) || "client_error",
+    stack: redactSensitiveText(stack, 1200),
+    pathname: location.pathname,
     userAgent: typeof navigator !== "undefined" ? trimString(navigator.userAgent, 200) : "",
   };
 }
