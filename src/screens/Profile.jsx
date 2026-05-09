@@ -21,11 +21,14 @@ function formatBillingStatus(status) {
   }
 }
 
-function formatBillingDate(value) {
-  if (typeof value !== "string" || !value) return "";
+function getBillingPeriod(value) {
+  if (typeof value !== "string" || !value) return { formatted: "", isFuture: false };
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+  if (Number.isNaN(date.getTime())) return { formatted: "", isFuture: false };
+  return {
+    formatted: date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }),
+    isFuture: date.getTime() > Date.now(),
+  };
 }
 
 function SettingToggleRow({ title, description, checked, onChange, disabled = false, locked = false, onLockedClick, id }) {
@@ -227,7 +230,7 @@ export default function Profile({ state, actions }) {
   const noteCount = Array.isArray(state?.noteMemory?.notes) ? state.noteMemory.notes.length : 0;
   const billing = state?.billing || {};
   const billingStatus = formatBillingStatus(billing?.status);
-  const billingRenewsOn = formatBillingDate(billing?.currentPeriodEnd);
+  const billingPeriod = getBillingPeriod(billing?.currentPeriodEnd);
   const billingSyncing = billing?.syncing === true;
   const signedIn = state?.auth?.signedIn === true;
   const isNative = isNativePlatform();
@@ -236,13 +239,23 @@ export default function Profile({ state, actions }) {
   const canOpenPortal = !isNative && signedIn && billing?.customerPortalAvailable === true;
   const showBillingStatusPill = !isPlus || billingStatus !== "Active";
   const showUpgradeButton = !isPlus && canUpgrade;
-  const billingSummary = billingRenewsOn
-    ? `${isPlus ? "Renews" : "Access ends"} ${billingRenewsOn}.`
-    : signedIn
-      ? isNative
+  const billingSummary = (() => {
+    if (isPlus && billingPeriod.formatted && billingPeriod.isFuture) {
+      return `Renews ${billingPeriod.formatted}.`;
+    }
+    if (!isPlus && billingPeriod.formatted) {
+      return `Access ends ${billingPeriod.formatted}.`;
+    }
+    if (isPlus && signedIn) {
+      return "Plus is active on this signed-in account.";
+    }
+    if (signedIn) {
+      return isNative
         ? "Purchases are linked to your signed-in Attune account."
-        : "Subscriptions are linked to your signed-in Attune account."
-      : "Sign in to link billing to your Attune account.";
+        : "Subscriptions are linked to your signed-in Attune account.";
+    }
+    return "Sign in to link billing to your Attune account.";
+  })();
 
   const doExportUserData = () => {
     if(!isPlus){

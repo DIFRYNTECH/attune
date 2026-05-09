@@ -685,7 +685,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                 }
 
                 if (isPassed) {
-                  actions.setToast?.("Set aside. Pick another tile.", false);
+                  setSelectedTileIdx(idx);
                   return;
                 }
 

@@ -968,7 +968,7 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      <div className="result weeklyNoteResult" aria-label="Weekly note">
+      <div className="result weeklyNoteResult" aria-label="Week note section">
         <div className="weeklyNoteHeader">
           <div className="weeklyNoteHeaderCopy">
             <div className="resultTitle">Week note</div>

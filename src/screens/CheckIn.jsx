@@ -339,9 +339,7 @@ export default function CheckIn({ state, actions }) {
                 aria-pressed={visibleMoodWords.includes(w.label)}
                 onClick={() => toggleMoodWord(w.label)}
               >
-                <span className="moodCheck" aria-hidden="true">
-                  ✓
-                </span>
+                <span className="moodCheck" aria-hidden="true" />
                 <span className="moodEmoji" aria-hidden="true">
                   <EmojiIcon
                     id={w.icon}

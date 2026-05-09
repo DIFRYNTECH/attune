@@ -102,7 +102,7 @@ function CheckInMock() {
                   aria-pressed={option.active ? "true" : "false"}
                   tabIndex={-1}
                 >
-                  <span className="moodCheck" aria-hidden="true">✓</span>
+                  <span className="moodCheck" aria-hidden="true" />
                   <span className="moodEmoji" aria-hidden="true">
                     <EmojiIcon id={option.icon} size="var(--moodEmojiSize)" />
                   </span>
