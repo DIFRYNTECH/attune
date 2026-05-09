@@ -61,7 +61,7 @@ values
     'free',
     'Free',
     '{
-      "darkMode": false,
+      "darkMode": true,
       "noteMemory": false,
       "smartPick": false,
       "momentumExact": false,

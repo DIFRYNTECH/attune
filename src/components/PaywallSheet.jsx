@@ -3,8 +3,6 @@ import { isNativePlatform } from "../lib/platform";
 
 function featureTitle(feature) {
   switch (feature) {
-    case "darkMode":
-      return "Dark mode";
     case "momentumExact":
       return "Exact Momentum score";
     case "multiWeekHistory":
@@ -20,8 +18,6 @@ function featureTitle(feature) {
 
 function featureBlurb(feature) {
   switch (feature) {
-    case "darkMode":
-      return "A calmer, darker look, available with Attune Plus.";
     case "momentumExact":
       return "See your exact Momentum score for the week (not a range).";
     case "multiWeekHistory":
@@ -97,9 +93,6 @@ export default function PaywallSheet({ state, actions }) {
           <div>{featureBlurb(feature)}</div>
 
           <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Dark mode</b>: a calmer, darker look.
-            </div>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
               <b style={{ color: "var(--ink)" }}>Exports</b>: download your local data.
             </div>

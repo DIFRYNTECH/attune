@@ -5,7 +5,7 @@ export function getEntitlements(inputPlan) {
   return {
     plan,
     isPlus,
-    darkMode: isPlus,
+    darkMode: true,
     noteMemory: isPlus,
     smartPick: isPlus,
     momentumExact: isPlus,

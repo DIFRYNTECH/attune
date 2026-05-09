@@ -315,10 +315,8 @@ export default function Profile({ state, actions }) {
           <SettingToggleRow
             id="darkMode"
             title="Dark mode"
-            description={isPlus ? "A darker look that’s easier on the eyes." : "Included with Attune Plus."}
+            description="A darker look that’s easier on the eyes."
             checked={theme === "dark"}
-            locked={!isPlus}
-            onLockedClick={() => actions?.openPaywall?.("darkMode", "profile")}
             onChange={(e) => {
               actions?.setProfile?.({ theme: e.target.checked ? "dark" : "light" });
             }}
@@ -445,7 +443,7 @@ export default function Profile({ state, actions }) {
                 Plus makes Attune more personal over time without turning it into another heavy planning app.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                It adds AI boards, adaptive picking, note memory, exports, dark mode, and deeper Weekly insights.
+                It adds AI boards, adaptive picking, note memory, exports, and deeper Weekly insights.
               </div>
             </div>
           }
@@ -465,8 +463,8 @@ export default function Profile({ state, actions }) {
                 </span>
                 <span className="settingsFeatureSummaryText">
                   {isPlus
-                    ? "AI boards, adaptive picks, note memory, exports, dark mode, and Weekly insight."
-                    : "AI boards, smarter picking, note memory, exports, dark mode, and deeper Weekly insight."}
+                    ? "AI boards, adaptive picks, note memory, exports, and Weekly insight."
+                    : "AI boards, smarter picking, note memory, exports, and deeper Weekly insight."}
                 </span>
               </span>
               <span className="settingsFeatureSummaryMeta">
@@ -490,9 +488,6 @@ export default function Profile({ state, actions }) {
                     </li>
                     <li>
                       <b>Data exports</b> when you want a readable copy or backup.
-                    </li>
-                    <li>
-                      <b>Dark mode</b> for a calmer, evening-friendly interface.
                     </li>
                   </ul>
                 </div>
