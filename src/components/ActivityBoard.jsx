@@ -512,11 +512,13 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     }
 
     if (pickedCount >= HARD_CAP) {
+      setSelectedTileIdx(null);
       actions.setToast?.("That’s plenty for today. Let’s cap it at 10.", false);
       return;
     }
 
     if (pickedCount >= effectiveCap && effectiveCap < HARD_CAP) {
+      setSelectedTileIdx(null);
       setPendingAdd({ idx, opt });
       setConfirmOpen(true);
       return;
@@ -569,7 +571,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
         <div className="boardRight">
           <div className="boardMeta" aria-label="Picked count">
-            {pickedCount}/{effectiveCap} picked
+            {pickedCount}/{effectiveCap} in My Day
             {effectiveCap < HARD_CAP ? "" : " (max 10)"}
           </div>
           <button type="button" className="btn small ghost" onClick={clearBoard} disabled={loading}>
@@ -621,7 +623,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
               Add more activities?
             </div>
             <div className="modalBody" id="moreActivitiesDesc">
-              You’ve already picked 5. If you keep adding, we’ll cap today at 10.
+              You’ve already added 5 steps to My Day. If you keep adding, we’ll cap today at 10.
               Just to keep it light 🙂
             </div>
             <div className="modalActions">
@@ -722,6 +724,8 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
                   <div className={"tileText" + ((opt?.text?.length || 0) > 90 ? " xs" : (opt?.text?.length || 0) > 55 ? " sm" : "")}>{opt?.text || "…"}</div>
                 </div>
               )}
+
+              {isTaken ? <span className="tileAddedMark" aria-hidden="true" /> : null}
             </button>
           );
         })}

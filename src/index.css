@@ -2354,7 +2354,7 @@
       border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
     }
     .boardTile.attunePick{
-      border-color: color-mix(in oklab, var(--brand) 14%, var(--line));
+      border-color: color-mix(in oklab, #9aa8ee 28%, var(--line));
       box-shadow:
         0 8px 16px rgba(72,111,150,.045),
         inset 0 1px 0 rgba(255,255,255,.34);
@@ -2367,7 +2367,7 @@
       width:30px;
       height:4px;
       border-radius:999px;
-      background: linear-gradient(90deg, rgba(72,111,150,.62), rgba(131,223,191,.44));
+      background: linear-gradient(90deg, rgba(143,158,229,.68), rgba(120,144,196,.38));
       opacity:.72;
       pointer-events:none;
     }
@@ -2386,7 +2386,7 @@
       border-color: color-mix(in oklab, var(--brand) 28%, var(--line));
     }
     html[data-theme="dark"] .boardTile.attunePick{
-      border-color: color-mix(in oklab, var(--brand) 22%, var(--line));
+      border-color: color-mix(in oklab, #9aa8ee 24%, var(--line));
       box-shadow:
         0 10px 20px rgba(10,14,28,.18),
         inset 0 1px 0 rgba(255,255,255,.05);
@@ -2430,6 +2430,28 @@
     .boardTile.taken{
       border-color: var(--successLine);
       background: linear-gradient(180deg, var(--successSoft), rgba(255,255,255,0)), var(--surface2);
+    }
+    .tileAddedMark{
+      position:absolute;
+      right:10px;
+      top:10px;
+      z-index:2;
+      width:20px;
+      height:20px;
+      border-radius:999px;
+      background: var(--brand);
+      box-shadow: 0 8px 16px rgba(72,111,150,.18);
+    }
+    .tileAddedMark::after{
+      content:"";
+      position:absolute;
+      left:6px;
+      top:4px;
+      width:6px;
+      height:10px;
+      border-right:2px solid #fff;
+      border-bottom:2px solid #fff;
+      transform: rotate(42deg);
     }
     .boardTile.passed{
       border-color: color-mix(in oklab, #f3a8b8 58%, var(--line));
