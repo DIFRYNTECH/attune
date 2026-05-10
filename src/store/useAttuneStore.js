@@ -370,11 +370,6 @@ function applyBillingStateToLocalState(baseState, billingPatch){
     plan: planId,
   };
 
-  // Only enforce light theme when billing is positively confirmed as free
-  // (lastSyncedAt > 0). On sign-out, billing resets to defaults with
-  // lastSyncedAt === 0 — preserve the theme so it survives sign-out/sign-in.
-  if(planId !== "plus" && billing.lastSyncedAt > 0) profile.theme = "light";
-
   const nextState = {
     ...baseState,
     billing,
@@ -1126,10 +1121,6 @@ function normalizeLoadedState(loaded){
   next.billing = normalizeBillingState(next.billing);
   const normalizedPlanId = next.billing.planId === "plus" ? "plus" : "free";
   next.profile.plan = normalizedPlanId;
-  // Only force light theme when billing was positively confirmed as free.
-  // If lastSyncedAt === 0 the billing state was never confirmed (e.g. signed
-  // out mid-session), so keep the saved theme so it survives sign-out/sign-in.
-  if(normalizedPlanId !== "plus" && next.billing.lastSyncedAt > 0) next.profile.theme = "light";
   // Free plan should not keep historical note memory.
   if(normalizedPlanId !== "plus") next.noteMemory = { notes: [] };
   // Trim just in case older builds kept more.
