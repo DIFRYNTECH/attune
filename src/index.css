@@ -2556,7 +2556,8 @@
       margin:0;
       font-size:22px;
       line-height:1.08;
-      letter-spacing:-.035em;
+      letter-spacing:-.012em;
+      word-spacing:.025em;
       font-weight:950;
       color:var(--ink);
       text-wrap:balance;
