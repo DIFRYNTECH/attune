@@ -2047,6 +2047,8 @@ export function useAttuneStore(){
     },
 
     ensureAiDailyNote: async (checkin, level, today, opts) => {
+      if(getBillingPlanIdFromState(stateRef.current) !== "plus") return;
+
       const t = typeof today === "string" ? today : todayKey();
       const includeNote = stateRef.current?.profile?.useNoteForAi !== false;
       const sig = dailyNoteSignature(checkin, level, includeNote, t);

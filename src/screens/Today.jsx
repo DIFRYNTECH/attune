@@ -5,6 +5,7 @@ import { getTodayEmptyStateCopy } from "../lib/personalization";
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
 	const aiNote = state.aiDailyNote;
+	const isPlus = !!state?.entitlements?.isPlus;
 	const [noteExpanded, setNoteExpanded] = useState(false);
 	const [customInput, setCustomInput] = useState("");
 	const [showCustomInput, setShowCustomInput] = useState(false);
@@ -12,9 +13,10 @@ export default function Today({ state, actions }) {
 	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
 
 	useEffect(() => {
+		if (!isPlus) return;
 		actions.ensureAiDailyNote?.(state.checkin, state.level, state.today);
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [isPlus]);
 
 	useEffect(() => {
 		if (showCustomInput) {
@@ -22,8 +24,8 @@ export default function Today({ state, actions }) {
 		}
 	}, [showCustomInput]);
 
-	const noteIsAi = aiNote?.status === "ready";
-	const noteIsLoading = aiNote?.status === "loading";
+	const noteIsAi = isPlus && aiNote?.status === "ready";
+	const noteIsLoading = isPlus && aiNote?.status === "loading";
 	const noteTitle = noteIsAi ? aiNote.title : dailyMessage?.a;
 	const noteBody = noteIsAi ? aiNote.body : dailyMessage?.b;
 	const noteSource = noteIsLoading ? "Personalizing…" : noteIsAi ? "AI" : "On-device";
