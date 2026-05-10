@@ -1,20 +1,30 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
   <defs>
-    <linearGradient id="tile" x1="52" y1="34" x2="206" y2="222" gradientUnits="userSpaceOnUse">
-      <stop offset="0" stop-color="#7480d8" />
-      <stop offset="1" stop-color="#54b9c6" />
+    <linearGradient id="tile" x1="42" y1="28" x2="212" y2="226" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#9BA6EE" />
+      <stop offset=".54" stop-color="#6B8CB0" />
+      <stop offset="1" stop-color="#54B9C6" />
     </linearGradient>
-    <radialGradient id="gloss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(86 74) rotate(42) scale(76 64)">
-      <stop offset="0" stop-color="#ffffff" stop-opacity=".72" />
-      <stop offset=".68" stop-color="#ffffff" stop-opacity="0" />
+    <radialGradient id="gloss" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(74 56) rotate(40) scale(112 88)">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity=".58" />
+      <stop offset=".72" stop-color="#FFFFFF" stop-opacity="0" />
     </radialGradient>
-    <filter id="whiteMark" color-interpolation-filters="sRGB">
-      <feFlood flood-color="#ffffff" />
-      <feComposite in2="SourceAlpha" operator="in" />
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#26384F" flood-opacity=".24" />
     </filter>
   </defs>
-  <rect x="18" y="18" width="220" height="220" rx="68" fill="url(#tile)" />
-  <rect x="18.5" y="18.5" width="219" height="219" rx="67.5" stroke="#ffffff" stroke-opacity=".34" />
-  <rect x="18" y="18" width="220" height="220" rx="68" fill="url(#gloss)" />
-  <image href="/attune-logo-final.svg" x="4" y="28" width="248" height="198" preserveAspectRatio="xMidYMid meet" filter="url(#whiteMark)" />
+
+  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#tile)" />
+  <rect x="17" y="17" width="222" height="222" rx="57" stroke="#FFFFFF" stroke-opacity=".38" stroke-width="2" />
+  <rect x="16" y="16" width="224" height="224" rx="58" fill="url(#gloss)" />
+
+  <g filter="url(#softShadow)" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M60 160C92 122 143 100 190 103C216 105 222 120 204 140" stroke-width="15" opacity=".96" />
+    <path d="M198 142C155 179 91 197 51 181C28 172 35 150 66 128" stroke-width="17" opacity=".96" />
+    <path d="M72 190L128 50L184 190" stroke-width="18" />
+    <path d="M95 139C116 143 139 142 162 136" stroke-width="10" opacity=".9" />
+  </g>
+
+  <circle cx="204" cy="139" r="9" fill="#FFFFFF" opacity=".98" />
+  <path d="M128 100L135 121L156 128L135 135L128 156L121 135L100 128L121 121L128 100Z" fill="#FFFFFF" opacity=".92" />
 </svg>
