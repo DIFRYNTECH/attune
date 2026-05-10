@@ -12,6 +12,10 @@ export default function Login({ state, actions }) {
   const sentTo = String(state?.auth?.sentTo || state?.auth?.username || "");
   const authStatus = String(state?.auth?.status || "idle");
   const emailError = authStep === "request" ? validateEmail(username) : "";
+  const normalizedOtpCode = otpCode.trim();
+  const isSending = authStatus === "sending";
+  const isVerifying = authStatus === "verifying";
+  const isBusy = isSending || isVerifying;
 
   useEffect(() => {
     if(authStep === "verify"){
@@ -23,35 +27,40 @@ export default function Login({ state, actions }) {
   }, [authStep]);
 
   const canSubmit = useMemo(() => {
-    if(authStep === "verify") return otpCode.trim().length === OTP_LENGTH;
+    if(isBusy) return false;
+    if(authStep === "verify") return normalizedOtpCode.length === OTP_LENGTH;
     return !emailError;
-  }, [authStep, emailError, otpCode]);
+  }, [authStep, emailError, isBusy, normalizedOtpCode.length]);
 
-  const showVerifySubmit = authStep !== "verify" || otpCode.trim().length > 0 || authStatus === "verifying";
+  const authError = authStatus === "error" && state?.auth?.error ? String(state.auth.error) : "";
 
-  const authFeedback = useMemo(() => {
-    if(authStatus === "sending"){
-      return {
-        role: "status",
-        text: authStep === "verify"
-          ? `Sending a new ${OTP_LENGTH}-digit code…`
-          : "Sending code…",
-      };
+  const busyFeedback = useMemo(() => {
+    if(isSending){
+      return authStep === "verify"
+        ? `Sending a new ${OTP_LENGTH}-digit code...`
+        : "Sending code...";
     }
 
-    if(authStatus === "verifying"){
-      return { role: "status", text: "Verifying code…" };
+    if(isVerifying) return "Verifying code...";
+
+    return "";
+  }, [OTP_LENGTH, authStep, isSending, isVerifying]);
+
+  const submitLabel = useMemo(() => {
+    if(authStep === "verify"){
+      if(isVerifying) return "Verifying code...";
+      return normalizedOtpCode.length === OTP_LENGTH
+        ? "Verify and continue"
+        : "Enter full code to continue";
     }
 
-    if(authStatus === "error" && state?.auth?.error){
-      return { role: "alert", text: state.auth.error };
-    }
-
-    return null;
-  }, [OTP_LENGTH, authStatus, authStep, state?.auth?.error]);
+    return isSending ? "Sending code..." : "Continue with email";
+  }, [authStep, isSending, isVerifying, normalizedOtpCode.length]);
 
   const onSubmit = (e) => {
     e.preventDefault();
+    if(!canSubmit) return;
+
     if(authStep === "verify"){
       actions?.verifyEmailOtp?.({ email: sentTo || username, code: otpCode });
       return;
@@ -138,6 +147,7 @@ export default function Login({ state, actions }) {
                 <button
                   type="button"
                   className="loginLink"
+                  disabled={isBusy}
                   onClick={() => actions?.requestEmailOtp?.({ email: sentTo || username, rememberMe })}
                 >
                   Resend code
@@ -146,6 +156,7 @@ export default function Login({ state, actions }) {
                 <button
                   type="button"
                   className="loginLink"
+                  disabled={isBusy}
                   onClick={() => {
                     setOtpCode("");
                     actions?.resetEmailOtp?.();
@@ -157,19 +168,21 @@ export default function Login({ state, actions }) {
             </>
           )}
 
-          {authFeedback ? (
-            <div className="loginHint" role={authFeedback.role}>
-              {authFeedback.text}
+          {busyFeedback ? (
+            <div className="srOnly" role="status">
+              {busyFeedback}
             </div>
           ) : null}
 
-          {showVerifySubmit ? (
-            <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
-              {authStep === "verify"
-                ? (canSubmit ? "Verify and continue" : "Enter full code to continue")
-                : "Continue with email"}
-            </button>
+          {authError ? (
+            <div className="loginHint" role="alert">
+              {authError}
+            </div>
           ) : null}
+
+          <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
+            {submitLabel}
+          </button>
 
           <div className="loginFooterRail">
             <div className="loginDivider" aria-hidden="true">
