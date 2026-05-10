@@ -2583,8 +2583,6 @@ export function useAttuneStore(){
         if(typeof profile.plan !== "string") profile.plan = "free";
         if(profile.plan !== "free" && profile.plan !== "plus") profile.plan = "free";
 
-        if(profile.plan !== "plus") profile.theme = "light";
-
         nextNameForSync = profile.name;
         shouldSyncName = Object.prototype.hasOwnProperty.call(nextPatch, "name") && profile.name !== previousName;
 

@@ -38,7 +38,7 @@ export default function ActivityPicker({ state, actions }) {
   return (
     <>
       <div className="card">
-        <h2>Pick an activity</h2>
+        <h2 className="activityPickerTitle">Pick an activity</h2>
         <div className="sub">
           A small, doable option, based on how you feel today.
           {statusLine ? ` ${statusLine}` : ""}

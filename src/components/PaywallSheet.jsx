@@ -25,11 +25,18 @@ function featureBlurb(feature) {
     case "patternCallouts":
       return "Get a few gentle pattern callouts when there’s enough data.";
     case "noteMemory":
-      return "Your optional check-in note is saved and summarized over time (on this device).";
+      return "Keep your optional check-in notes as context for future suggestions.";
     default:
-      return "A few calm upgrades that stay local to this device.";
+      return "A few calm upgrades for a more personal Attune rhythm.";
   }
 }
+
+const plusFeatures = [
+  ["AI boards", "Personalized small-step boards shaped by your check-in."],
+  ["Note memory", "Your optional notes can become useful context over time."],
+  ["Weekly insights", "Exact Momentum, past weeks, and gentle pattern callouts."],
+  ["Data exports", "Download a readable copy or backup when you need it."],
+];
 
 function getUpgradeCta(state) {
   if (state?.billing?.syncing) return "Working...";
@@ -75,42 +82,29 @@ export default function PaywallSheet({ state, actions }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div
-        className="modalCard"
-        onMouseDown={(e) => e.stopPropagation()}
-        style={{
-          width: "min(560px, 100%)",
-          maxHeight: "min(80vh, 680px)",
-          overflow: "auto",
-        }}
-      >
-        <div className="modalTitle">Attune Plus</div>
+      <div className="modalCard paywallCard" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="paywallKicker">Attune Plus</div>
+        <div className="paywallTitle">A fuller rhythm, when you want it.</div>
 
-        <div className="modalBody" style={{ marginTop: 8 }}>
+        <div className="modalBody paywallBody">
           {feature !== "plus" ? (
-            <div style={{ fontWeight: 900, color: "var(--ink)", marginBottom: 6 }}>{featureTitle(feature)}</div>
+            <div className="paywallFeatureCallout">
+              <span>{featureTitle(feature)}</span>
+              <p>{featureBlurb(feature)}</p>
+            </div>
           ) : null}
-          <div>{featureBlurb(feature)}</div>
 
-          <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Exports</b>: download your local data.
-            </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Note memory</b>: your optional note becomes memory you can keep on-device and sync when signed in.
-            </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Smarter picking</b>: avoids repeats you skip and leans toward what you complete.
-            </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-              <b style={{ color: "var(--ink)" }}>Weekly insights</b>: your exact score, past weeks, and gentle patterns.
-            </div>
+          <div className="paywallFeatureList">
+            {plusFeatures.map(([title, body]) => (
+              <div className="paywallFeatureItem" key={title}>
+                <b>{title}</b>
+                <span>{body}</span>
+              </div>
+            ))}
           </div>
 
-          <div style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
-            Pricing is shown in checkout before you confirm.
-          </div>
-          <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
+          <div className="paywallFinePrint">
+            <span>Pricing is shown in checkout before you confirm.</span>
             {signedIn
               ? billingConfigured
                 ? isNativePlatform()
@@ -121,8 +115,8 @@ export default function PaywallSheet({ state, actions }) {
           </div>
         </div>
 
-        <div className="modalActions" style={{ justifyContent: "space-between" }}>
-          <button type="button" className="btn" onClick={onPrimaryAction} style={{ fontWeight: 900 }} disabled={billingSyncing}>
+        <div className="modalActions paywallActions">
+          <button type="button" className="btn paywallPrimary" onClick={onPrimaryAction} disabled={billingSyncing}>
             {getUpgradeCta(state)}
           </button>
           {isNativePlatform() ? (
