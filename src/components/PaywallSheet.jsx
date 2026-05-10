@@ -108,7 +108,7 @@ export default function PaywallSheet({ state, actions }) {
           </div>
 
           <div style={{ marginTop: 12, fontSize: 12, color: "var(--muted)" }}>
-            Yearly price: <b style={{ color: "var(--ink)" }}>$-/year</b> (placeholder)
+            Pricing is shown in checkout before you confirm.
           </div>
           <div style={{ marginTop: 6, fontSize: 12, color: "var(--muted)" }}>
             {signedIn
