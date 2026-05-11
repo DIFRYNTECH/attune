@@ -1,4 +1,4 @@
-import { containsPromptInjection } from "./aiPromptSecurity.js";
+import { validateGeneratedAiTextSafety } from "./aiPromptSecurity.js";
 
 const commonWords = new Set([
   "a",
@@ -226,8 +226,10 @@ export function evaluateTaskQuality(textOrTask, ctx = {}) {
   if (!text) reasons.push("empty");
   if (text.length > 120) reasons.push("too_long");
   if (looksWeeklyReflectionTask(text)) reasons.push("weekly_reflection");
-  if (hasAny(text, unsafeFragments)) reasons.push("unsafe");
-  if (containsPromptInjection(text)) reasons.push("prompt_injection");
+  const safety = validateGeneratedAiTextSafety(text, { unsafeFragments });
+  if (safety.flags.includes("unsafe_fragment")) reasons.push("unsafe");
+  if (safety.flags.includes("prompt_injection")) reasons.push("prompt_injection");
+  if (safety.flags.includes("model_language")) reasons.push("model_language");
   if (hasAny(text, sillyFragments)) reasons.push("silly");
   if (hasAny(text, unrealisticFragments)) reasons.push("too_large");
   if (/\b(60|75|90|120)\s*(minute|minutes|min)\b/.test(normalized)) reasons.push("too_long_duration");

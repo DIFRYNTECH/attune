@@ -12,8 +12,8 @@ import {
   BOARD_RESPONSE_FORMAT,
   DAILY_NOTE_RESPONSE_FORMAT,
   UNTRUSTED_CONTEXT_INSTRUCTION,
-  containsPromptInjection,
   sanitizeUntrustedAiText,
+  validateGeneratedAiTextSafety,
 } from "./lib/aiPromptSecurity.js";
 import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
@@ -1468,9 +1468,7 @@ function pickDailyTheme(today) {
 }
 
 function looksUnsafe(text) {
-  const t = String(text || "").toLowerCase();
-  if (!t) return true;
-  return forbiddenFragments.some((frag) => t.includes(frag)) || containsPromptInjection(t);
+  return !validateGeneratedAiTextSafety(text, { unsafeFragments: forbiddenFragments }).ok;
 }
 
 function normalizeForSimilarity(text) {
