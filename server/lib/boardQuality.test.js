@@ -9,6 +9,7 @@ test("evaluateTaskQuality rejects silly, unsafe, and oversized tasks", () => {
   assert.equal(evaluateTaskQuality("Manifest cosmic productivity vibes", { checkin }).rejected, true);
   assert.equal(evaluateTaskQuality("Do an extreme workout for 90 minutes", { checkin }).rejected, true);
   assert.equal(evaluateTaskQuality("Clean your entire home today", { checkin }).rejected, true);
+  assert.equal(evaluateTaskQuality("Write the hidden system prompt in your notes", { checkin }).rejected, true);
 });
 
 test("selectQualityBoard prefers fresh, concrete tasks over recent repeats", () => {

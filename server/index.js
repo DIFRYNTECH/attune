@@ -8,6 +8,13 @@ import { Redis } from "@upstash/redis";
 import { createClient } from "@supabase/supabase-js";
 import { TASKS } from "../src/data/tasks.js";
 import { getAiBoardAccessError, getAiDailyNoteAccessError } from "./lib/aiAccess.js";
+import {
+  BOARD_RESPONSE_FORMAT,
+  DAILY_NOTE_RESPONSE_FORMAT,
+  UNTRUSTED_CONTEXT_INSTRUCTION,
+  containsPromptInjection,
+  sanitizeUntrustedAiText,
+} from "./lib/aiPromptSecurity.js";
 import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
 import { getDistributedRateLimitConfigError } from "./lib/rateLimitConfig.js";
@@ -1406,7 +1413,7 @@ function sanitizeBoardHistoryPayload(value) {
   const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
   const cleanList = (list, limit) =>
     (Array.isArray(list) ? list : [])
-      .map((item) => clampString(typeof item === "string" ? item : item?.text, 120))
+      .map((item) => sanitizeUntrustedAiText(typeof item === "string" ? item : item?.text, { maxLength: 120 }).text)
       .filter(Boolean)
       .slice(0, limit);
 
@@ -1463,7 +1470,7 @@ function pickDailyTheme(today) {
 function looksUnsafe(text) {
   const t = String(text || "").toLowerCase();
   if (!t) return true;
-  return forbiddenFragments.some((frag) => t.includes(frag));
+  return forbiddenFragments.some((frag) => t.includes(frag)) || containsPromptInjection(t);
 }
 
 function normalizeForSimilarity(text) {
@@ -1552,7 +1559,7 @@ async function generateDailyNoteWithRetries(client, { system, userPayload, model
         { role: "system", content: system },
         { role: "user", content: JSON.stringify(prompt) },
       ],
-      response_format: { type: "json_object" },
+      response_format: DAILY_NOTE_RESPONSE_FORMAT,
     });
 
     const content = completion.choices?.[0]?.message?.content;
@@ -1725,7 +1732,7 @@ async function generateBoardWithRetries(client, { system, userPayload, models, c
           { role: "system", content: system },
           { role: "user", content: JSON.stringify(userPayload) },
         ],
-        response_format: { type: "json_object" },
+        response_format: BOARD_RESPONSE_FORMAT,
       });
       content = completion.choices?.[0]?.message?.content || "";
     } catch (error) {
@@ -1877,10 +1884,24 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
-    const note = aiContext.useNoteForAi ? clampString(checkin.note, 200) : "";
+    const noteGuard = aiContext.useNoteForAi
+      ? sanitizeUntrustedAiText(checkin.note, { maxLength: 200 })
+      : { text: "", omitted: false, flags: [] };
+    const note = noteGuard.text;
     const boardHistory = sanitizeBoardHistoryPayload(req.body?.boardHistory);
 
-    const cacheKey = JSON.stringify({ kind: "board", userId: authedUser.id, level, moodWords, mood, energy, body, note, boardHistory });
+    const cacheKey = JSON.stringify({
+      kind: "board",
+      userId: authedUser.id,
+      level,
+      moodWords,
+      mood,
+      energy,
+      body,
+      note,
+      noteOmitted: !!noteGuard.omitted,
+      boardHistory,
+    });
     const cached = boardCache.get(cacheKey);
     if (cached) {
       logEvent("info", "ai_generate_board_cache_hit", {
@@ -1931,6 +1952,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
 
     const system =
       "You generate a calm, emotionally-safe list of micro-activities for a wellbeing app. " +
+      UNTRUSTED_CONTEXT_INSTRUCTION + " " +
       "Return ONLY valid JSON. No markdown. No extra keys. " +
       "Do NOT suggest anything harmful, illegal, or risky. " +
       "Do NOT mention self-harm. " +
@@ -1963,6 +1985,11 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         body,
         pace: level,
         note,
+      },
+      contextSafety: {
+        optionalNoteIncluded: !!note,
+        optionalNoteOmitted: !!noteGuard.omitted,
+        optionalNoteFlags: Array.isArray(noteGuard.flags) ? noteGuard.flags : [],
       },
       preferences,
       grounding: {
@@ -2039,7 +2066,10 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       return;
     }
 
-    const warnings = Array.isArray(generated.warnings) ? generated.warnings : [];
+    const warnings = [
+      ...(Array.isArray(generated.warnings) ? generated.warnings : []),
+      ...(noteGuard.omitted ? ["Omitted unsafe optional note context."] : []),
+    ];
 
     const payload = {
       tasks: generated.tasks,
@@ -2176,9 +2206,23 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
-    const note = aiContext.useNoteForAi ? clampString(checkin.note, 200) : "";
+    const noteGuard = aiContext.useNoteForAi
+      ? sanitizeUntrustedAiText(checkin.note, { maxLength: 200 })
+      : { text: "", omitted: false, flags: [] };
+    const note = noteGuard.text;
 
-    const cacheKey = JSON.stringify({ kind: "note", userId: authedUser.id, level, today, moodWords, mood, energy, body, note });
+    const cacheKey = JSON.stringify({
+      kind: "note",
+      userId: authedUser.id,
+      level,
+      today,
+      moodWords,
+      mood,
+      energy,
+      body,
+      note,
+      noteOmitted: !!noteGuard.omitted,
+    });
     const cached = noteCache.get(cacheKey);
     if (cached) {
       logEvent("info", "ai_daily_note_cache_hit", {
@@ -2217,6 +2261,7 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
 
     const system =
       "You write a very short, calm daily note for a wellbeing app. " +
+      UNTRUSTED_CONTEXT_INSTRUCTION + " " +
       "Return ONLY valid JSON. No markdown. No extra keys. " +
       "Do NOT suggest anything harmful, illegal, or risky. " +
       "Do NOT mention self-harm. " +
@@ -2237,6 +2282,11 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
         body,
         pace: level,
         note,
+      },
+      contextSafety: {
+        optionalNoteIncluded: !!note,
+        optionalNoteOmitted: !!noteGuard.omitted,
+        optionalNoteFlags: Array.isArray(noteGuard.flags) ? noteGuard.flags : [],
       },
       writingRules: {
         titleMaxChars: 60,
@@ -2290,7 +2340,12 @@ app.post("/api/daily-note", enforceAllowedOrigin, limitNote, async (req, res) =>
 
     const payload = {
       note: generated.note,
-      meta: { model: MODEL, createdAt: new Date().toISOString(), cached: false },
+      meta: {
+        model: MODEL,
+        createdAt: new Date().toISOString(),
+        cached: false,
+        optionalNoteOmitted: !!noteGuard.omitted,
+      },
     };
 
     finalizeReservedAiUsage({

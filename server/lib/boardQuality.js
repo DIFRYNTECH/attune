@@ -1,3 +1,5 @@
+import { containsPromptInjection } from "./aiPromptSecurity.js";
+
 const commonWords = new Set([
   "a",
   "an",
@@ -225,6 +227,7 @@ export function evaluateTaskQuality(textOrTask, ctx = {}) {
   if (text.length > 120) reasons.push("too_long");
   if (looksWeeklyReflectionTask(text)) reasons.push("weekly_reflection");
   if (hasAny(text, unsafeFragments)) reasons.push("unsafe");
+  if (containsPromptInjection(text)) reasons.push("prompt_injection");
   if (hasAny(text, sillyFragments)) reasons.push("silly");
   if (hasAny(text, unrealisticFragments)) reasons.push("too_large");
   if (/\b(60|75|90|120)\s*(minute|minutes|min)\b/.test(normalized)) reasons.push("too_long_duration");
