@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PRIVACY_CONSENT_COPY, PRIVACY_PATH } from "../content/privacy";
+import { PRIVACY_PATH } from "../content/privacy";
 import { validateEmail } from "../lib/authValidation";
 
 export default function Login({ state, actions }) {
@@ -200,11 +200,11 @@ export default function Login({ state, actions }) {
           <div className="loginFinePrint">No password needed. We’ll email a secure one-time code.</div>
           <div className="loginLegalNotice">
             <span>
-              {PRIVACY_CONSENT_COPY}{" "}
+              By continuing, you agree to Attune&apos;s{" "}
               <a className="loginLegalLink" href={PRIVACY_PATH}>
                 Privacy Policy
               </a>
-              .
+              . Your check-ins stay private to your account.
             </span>
           </div>
         </form>

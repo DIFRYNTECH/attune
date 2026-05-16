@@ -1,103 +1,198 @@
 .privacyPage {
+  height: 100svh;
   min-height: 100svh;
-  background:
-    radial-gradient(circle at 18% 8%, rgba(124, 161, 196, .18), transparent 34%),
-    linear-gradient(180deg, #f7f9fb 0%, #eef3f7 100%);
-  color: #1f2937;
-  padding: clamp(22px, 5vw, 64px);
+  background: var(--bg);
+  color: var(--ink);
+  padding: 12px 12px 34px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
-.privacyPanel {
-  width: min(860px, 100%);
+.privacyShell {
+  width: min(100%, 720px);
   margin: 0 auto;
-  padding: clamp(26px, 5vw, 56px);
-  border: 1px solid rgba(103, 128, 157, .18);
-  border-radius: 28px;
-  background: rgba(255, 255, 255, .82);
-  box-shadow: 0 30px 80px rgba(72, 111, 150, .15);
+  display: grid;
+  gap: 12px;
+  padding-bottom: 34px;
 }
 
-.privacyBackLink {
+.privacyTop {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 12% 8%, color-mix(in oklab, var(--brand) 18%, transparent), transparent 36%),
+    color-mix(in oklab, var(--surface) 92%, transparent);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+}
+
+.privacyBrand {
   display: inline-flex;
   align-items: center;
-  min-height: 36px;
-  margin-bottom: 24px;
-  color: #5f7fa4;
-  font-weight: 900;
+  gap: 12px;
+  min-width: 0;
+  color: inherit;
   text-decoration: none;
 }
 
-.privacyBackLink:hover {
-  text-decoration: underline;
+.privacyBrand .brandMark {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border-radius: 15px;
+}
+
+.privacyBrandTitle,
+.privacyBrandTag {
+  display: block;
+}
+
+.privacyBrandTitle {
+  font-size: 19px;
+  font-weight: 900;
+  line-height: 1.05;
+}
+
+.privacyBrandTag {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.privacyPanel {
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, color-mix(in oklab, var(--surface) 96%, transparent), var(--surface2)),
+    var(--surface);
+  box-shadow: var(--shadow);
+  padding: clamp(18px, 4vw, 28px);
+}
+
+.privacyHero {
+  padding-bottom: 16px;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+}
+
+.privacyEyebrow {
+  margin: 0 0 10px;
+  color: var(--brand);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
 }
 
 .privacyPanel h1 {
   margin: 0;
-  font-size: clamp(38px, 8vw, 72px);
-  line-height: .95;
+  font-size: clamp(30px, 7vw, 40px);
+  line-height: 1.02;
   letter-spacing: 0;
 }
 
 .privacyUpdated {
-  margin: 14px 0 28px;
-  color: #6b7789;
-  font-weight: 800;
-}
-
-.privacyPanel h2 {
-  margin: 34px 0 10px;
-  font-size: clamp(20px, 3vw, 26px);
-  line-height: 1.1;
+  margin: 8px 0 14px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 850;
 }
 
 .privacyPanel p {
-  margin: 0 0 14px;
-  max-width: 72ch;
-  color: #526173;
-  font-size: 16px;
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
   font-weight: 650;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
-.privacyPanel ul {
-  margin: 0 0 14px 20px;
+.privacyHero p:last-child {
+  max-width: 62ch;
+  color: color-mix(in oklab, var(--muted) 82%, var(--ink) 18%);
+  font-size: 14px;
+}
+
+.privacySections {
+  display: grid;
+  gap: 12px;
+  padding-top: 16px;
+  padding-bottom: 14px;
+}
+
+.privacySection {
+  border: 1px solid color-mix(in oklab, var(--line) 86%, transparent);
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--surface2) 82%, transparent);
+  padding: 15px;
+}
+
+.privacySection h2 {
+  margin: 0 0 8px;
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.12;
+}
+
+.privacySection ul {
+  margin: 8px 0 0 18px;
   padding: 0;
-  max-width: 72ch;
-  color: #526173;
-  font-size: 16px;
+  color: var(--muted);
+  font-size: 14px;
   font-weight: 650;
-  line-height: 1.7;
+  line-height: 1.55;
 }
 
-.privacyPanel li + li {
+.privacySection li + li {
   margin-top: 6px;
 }
 
 .privacyPanel a {
-  color: #557aa4;
+  color: color-mix(in oklab, var(--brand) 74%, var(--ink) 26%);
   font-weight: 900;
 }
 
 html[data-theme="dark"] .privacyPage {
-  background:
-    radial-gradient(circle at 22% 8%, rgba(157, 171, 242, .14), transparent 34%),
-    linear-gradient(180deg, #111827 0%, #101522 100%);
-  color: #edf3ff;
+  background: var(--bg);
 }
 
-html[data-theme="dark"] .privacyPanel {
-  border-color: rgba(238, 243, 255, .13);
-  background: rgba(27, 34, 52, .78);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, .34);
+html[data-theme="dark"] .privacyTop,
+html[data-theme="dark"] .privacyPanel,
+html[data-theme="dark"] .privacySection {
+  border-color: var(--line);
 }
 
-html[data-theme="dark"] .privacyPanel p,
-html[data-theme="dark"] .privacyPanel ul,
-html[data-theme="dark"] .privacyUpdated {
-  color: #aeb8ca;
-}
+@media (max-width: 520px) {
+  .privacyPage {
+    padding: 8px 8px 36px;
+  }
 
-html[data-theme="dark"] .privacyBackLink,
-html[data-theme="dark"] .privacyPanel a {
-  color: #a8b6ff;
+  .privacyShell {
+    gap: 10px;
+    padding-bottom: 36px;
+  }
+
+  .privacyTop {
+    border-radius: 24px;
+    padding: 12px;
+  }
+
+  .privacyPanel {
+    border-radius: 24px;
+    padding: 18px;
+  }
+
+  .privacyPanel h1 {
+    font-size: 32px;
+  }
+
+  .privacySection {
+    border-radius: 18px;
+    padding: 14px;
+  }
+
+  .privacySections {
+    padding-bottom: 22px;
+  }
 }
