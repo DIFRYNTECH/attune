@@ -584,7 +584,12 @@ html[data-theme="dark"] .bottomNavBtn.active {
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-y: contain;
-    scrollbar-gutter: stable;
+    scrollbar-width: none;
+  }
+
+  .grid::-webkit-scrollbar {
+    width: 0;
+    height: 0;
   }
 
   /* Activity Picker board: let tiles extend the page height naturally so
