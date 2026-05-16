@@ -22,7 +22,7 @@ export const DATA_SUBJECT_RIGHTS = [
 ];
 
 export const PRIVACY_CONSENT_COPY =
-  "By continuing, you confirm you are 18 or older and agree to Attune's Privacy Policy.";
+  "18+ only. By continuing, you agree to Attune's";
 
 export const PRIVACY_SHORT_NOTICE =
   "Attune stores your account details, check-ins, optional notes, tasks, and app settings so it can provide the app. Optional notes are only sent for AI personalization when you allow note context in Profile.";

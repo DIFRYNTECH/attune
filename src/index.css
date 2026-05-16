@@ -904,10 +904,8 @@
       margin-right: auto;
     }
     .loginLegalNotice{
-      margin: 12px auto 0;
-      display: grid;
-      gap: 6px;
-      max-width: 34ch;
+      margin: 9px auto 0;
+      max-width: 30ch;
       text-align: center;
       font-size: 11.5px;
       line-height: 1.45;

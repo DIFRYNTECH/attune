@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { PRIVACY_CONSENT_COPY, PRIVACY_PATH, PRIVACY_SHORT_NOTICE } from "../content/privacy";
+import { PRIVACY_CONSENT_COPY, PRIVACY_PATH } from "../content/privacy";
 import { validateDisplayName, validateEmail } from "../lib/authValidation";
 
 export default function Signup({ state, actions }) {
@@ -222,11 +222,13 @@ export default function Signup({ state, actions }) {
 
           <div className="loginFinePrint">No password needed. We’ll email a secure one-time code.</div>
           <div className="loginLegalNotice">
-            <span>{PRIVACY_CONSENT_COPY}</span>
-            <span>{PRIVACY_SHORT_NOTICE}</span>
-            <a className="loginLegalLink" href={PRIVACY_PATH}>
-              Privacy Policy
-            </a>
+            <span>
+              {PRIVACY_CONSENT_COPY}{" "}
+              <a className="loginLegalLink" href={PRIVACY_PATH}>
+                Privacy Policy
+              </a>
+              .
+            </span>
           </div>
         </form>
       </div>
