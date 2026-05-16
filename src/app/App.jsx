@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 
 import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
@@ -119,6 +119,7 @@ function AttuneApp() {
   const showToast = !!activeToast;
   const [renderedToast, setRenderedToast] = useState(null);
   const [toastPhase, setToastPhase] = useState("hidden");
+  const contentRef = useRef(null);
   const wrapClassName = "wrap" + (renderedToast ? " toastOn" : "");
 
   // App-level init: theme, Capacitor deep links, status bar, splash.
@@ -133,6 +134,12 @@ function AttuneApp() {
 
     return () => window.clearTimeout(timeoutId);
   }, [showToast, activeToast?.text, activeToast?.good, activeToast?.screen, actions]);
+
+  useEffect(() => {
+    if (!signedIn) return;
+
+    contentRef.current?.scrollTo?.({ top: 0, left: 0, behavior: "auto" });
+  }, [screen, signedIn]);
 
   useEffect(() => {
     if (activeToast) {
@@ -176,7 +183,7 @@ function AttuneApp() {
     <div className={wrapClassName}>
       <TopNav screen={screen} go={actions.go} entitlements={state.entitlements} />
 
-      <div className="grid">
+      <div className="grid" ref={contentRef}>
         <main>
           {!signedIn && (
             <Login state={state} actions={actions} />

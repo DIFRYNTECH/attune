@@ -674,12 +674,20 @@ html[data-theme="dark"] .bottomNavBtn.active {
   }
 
   .bottomNav {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+    justify-content: stretch;
+    padding-left: 8px;
+    padding-right: 8px;
   }
 
   .bottomNavBtn {
-    padding: 9px 10px;
+    min-width: 0;
+    padding: 9px 6px;
     font-size: 12px;
+    text-align: center;
+    overflow: hidden;
   }
 
   .checkinHeading,
@@ -714,6 +722,20 @@ html[data-theme="dark"] .bottomNavBtn.active {
   .sub {
     font-size: 12px;
     margin-bottom: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .bottomNav {
+    gap: 5px;
+    padding-left: 6px;
+    padding-right: 6px;
+  }
+
+  .bottomNavBtn {
+    padding-left: 4px;
+    padding-right: 4px;
+    font-size: 11.5px;
   }
 }
 
