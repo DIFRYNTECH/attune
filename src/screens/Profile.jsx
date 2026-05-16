@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import InfoTip from "../components/InfoTip";
+import { PRIVACY_PATH, SUPPORT_EMAIL, SUPPORT_MAILTO } from "../content/privacy";
 import { buildBackupExport, buildUserDataExport } from "../lib/exportData";
 import { isNativePlatform } from "../lib/platform";
 
@@ -333,7 +334,7 @@ export default function Profile({ state, actions }) {
 
         <SettingsSection
           title="Data"
-          helper="Attune Plus includes a readable data export and a full backup export. You can also clear everything stored on this device at any time."
+          helper="Attune Plus includes in-app exports. Privacy access and deletion requests are available by contacting support, whether you use Plus or not."
           helperLabel="Data info"
         >
           <div className="settingsSplitRow settingsSplitRowTerse">
@@ -374,6 +375,29 @@ export default function Profile({ state, actions }) {
               >
                 Reset local Attune data
               </button>
+            </div>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          title="Privacy and support"
+          helper="Use these links for privacy questions, account-level deletion requests, support, or to review how Attune handles your data."
+          helperLabel="Privacy and support info"
+        >
+          <div className="settingsSplitRow">
+            <div className="settingsSplitCopy">
+              <div className="settingsInlineSummary">
+                For data access, correction, deletion, privacy, or support requests, email{" "}
+                <b>{SUPPORT_EMAIL}</b>.
+              </div>
+            </div>
+            <div className="settingsActions settingsSplitActions">
+              <a className="btn ghost settingsLinkButton" href={PRIVACY_PATH}>
+                Privacy Policy
+              </a>
+              <a className="btn ghost settingsLinkButton" href={SUPPORT_MAILTO}>
+                Email support
+              </a>
             </div>
           </div>
         </SettingsSection>

@@ -903,6 +903,24 @@
       margin-left: auto;
       margin-right: auto;
     }
+    .loginLegalNotice{
+      margin: 12px auto 0;
+      display: grid;
+      gap: 6px;
+      max-width: 34ch;
+      text-align: center;
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: color-mix(in oklab, var(--muted) 90%, var(--ink) 10%);
+    }
+    .loginLegalLink{
+      color: color-mix(in oklab, var(--brand) 72%, var(--ink) 28%);
+      font-weight: 850;
+      text-decoration: none;
+    }
+    .loginLegalLink:hover{
+      text-decoration: underline;
+    }
     @keyframes authCardFloatIn{
       from{
         opacity: 0;
@@ -1335,6 +1353,11 @@
 
     .settingsSplitActions .btn{
       min-width: 0;
+    }
+
+    .settingsLinkButton{
+      text-decoration: none;
+      text-align: center;
     }
 
     .settingsActions .btn.primary{

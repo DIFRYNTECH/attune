@@ -59,6 +59,20 @@
   line-height: 1.7;
 }
 
+.privacyPanel ul {
+  margin: 0 0 14px 20px;
+  padding: 0;
+  max-width: 72ch;
+  color: #526173;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.7;
+}
+
+.privacyPanel li + li {
+  margin-top: 6px;
+}
+
 .privacyPanel a {
   color: #557aa4;
   font-weight: 900;
@@ -78,6 +92,7 @@ html[data-theme="dark"] .privacyPanel {
 }
 
 html[data-theme="dark"] .privacyPanel p,
+html[data-theme="dark"] .privacyPanel ul,
 html[data-theme="dark"] .privacyUpdated {
   color: #aeb8ca;
 }
