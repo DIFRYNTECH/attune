@@ -5,6 +5,7 @@ import BottomNav from "../components/BottomNav.jsx";
 import CheckIn from "../screens/CheckIn.jsx";
 import Landing from "../screens/Landing.jsx";
 import Login from "../screens/Login.jsx";
+import PrivacyPolicy from "../screens/PrivacyPolicy.jsx";
 import { useAttuneStore } from "../store/useAttuneStore";
 
 const ActivityPicker = lazy(() => import("../screens/ActivityPicker.jsx"));
@@ -103,6 +104,11 @@ function ScreenFallback({ label = "Loading..." }) {
 function isLandingPath() {
   if (typeof window === "undefined") return false;
   return window.location.pathname === "/landing";
+}
+
+function isPrivacyPath() {
+  if (typeof window === "undefined") return false;
+  return window.location.pathname === "/privacy";
 }
 
 function AttuneApp() {
@@ -227,6 +233,7 @@ function AttuneApp() {
 }
 
 export default function App() {
+  if (isPrivacyPath()) return <PrivacyPolicy />;
   if (isLandingPath()) return <Landing />;
   return <AttuneApp />;
 }
