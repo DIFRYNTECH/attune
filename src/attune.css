@@ -572,6 +572,25 @@ html[data-theme="dark"] .bottomNavBtn.active {
     padding-bottom: 16px;
   }
 
+  .grid > main > .checkinCard {
+    padding-top: 16px;
+  }
+
+  .checkinIntro {
+    gap: 4px;
+    margin: 0 0 10px;
+    padding-top: 0;
+  }
+
+  .checkinIntro::before {
+    inset: -5px -8px auto;
+    height: 54px;
+  }
+
+  .checkinHeading {
+    padding-bottom: 0;
+  }
+
   /* When a toast is visible, add extra scroll space at the bottom of the card
      so the last list item can scroll above the fixed toast. */
   .wrap.toastOn .grid > main > .card {
