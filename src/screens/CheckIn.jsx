@@ -38,6 +38,19 @@ const BODY_OPTIONS = [
   { value: "great", label: "Great", hint: "Feeling strong", tone: "high" },
 ];
 
+const BOARD_STYLE_OPTIONS = [
+  {
+    value: "steady",
+    label: "Support",
+    hint: "Grounded steps you can follow through on.",
+  },
+  {
+    value: "challenge",
+    label: "Stretch",
+    hint: "More active steps, still shaped around today.",
+  },
+];
+
 const PACE_TRACE_PATH = "M80 1.5 H137 C148.874 1.5 158.5 11.126 158.5 23 C158.5 34.874 148.874 44.5 137 44.5 H23 C11.126 44.5 1.5 34.874 1.5 23 C1.5 11.126 11.126 1.5 23 1.5 H80";
 const PACE_TRACE_DURATION_MS = 2800;
 const PACE_TRACE_DURATION = `${PACE_TRACE_DURATION_MS}ms`;
@@ -158,6 +171,8 @@ export default function CheckIn({ state, actions }) {
   const DEFAULT_ENERGY = "okay";
   const DEFAULT_BODY = "manageable";
   const DEFAULT_LEVEL = "gentle";
+  const DEFAULT_BOARD_STYLE = "steady";
+  const boardStyle = checkin.boardStyle === "challenge" ? "challenge" : "steady";
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
   const previousLevelRef = useRef(level);
@@ -216,6 +231,7 @@ export default function CheckIn({ state, actions }) {
     trimmedNote.length > 0 ||
     checkin.energy !== DEFAULT_ENERGY ||
     checkin.body !== DEFAULT_BODY ||
+    boardStyle !== DEFAULT_BOARD_STYLE ||
     level !== DEFAULT_LEVEL ||
     !(selectedMoodWords.length === 1 && selectedMoodWords[0] === "Okay" && checkin.mood === "okay")
   );
@@ -440,6 +456,31 @@ export default function CheckIn({ state, actions }) {
                   <span className="pillLabel">{l.name}</span>
                 </button>
               ))}
+            </div>
+          </div>
+        ) : null}
+
+        {showPaceStep ? (
+          <div className="checkinStep boardStyleStep" data-step="board-style">
+            <div className="boardStyleRow">
+              <div className="boardStyleText">
+                <span className="boardStyleLabel">Suggestions</span>
+              </div>
+              <div className="boardStyleToggle" role="group" aria-label="Suggestion type">
+                {BOARD_STYLE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={"boardStyleOption" + (boardStyle === option.value ? " active" : "")}
+                    aria-pressed={boardStyle === option.value}
+                    aria-label={`${option.label} suggestions`}
+                    title={option.hint}
+                    onClick={() => actions.setCheckin({ boardStyle: option.value })}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : null}

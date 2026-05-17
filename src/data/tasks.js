@@ -77,7 +77,11 @@ export const TASKS = {
     "Write down 3 small wins from today",
     "Spend 15 minutes on a hobby (music, craft, reading)",
     "Do a seated strength routine (10 minutes if safe)",
-    "Do a small kindness for future-you (set out clothes, charge device, prep water)"
+    "Do a small kindness for future-you (set out clothes, charge device, prep water)",
+    "Do one 20-minute focused block on the task that matters most",
+    "Practice one skill you care about for 15 minutes",
+    "Write the next clear move for a goal and start it for 10 minutes",
+    "Clean up one system that would make tomorrow easier"
   ],
   brave: [
     "Take a short walk + one extra minute (if safe)",
@@ -92,6 +96,10 @@ export const TASKS = {
     "Sort a meaningful set of items/photos you’ve avoided",
     "Do 10 minutes of movement, then stop (no pushing)",
     "Pick one small boundary for tomorrow and write it down",
+    "Do one 30-minute focused block with your phone away",
+    "Send the message that moves one goal forward",
+    "Choose one hard-but-safe task and make a 15-minute start",
+    "Draft the first rough version of something you have been avoiding",
     "Do a ‘reset’ shower or wash-up and change into fresh clothes"
   ]
 };

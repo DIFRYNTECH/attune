@@ -1972,6 +1972,79 @@
         checkinPaceAutoPulse .82s cubic-bezier(.2,.84,.28,1);
     }
 
+    .boardStyleStep{
+      margin-top: -4px;
+    }
+    .boardStyleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      min-height:42px;
+      padding:4px 6px 4px 12px;
+      border:1px solid color-mix(in oklab, var(--line) 92%, transparent);
+      border-radius:16px;
+      background: color-mix(in oklab, var(--surface2) 82%, transparent);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.28);
+    }
+    .boardStyleText{
+      min-width:0;
+      display:flex;
+      align-items:center;
+    }
+    .boardStyleLabel{
+      font-size:13px;
+      font-weight:800;
+      color:var(--muted);
+      line-height:1.2;
+    }
+    .boardStyleToggle{
+      flex:0 0 auto;
+      display:grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap:4px;
+      width:148px;
+      padding:3px;
+      border:1px solid color-mix(in oklab, var(--line) 82%, transparent);
+      border-radius:14px;
+      background: color-mix(in oklab, var(--bg) 38%, transparent);
+    }
+    .boardStyleOption{
+      min-height:30px;
+      border:0;
+      border-radius:11px;
+      padding:0 8px;
+      background:transparent;
+      color:var(--muted);
+      font:inherit;
+      font-size:11.6px;
+      font-weight:900;
+      letter-spacing:-.12px;
+      cursor:pointer;
+      transition: background .18s ease, color .18s ease, box-shadow .18s ease, transform .18s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .boardStyleOption.active{
+      background: color-mix(in oklab, var(--brand) 82%, var(--surface1) 18%);
+      color:#fff;
+      box-shadow: 0 8px 16px rgba(72,111,150,.18);
+    }
+    .boardStyleOption:active{
+      transform: translateY(1px);
+    }
+    .boardStyleOption:focus-visible{
+      outline:2px solid color-mix(in oklab, var(--brand) 36%, transparent);
+      outline-offset:2px;
+    }
+    html[data-theme="dark"] .boardStyleRow{
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.08);
+    }
+    html[data-theme="dark"] .boardStyleOption.active{
+      background: linear-gradient(135deg, var(--brand), var(--brand2));
+      color:#fff;
+      box-shadow: 0 10px 18px rgba(0,0,0,.28);
+    }
+
     @media (prefers-reduced-motion: reduce){
       .paceTraceSvg{display:none;}
     }
@@ -4329,13 +4402,13 @@
       .choicePillGrid[data-columns="2"],
       .choicePillGrid[data-columns="3"]{
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap:7px;
+        gap:6px;
       }
       .choicePillGrid[data-columns="3"] .choicePill:last-child{
         grid-column: span 2;
       }
       .choicePill{
-        min-height:46px;
+        min-height:44px;
         padding:6px 5px;
         border-radius:13px;
       }
@@ -4353,7 +4426,7 @@
       .pillrow{
         display:grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap:7px;
+        gap:6px;
       }
       .pill{
         width:100%;
@@ -4361,10 +4434,33 @@
         align-items:center;
         justify-content:center;
         gap:5px;
-        padding:7px 8px;
+        padding:6px 8px;
         font-size:13px;
         border-radius:15px;
         --pillEmojiSize: 15px;
+      }
+      .checkinFlow{
+        gap:10px;
+      }
+      .checkinStep{
+        gap:6px;
+      }
+      .checkinNoteHeadCollapsible{
+        min-height:48px;
+        padding:12px 14px;
+      }
+      .boardStyleRow{
+        min-height:40px;
+        padding:4px 6px 4px 11px;
+        border-radius:15px;
+      }
+      .boardStyleToggle{
+        width:140px;
+      }
+      .boardStyleOption{
+        min-height:29px;
+        padding:0 7px;
+        font-size:11.2px;
       }
 
       .moodGrid{grid-template-columns: repeat(5, minmax(0, 1fr)); gap:6px;}

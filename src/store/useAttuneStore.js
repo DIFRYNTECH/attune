@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { loadState, saveState, todayKey } from "../lib/storage";
 import { getSupabaseClient, isSupabaseConfigured } from "../lib/supabase";
 import { AUTH_CALLBACK_ERROR_EVENT } from "../lib/mobile";
-import { dailyMessageFromCheckin, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
+import { dailyMessageFromCheckin, normalizeBoardStyle, suggestActivities, suggestLevelFromCheckin } from "../lib/attuneEngine";
 import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
@@ -30,10 +30,10 @@ import {
 import { isPaddleCheckoutSupported, openPaddleCheckout } from "../lib/paddleCheckout";
 import { isNativePlatform } from "../lib/platform";
 
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 // Bump this when the AI prompt/validation changes and you want fresh boards.
-const AI_BOARD_VERSION = 5;
+const AI_BOARD_VERSION = 6;
 
 // Bump this when the AI daily note prompt changes.
 const AI_DAILY_NOTE_VERSION = 2;
@@ -715,6 +715,7 @@ const DEFAULT_CHECKIN = {
   moodWords: ["Okay"],
   energy: "okay",
   body: "manageable",
+  boardStyle: "steady",
   note: "",
 };
 
@@ -742,6 +743,7 @@ function sanitizeCheckinForSync(checkin){
       : [],
     energy: clampText(source.energy, 24) || DEFAULT_CHECKIN.energy,
     body: clampText(source.body, 24) || DEFAULT_CHECKIN.body,
+    boardStyle: normalizeBoardStyle(source.boardStyle),
     note: clampText(source.note, 200),
   };
 }
@@ -880,10 +882,11 @@ function checkinSignature(checkin, level, useNoteForAi){
   const moodWords = Array.isArray(checkin?.moodWords) ? checkin.moodWords.slice(0,2) : [];
   const energy = typeof checkin?.energy === "string" ? checkin.energy : "";
   const body = typeof checkin?.body === "string" ? checkin.body : "";
+  const boardStyle = normalizeBoardStyle(checkin?.boardStyle);
   const includeNote = useNoteForAi !== false;
   const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,200) : "";
   const lvl = typeof level === "string" ? level : "";
-  return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, note, lvl });
+  return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, boardStyle, note, lvl });
 }
 
 function getLocalOptionsRefreshKey(today){
@@ -953,6 +956,7 @@ function normalizeLoadedState(loaded){
 
     if(typeof next.checkin.note !== "string") next.checkin.note = "";
     if(next.checkin.note.length > 200) next.checkin.note = next.checkin.note.slice(0, 200);
+    next.checkin.boardStyle = normalizeBoardStyle(next.checkin.boardStyle);
 
     // Only override the old default if it looks like it was never changed.
     // (Earlier versions defaulted to energy:"low" body:"achey".)
@@ -974,6 +978,10 @@ function normalizeLoadedState(loaded){
   if("pickToastIndex" in next) delete next.pickToastIndex;
 
   if(!Array.isArray(next.boardAssigned)) next.boardAssigned = [];
+  if(!next.checkin || typeof next.checkin !== "object" || Array.isArray(next.checkin)){
+    next.checkin = { ...DEFAULT_CHECKIN };
+  }
+  next.checkin.boardStyle = normalizeBoardStyle(next.checkin.boardStyle);
 
   // Auth (added later): keep it optional + safe.
   if(!next.auth || typeof next.auth !== "object" || Array.isArray(next.auth)){
@@ -1147,6 +1155,7 @@ function normalizeLoadedState(loaded){
     next.checkin?.mood === DEFAULT_CHECKIN.mood &&
     next.checkin?.energy === DEFAULT_CHECKIN.energy &&
     next.checkin?.body === DEFAULT_CHECKIN.body &&
+    normalizeBoardStyle(next.checkin?.boardStyle) === DEFAULT_CHECKIN.boardStyle &&
     (!next.checkin?.note || next.checkin.note.trim() === "") &&
     (next.level === "gentle" || next.level === DEFAULT_CHECKIN.level);
 
@@ -1859,6 +1868,7 @@ export function useAttuneStore(){
             energy: current.checkin?.energy,
             body: current.checkin?.body,
             pace: current.level,
+            boardStyle: normalizeBoardStyle(current.checkin?.boardStyle),
             ...(note ? { note } : {}),
           },
           { maxDays: EVENT_DAYS_TO_KEEP }
@@ -1892,6 +1902,7 @@ export function useAttuneStore(){
     setCheckin: (patch) =>
       setState(s => {
         const checkin = { ...s.checkin, ...patch };
+        checkin.boardStyle = normalizeBoardStyle(checkin.boardStyle);
         const shouldResuggestLevel = patchAffectsSuggestedLevel(patch);
         const source = shouldResuggestLevel ? "auto" : (s.levelSource === "manual" ? "manual" : "auto");
         const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);

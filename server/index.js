@@ -1425,7 +1425,12 @@ function sanitizeBoardHistoryPayload(value) {
   };
 }
 
-function buildCuratedFallbackTasks(level) {
+function normalizeBoardStyle(value) {
+  return String(value || "").trim().toLowerCase() === "challenge" ? "challenge" : "steady";
+}
+
+function buildCuratedFallbackTasks(level, boardStyle = "steady") {
+  const style = normalizeBoardStyle(boardStyle);
   const orderByLevel = {
     rest: ["rest", "gentle", "light"],
     gentle: ["gentle", "rest", "light", "steady"],
@@ -1434,7 +1439,18 @@ function buildCuratedFallbackTasks(level) {
     capable: ["capable", "steady", "light", "gentle"],
     brave: ["brave", "capable", "steady", "light"],
   };
-  const levels = orderByLevel[level] || orderByLevel.gentle;
+  const challengeBoost = {
+    rest: ["gentle", "light"],
+    gentle: ["light", "steady"],
+    light: ["steady", "capable"],
+    steady: ["capable", "brave"],
+    capable: ["brave"],
+    brave: ["brave", "capable"],
+  };
+  const levels = [
+    ...(style === "challenge" ? (challengeBoost[level] || challengeBoost.gentle) : []),
+    ...(orderByLevel[level] || orderByLevel.gentle),
+  ];
   const out = [];
   const seen = new Set();
 
@@ -1612,9 +1628,10 @@ function clampInt(value, min, max, fallback) {
   return Math.floor(n);
 }
 
-function computeBoardPreferences({ pace, energy }) {
+function computeBoardPreferences({ pace, energy, boardStyle }) {
   const paceLower = String(pace || "").toLowerCase();
   const energyLower = String(energy || "").toLowerCase();
+  const style = normalizeBoardStyle(boardStyle);
 
   const baseByPace = {
     rest: { minLow: 12, minMedium: 0, minHigh: 0, maxHigh: 0, maxMinutes: 20 },
@@ -1637,6 +1654,24 @@ function computeBoardPreferences({ pace, energy }) {
   } else if (energyLower === "high") {
     prefs.minHigh = clampInt(prefs.minHigh + 1, 0, 6, prefs.minHigh);
     prefs.minLow = clampInt(prefs.minLow - 1, 0, 15, prefs.minLow);
+  }
+
+  if (style === "challenge") {
+    prefs.minHigh = clampInt(prefs.minHigh + 2, 0, 7, prefs.minHigh);
+    prefs.maxHigh = clampInt(prefs.maxHigh + 2, 1, 7, prefs.maxHigh);
+    prefs.minMedium = clampInt(prefs.minMedium + 1, 0, 10, prefs.minMedium);
+    prefs.minLow = clampInt(prefs.minLow - 2, 0, 15, prefs.minLow);
+    prefs.maxMinutes = Math.min(50, Math.max(prefs.maxMinutes, energyLower === "high" ? 45 : 35));
+
+    if (energyLower === "verylow") {
+      prefs.minHigh = 0;
+      prefs.maxHigh = Math.min(prefs.maxHigh, 1);
+      prefs.maxMinutes = Math.min(prefs.maxMinutes, 20);
+    } else if (energyLower === "low") {
+      prefs.minHigh = 0;
+      prefs.maxHigh = Math.min(prefs.maxHigh, 2);
+      prefs.maxMinutes = Math.min(prefs.maxMinutes, 30);
+    }
   }
 
   // Safety: ensure mins do not exceed 15.
@@ -1882,6 +1917,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
     const mood = clampString(checkin.mood, 12) || "okay";
     const energy = clampString(checkin.energy, 12) || "okay";
     const body = clampString(checkin.body, 16) || "manageable";
+    const boardStyle = normalizeBoardStyle(checkin.boardStyle);
     const noteGuard = aiContext.useNoteForAi
       ? sanitizeUntrustedAiText(checkin.note, { maxLength: 200 })
       : { text: "", omitted: false, flags: [] };
@@ -1896,6 +1932,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       mood,
       energy,
       body,
+      boardStyle,
       note,
       noteOmitted: !!noteGuard.omitted,
       boardHistory,
@@ -1932,7 +1969,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       return;
     }
 
-    const preferences = computeBoardPreferences({ pace: level, energy });
+    const preferences = computeBoardPreferences({ pace: level, energy, boardStyle });
 
     const groundingFragments = [
       String(level || "").toLowerCase(),
@@ -1946,7 +1983,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       .filter((t) => !genericNoteTokens.has(t))
       .slice(0, 4);
     groundingFragments.push(...noteTokens);
-    const fallbackTasks = buildCuratedFallbackTasks(level);
+    const fallbackTasks = buildCuratedFallbackTasks(level, boardStyle);
 
     const system =
       "You generate a calm, emotionally-safe list of micro-activities for a wellbeing app. " +
@@ -1957,6 +1994,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT suggest medications, supplements, diagnoses, or treatment plans. " +
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
+      "The user also chooses a boardStyle. If boardStyle is steady, keep suggestions grounded and follow-through focused. If boardStyle is challenge, include more active progress-oriented steps, but still respect energy, body, and pace so the board never becomes hustle-coded or overwhelming. " +
       "Keep tasks small, doable, varied, and non-punitive. " +
         "Each task must be a single short line written as a direct action or invitation. " +
         "Use the check-in as hidden context for choosing the task, not as a required opening clause. " +
@@ -1981,6 +2019,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         mood,
         energy,
         body,
+        boardStyle,
         pace: level,
         note,
       },
@@ -2002,6 +2041,10 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
         avoidAssumptions: true,
         avoidNearDuplicates: true,
         avoidRecentRepeats: true,
+        boardStyle,
+        boardStyleHint: boardStyle === "challenge"
+          ? "more active, progress-oriented, and still realistic for this check-in"
+          : "grounded, steady, realistic steps the user can follow through on",
         pacingHint: preferences,
         examples: [
           "Drop your shoulders and lengthen the back of your neck.",

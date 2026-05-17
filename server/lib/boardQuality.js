@@ -130,6 +130,8 @@ const actionVerbs = [
   "unclench",
   "lengthen",
   "reset",
+  "practice",
+  "draft",
 ];
 
 function clampString(value, maxLen) {

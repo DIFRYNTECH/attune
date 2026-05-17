@@ -1,5 +1,5 @@
-import { TASKS } from "../data/tasks";
-import { LEVELS } from "../data/levels";
+import { TASKS } from "../data/tasks.js";
+import { LEVELS } from "../data/levels.js";
 
 export function prettyLevel(key){
   const lvl = LEVELS.find(l => l.key === key);
@@ -35,6 +35,7 @@ export function shuffle(arr, randomFn = Math.random){
 
 const PACE_ORDER = ["rest", "gentle", "light", "steady", "capable", "brave"];
 const MIN_BOARD_OPTION_POOL = 18;
+const BOARD_STYLES = new Set(["steady", "challenge"]);
 const PACE_FILL_ORDER = {
   rest: ["rest", "gentle", "light"],
   gentle: ["gentle", "rest", "light", "steady"],
@@ -42,6 +43,14 @@ const PACE_FILL_ORDER = {
   steady: ["steady", "light", "capable", "gentle", "brave"],
   capable: ["capable", "steady", "brave", "light"],
   brave: ["brave", "capable", "steady", "light"],
+};
+const CHALLENGE_FILL_ORDER = {
+  rest: ["gentle", "light"],
+  gentle: ["light", "steady"],
+  light: ["steady", "capable"],
+  steady: ["capable", "brave"],
+  capable: ["brave", "steady"],
+  brave: ["brave", "capable"],
 };
 
 function clampPace(key, maxKey){
@@ -58,6 +67,11 @@ function scoreToPace(score){
   if(score < 3.9) return "steady";
   if(score < 4.9) return "capable";
   return "brave";
+}
+
+export function normalizeBoardStyle(value){
+  const style = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return BOARD_STYLES.has(style) ? style : "steady";
 }
 
 export function suggestLevelFromCheckin(checkin){
@@ -167,9 +181,17 @@ export function generateOptions(level){
  */
 export function suggestActivities(checkin, level, seed = "") {
   const { energy, mood } = checkin;
+  const boardStyle = normalizeBoardStyle(checkin?.boardStyle);
 
   // 1. Start with a base pool from the selected level.
   let pool = [...(TASKS[level] || TASKS.gentle)];
+
+  if (boardStyle === "challenge") {
+    const challengeLevels = CHALLENGE_FILL_ORDER[level] || CHALLENGE_FILL_ORDER.gentle;
+    for (const challengeLevel of challengeLevels) {
+      pool.push(...(TASKS[challengeLevel] || []));
+    }
+  }
 
   // 2. Add tasks from other levels based on check-in data for variety and safety.
   // If energy is very low, always include rest options.
