@@ -130,7 +130,10 @@ export function validateGeneratedAiTextSafety(value, { unsafeFragments = [] } = 
   const normalized = normalizeText(text);
   for (const fragment of Array.isArray(unsafeFragments) ? unsafeFragments : []) {
     const cleanFragment = normalizeText(fragment);
-    if (cleanFragment && normalized.includes(cleanFragment)) {
+    const pattern = cleanFragment
+      ? new RegExp(`(^|\\s)${cleanFragment.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`)
+      : null;
+    if (pattern?.test(normalized)) {
       flags.push("unsafe_fragment");
       break;
     }

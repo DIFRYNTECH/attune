@@ -90,6 +90,8 @@ const unrealisticFragments = [
 ];
 
 const actionVerbs = [
+  "do",
+  "try",
   "sit",
   "hold",
   "listen",
@@ -132,6 +134,30 @@ const actionVerbs = [
   "reset",
   "practice",
   "draft",
+  "pause",
+  "close",
+  "rest",
+  "sip",
+  "place",
+  "lean",
+  "notice",
+  "let",
+  "move",
+  "create",
+  "finish",
+  "review",
+  "ask",
+  "clean",
+  "walk",
+  "take",
+  "spend",
+  "pack",
+  "rinse",
+  "wipe",
+  "play",
+  "name",
+  "soften",
+  "update",
 ];
 
 function clampString(value, maxLen) {
@@ -171,19 +197,106 @@ function overlapRatio(left, right) {
 }
 
 function hasAny(text, fragments) {
-  const t = String(text || "").toLowerCase();
-  return fragments.some((fragment) => t.includes(fragment));
+  const t = normalizeText(text);
+  return fragments.some((fragment) => {
+    const clean = normalizeText(fragment);
+    if (!clean) return false;
+    const pattern = new RegExp(`(^|\\s)${clean.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(\\s|$)`);
+    return pattern.test(t);
+  });
 }
 
-function normalizeHistoryList(value) {
+function clampNumber(value, min, max, fallback) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(n)));
+}
+
+function normalizeKey(value) {
+  return normalizeText(clampString(value, 80));
+}
+
+function normalizeMode(value) {
+  const mode = String(value || "").trim().toLowerCase();
+  if (mode === "support" || mode === "stretch") return mode;
+  if (mode === "steady") return "support";
+  if (mode === "challenge") return "stretch";
+  return "";
+}
+
+function normalizeDomain(value, text) {
+  const domain = String(value || "").trim().toLowerCase();
+  if (["body", "environment", "practical", "connection", "comfort", "regulation"].includes(domain)) return domain;
+  return categoryForTask(text);
+}
+
+function inferEffortFromText(text) {
+  const t = normalizeText(text);
+  const minutes = Number(t.match(/\b(\d+)\s*(minute|minutes|min)\b/)?.[1]);
+  let effort = 2;
+  if (Number.isFinite(minutes) && minutes > 0) {
+    if (minutes <= 3) effort = 1;
+    else if (minutes <= 8) effort = 2;
+    else if (minutes <= 15) effort = 3;
+    else if (minutes <= 25) effort = 4;
+    else effort = 5;
+  }
+  if (/\b(focused|hard|uncomfortable|brave|goal|call|reply|draft|practice|run)\b/.test(t)) effort += 1;
+  if (/\b(sit|quiet|breath|warm|soft|gentle|smallest|easiest|rest)\b/.test(t)) effort -= 1;
+  return clampNumber(effort, 1, 5, 2);
+}
+
+function normalizeCandidateMetadata(item, text, quality) {
+  const effort = clampNumber(item?.effort, 1, 5, inferEffortFromText(text));
+  const friction = clampNumber(item?.friction, 1, 5, effort);
+  const mode = normalizeMode(item?.mode || item?.boardStyle || item?.style) || (effort >= 3 ? "stretch" : "support");
+  const domain = normalizeDomain(item?.domain, text);
+  const pace = clampString(item?.pace || item?.level, 24);
+  const canonicalKey = clampString(item?.canonicalKey || item?.canonical_key, 80);
+  const repetitionFamily = clampString(item?.repetitionFamily || item?.repetition_family || item?.family, 80);
+
+  return {
+    mode,
+    domain,
+    effort,
+    friction,
+    ...(pace ? { pace } : {}),
+    ...(canonicalKey ? { canonicalKey } : {}),
+    ...(repetitionFamily ? { repetitionFamily } : {}),
+    familyKey: normalizeKey(repetitionFamily || canonicalKey || quality?.category || text),
+    canonicalKeyNormalized: normalizeKey(canonicalKey),
+  };
+}
+
+function makeHistoryIndex(value) {
   const list = Array.isArray(value) ? value : [];
-  return list
-    .map((item) => clampString(typeof item === "string" ? item : item?.text, 140))
-    .filter(Boolean);
+  const text = new Set();
+  const canonical = new Set();
+  const family = new Set();
+
+  for (const item of list) {
+    const rawText = typeof item === "string" ? item : item?.text;
+    const cleanText = clampString(rawText, 140);
+    if (cleanText) text.add(normalizeText(cleanText));
+
+    if (item && typeof item === "object") {
+      const canonicalKey = normalizeKey(item.canonicalKey || item.canonical_key);
+      const repetitionFamily = normalizeKey(item.repetitionFamily || item.repetition_family || item.family);
+      if (canonicalKey) canonical.add(canonicalKey);
+      if (repetitionFamily) family.add(repetitionFamily);
+    }
+  }
+
+  return { text, canonical, family };
 }
 
-function makeHistorySet(value) {
-  return new Set(normalizeHistoryList(value).map(normalizeText));
+function historyMatches(index, text, metadata) {
+  const normalized = normalizeText(text);
+  return {
+    exact: index.text.has(normalized),
+    canonical: !!metadata?.canonicalKeyNormalized && index.canonical.has(metadata.canonicalKeyNormalized),
+    family: !!metadata?.familyKey && index.family.has(metadata.familyKey),
+  };
 }
 
 function categoryForTask(text) {
@@ -256,15 +369,32 @@ export function evaluateTaskQuality(textOrTask, ctx = {}) {
   }
 
   const history = ctx.boardHistory && typeof ctx.boardHistory === "object" ? ctx.boardHistory : {};
-  const recentShown = makeHistorySet(history.recentShown);
-  const recentPicked = makeHistorySet(history.recentPicked);
-  const recentCompleted = makeHistorySet(history.recentCompleted);
-  const recentRemoved = makeHistorySet(history.recentRemoved);
+  const metadata = normalizeCandidateMetadata(
+    textOrTask && typeof textOrTask === "object" ? textOrTask : {},
+    text,
+    { category: categoryForTask(text) },
+  );
+  const recentShown = makeHistoryIndex(history.recentShown);
+  const recentPicked = makeHistoryIndex(history.recentPicked);
+  const recentCompleted = makeHistoryIndex(history.recentCompleted);
+  const recentRemoved = makeHistoryIndex(history.recentRemoved);
 
-  if (recentShown.has(normalized)) score -= 28;
-  if (recentPicked.has(normalized)) score -= 18;
-  if (recentCompleted.has(normalized)) score -= 8;
-  if (recentRemoved.has(normalized)) score -= 36;
+  const shownMatch = historyMatches(recentShown, text, metadata);
+  const pickedMatch = historyMatches(recentPicked, text, metadata);
+  const completedMatch = historyMatches(recentCompleted, text, metadata);
+  const removedMatch = historyMatches(recentRemoved, text, metadata);
+
+  if (shownMatch.exact) score -= 28;
+  else if (shownMatch.canonical || shownMatch.family) score -= 18;
+
+  if (pickedMatch.exact) score -= 22;
+  else if (pickedMatch.canonical || pickedMatch.family) score -= 14;
+
+  if (completedMatch.exact) score -= 8;
+  else if (completedMatch.canonical || completedMatch.family) score += 5;
+
+  if (removedMatch.exact) score -= 44;
+  else if (removedMatch.canonical || removedMatch.family) score -= 40;
 
   return {
     text,
@@ -285,6 +415,44 @@ function looksWeeklyReflectionTask(text) {
 
 function sourceText(item) {
   return clampString(typeof item === "string" ? item : item?.text, 120);
+}
+
+function effortCapForCheckin(checkin) {
+  const c = checkin && typeof checkin === "object" ? checkin : {};
+  const pace = String(c.pace || c.level || "").toLowerCase();
+  const energy = String(c.energy || "").toLowerCase();
+  const body = String(c.body || "").toLowerCase();
+  const state = `${pace} ${energy} ${body} ${(Array.isArray(c.moodWords) ? c.moodWords : []).join(" ")}`.toLowerCase();
+
+  if (pace === "rest" || energy === "verylow" || body === "tender" || /\bworn|exhausted|overwhelmed\b/.test(state)) return 2;
+  if (pace === "gentle" || energy === "low" || /\btired|irritable|restless\b/.test(state)) return 3;
+  if (pace === "capable" || pace === "brave" || energy === "high") return 4;
+  return 3;
+}
+
+function desiredModeMix(target, checkin) {
+  const c = checkin && typeof checkin === "object" ? checkin : {};
+  const style = String(c.boardStyle || c.style || "").toLowerCase();
+  const energy = String(c.energy || "").toLowerCase();
+  const body = String(c.body || "").toLowerCase();
+  const pace = String(c.pace || c.level || "").toLowerCase();
+
+  let stretch = style === "challenge" ? Math.round(target * 0.45) : Math.round(target * 0.25);
+  if (pace === "rest" || energy === "verylow" || body === "tender") {
+    stretch = style === "challenge"
+      ? Math.max(2, Math.round(target * 0.33))
+      : Math.min(stretch, Math.max(1, Math.floor(target * 0.25)));
+  }
+  stretch = clampNumber(stretch, target >= 4 ? 1 : 0, Math.max(0, target - 1), style === "challenge" ? 2 : 1);
+  return { support: target - stretch, stretch };
+}
+
+function selectedTaskForEntry(entry) {
+  const out = { text: entry.text };
+  for (const key of ["level", "mode", "domain", "effort", "friction", "pace", "canonicalKey", "repetitionFamily"]) {
+    if (entry[key] !== undefined && entry[key] !== "") out[key] = entry[key];
+  }
+  return out;
 }
 
 export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHistory, targetCount = 15 } = {}) {
@@ -308,43 +476,101 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
     }
     seen.add(key);
 
-    const quality = evaluateTaskQuality(text, { checkin, boardHistory });
+    const quality = evaluateTaskQuality(item, { checkin, boardHistory });
     if (quality.rejected) {
       if (source === "ai") rejectedCount += 1;
       continue;
     }
+    const metadata = normalizeCandidateMetadata(item, text, quality);
+    const effortCap = effortCapForCheckin(checkin);
+    const overCap = Math.max(0, metadata.effort - effortCap) + Math.max(0, metadata.friction - (effortCap + 1));
+    const supportBias = metadata.mode === "support" && effortCap <= 3 ? 4 : 0;
+    const stretchBias = metadata.mode === "stretch" && String(checkin?.boardStyle || "").toLowerCase() === "challenge" ? 4 : 0;
 
     evaluated.push({
       source,
       index: i,
       text,
       level: typeof item?.level === "string" ? item.level : undefined,
+      mode: metadata.mode,
+      domain: metadata.domain,
+      effort: metadata.effort,
+      friction: metadata.friction,
+      pace: metadata.pace,
+      canonicalKey: metadata.canonicalKey,
+      repetitionFamily: metadata.repetitionFamily,
+      familyKey: metadata.familyKey,
       quality,
+      score: quality.score + supportBias + stretchBias - (overCap * 32),
     });
   }
 
   evaluated.sort((a, b) => {
-    if (b.quality.score !== a.quality.score) return b.quality.score - a.quality.score;
+    if (b.score !== a.score) return b.score - a.score;
     if (a.source !== b.source) return a.source === "ai" ? -1 : 1;
     return a.index - b.index;
   });
 
   const selected = [];
   const selectedTokens = [];
+  const selectedFamilies = new Set();
   const categoryCounts = new Map();
+  const domainCounts = new Map();
+  const modeCounts = new Map();
   let fallbackCount = 0;
+  const availableDomains = new Set(evaluated.map((entry) => entry.domain).filter(Boolean));
+  const minDomains = Math.min(target, 4, availableDomains.size);
+  const maxPerDomain = Math.max(1, Math.min(5, Math.ceil(target * 0.5)));
+  const desiredModes = desiredModeMix(target, checkin);
+
+  function canSelect(entry, { enforceDomainCap = true, enforceModeCap = true } = {}) {
+    if (selected.length >= target) return false;
+    if (selectedFamilies.has(entry.familyKey)) return false;
+    if (selectedTokens.some((tokens) => overlapRatio(tokens, entry.quality.tokens) >= 0.72)) return false;
+    const domainCount = domainCounts.get(entry.domain) || 0;
+    if (enforceDomainCap && domainCount >= maxPerDomain) return false;
+    if (enforceModeCap && entry.mode === "stretch" && (modeCounts.get("stretch") || 0) >= desiredModes.stretch) {
+      const hasSupport = evaluated.some((candidate) => !selectedFamilies.has(candidate.familyKey) && candidate.mode === "support");
+      if (hasSupport) return false;
+    }
+    return true;
+  }
+
+  function addEntry(entry) {
+    selected.push(selectedTaskForEntry(entry));
+    selectedTokens.push(entry.quality.tokens);
+    selectedFamilies.add(entry.familyKey);
+    categoryCounts.set(entry.quality.category, (categoryCounts.get(entry.quality.category) || 0) + 1);
+    domainCounts.set(entry.domain, (domainCounts.get(entry.domain) || 0) + 1);
+    modeCounts.set(entry.mode, (modeCounts.get(entry.mode) || 0) + 1);
+    if (entry.source === "fallback") fallbackCount += 1;
+  }
+
+  if (String(checkin?.boardStyle || checkin?.style || "").toLowerCase() === "challenge") {
+    for (const entry of evaluated) {
+      if ((modeCounts.get("stretch") || 0) >= desiredModes.stretch) break;
+      if (entry.mode !== "stretch") continue;
+      if (!canSelect(entry)) continue;
+      addEntry(entry);
+    }
+  }
+
+  for (const domain of availableDomains) {
+    if (selected.length >= minDomains) break;
+    const entry = evaluated.find((candidate) => candidate.domain === domain && canSelect(candidate));
+    if (entry) addEntry(entry);
+  }
 
   for (const entry of evaluated) {
     if (selected.length >= target) break;
-    if (selectedTokens.some((tokens) => overlapRatio(tokens, entry.quality.tokens) >= 0.72)) continue;
+    if (!canSelect(entry)) continue;
+    addEntry(entry);
+  }
 
-    const categoryCount = categoryCounts.get(entry.quality.category) || 0;
-    if (categoryCount >= 5 && selected.length < target - 2) continue;
-
-    selected.push({ text: entry.text, ...(entry.level ? { level: entry.level } : {}) });
-    selectedTokens.push(entry.quality.tokens);
-    categoryCounts.set(entry.quality.category, categoryCount + 1);
-    if (entry.source === "fallback") fallbackCount += 1;
+  for (const entry of evaluated) {
+    if (selected.length >= target) break;
+    if (!canSelect(entry, { enforceDomainCap: false, enforceModeCap: false })) continue;
+    addEntry(entry);
   }
 
   return {
@@ -355,6 +581,8 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
       candidateCount: Array.isArray(candidates) ? candidates.length : 0,
       selectedCount: selected.length,
       categoryMix: Object.fromEntries(categoryCounts),
+      domainMix: Object.fromEntries(domainCounts),
+      modeMix: Object.fromEntries(modeCounts),
     },
   };
 }

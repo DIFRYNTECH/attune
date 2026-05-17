@@ -902,11 +902,39 @@ function getLocalOptionsRefreshKey(today){
   return `${weekStartMondayKey(t) || t}:${phase}`;
 }
 
-function getDefaultOptions(checkin, level, today, planId){
-  if(planId === "plus") return suggestActivities(checkin, level);
+function getDefaultOptions(checkin, level, today, planId, eventsByDay){
+  if(planId === "plus") return suggestActivities(checkin, level, { eventsByDay });
 
   const seed = `${getLocalOptionsRefreshKey(today)}|${checkinSignature(checkin, level, false)}`;
-  return suggestActivities(checkin, level, seed);
+  return suggestActivities(checkin, level, seed, { eventsByDay });
+}
+
+function taskEventPayload(task, fallback = {}) {
+  const text = typeof task?.text === "string" ? task.text.trim() : "";
+  const out = {
+    ...(fallback && typeof fallback === "object" ? fallback : {}),
+    ...(text ? { text } : {}),
+  };
+
+  for (const key of [
+    "level",
+    "mode",
+    "domain",
+    "effort",
+    "friction",
+    "pace",
+    "canonicalKey",
+    "canonical_key",
+    "repetitionFamily",
+    "repetition_family",
+    "safetyReviewed",
+    "safety_reviewed",
+  ]) {
+    if (task?.[key] !== undefined && task?.[key] !== "") out[key] = task[key];
+  }
+
+  if (!out.pace && out.level) out.pace = out.level;
+  return out;
 }
 
 function toFreeLocalBoardState(baseState){
@@ -916,7 +944,7 @@ function toFreeLocalBoardState(baseState){
 
   return {
     ...baseState,
-    options: getDefaultOptions(checkin, level, today, "free"),
+    options: getDefaultOptions(checkin, level, today, "free", baseState?.events),
     optionsSource: "default",
     boardAssigned: [],
     currentSpin: null,
@@ -1172,7 +1200,7 @@ function normalizeLoadedState(loaded){
   if(next.levelSource === "auto"){
     next.level = suggestLevelFromCheckin(next.checkin);
     if(next.optionsSource === "default"){
-      next.options = getDefaultOptions(next.checkin, next.level, next.today, normalizedPlanId);
+      next.options = getDefaultOptions(next.checkin, next.level, next.today, normalizedPlanId, next.events);
     }
   }
 
@@ -1845,7 +1873,7 @@ export function useAttuneStore(){
 
       const options = current.options?.length
         ? current.options
-        : getDefaultOptions(current.checkin, current.level, current.today, getBillingPlanIdFromState(current));
+        : getDefaultOptions(current.checkin, current.level, current.today, getBillingPlanIdFromState(current), current.events);
 
       const nextBase = {
         ...current,
@@ -1906,20 +1934,20 @@ export function useAttuneStore(){
         const shouldResuggestLevel = patchAffectsSuggestedLevel(patch);
         const source = shouldResuggestLevel ? "auto" : (s.levelSource === "manual" ? "manual" : "auto");
         const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);
-        const options = getDefaultOptions(checkin, level, s.today, getBillingPlanIdFromState(s));
+        const options = getDefaultOptions(checkin, level, s.today, getBillingPlanIdFromState(s), s.events);
         return { ...s, checkin, level, levelSource: source, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
       setState(s => {
-        const options = getDefaultOptions(s.checkin, level, s.today, getBillingPlanIdFromState(s));
+        const options = getDefaultOptions(s.checkin, level, s.today, getBillingPlanIdFromState(s), s.events);
         return {...s, level, levelSource: "manual", options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
       }),
 
     suggestLevel: () =>
       setState(s => {
         const suggested = suggestLevelFromCheckin(s.checkin);
-        const options = getDefaultOptions(s.checkin, suggested, s.today, getBillingPlanIdFromState(s));
+        const options = getDefaultOptions(s.checkin, suggested, s.today, getBillingPlanIdFromState(s), s.events);
         return {
           ...s,
           level: suggested,
@@ -1937,8 +1965,8 @@ export function useAttuneStore(){
       setState(s => ({
         ...s,
         options: (getBillingPlanIdFromState(s) === "plus" && s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
-          ? s.ai.tasks.map(t => ({ text: t.text, level: s.level }))
-          : getDefaultOptions(s.checkin, s.level, s.today, getBillingPlanIdFromState(s)),
+          ? s.ai.tasks.map(t => ({ ...t, text: t.text, level: t.level || s.level }))
+          : getDefaultOptions(s.checkin, s.level, s.today, getBillingPlanIdFromState(s), s.events),
         optionsSource: (getBillingPlanIdFromState(s) === "plus" && s.ai?.status === "ready" && s.ai.today === s.today && s.ai.sig === checkinSignature(s.checkin, s.level, s.profile?.useNoteForAi) && Array.isArray(s.ai.tasks) && s.ai.tasks.length)
           ? "ai"
           : "default",
@@ -2003,17 +2031,22 @@ export function useAttuneStore(){
         const tasks = Array.isArray(data?.tasks) ? data.tasks : null;
         if(!tasks || tasks.length !== 15) throw new Error("invalid_tasks");
 
-        const uniqueTexts = [];
+        const uniqueTasks = [];
         const seenTexts = new Set();
         for (const task of tasks) {
           const text = typeof task?.text === "string" ? task.text.trim() : "";
-          if (!text || seenTexts.has(text)) continue;
-          seenTexts.add(text);
-          uniqueTexts.push(text);
+          const textKey = text.toLowerCase().replace(/\s+/g, " ");
+          if (!text || seenTexts.has(textKey)) continue;
+          seenTexts.add(textKey);
+          uniqueTasks.push({
+            ...(task && typeof task === "object" && !Array.isArray(task) ? task : {}),
+            text,
+            level: typeof task?.level === "string" && task.level ? task.level : (typeof task?.pace === "string" && task.pace ? task.pace : level),
+          });
         }
 
-        const nextOptions = uniqueTexts.slice(0, 15).map((text) => ({ text, level }));
-        const nextTasks = nextOptions.map((option) => ({ text: option.text }));
+        const nextOptions = uniqueTasks.slice(0, 15);
+        const nextTasks = nextOptions.map((option) => ({ ...option }));
 
         if(nextOptions.length !== 15) throw new Error("invalid_texts");
 
@@ -2185,7 +2218,7 @@ export function useAttuneStore(){
       setState(s => {
         const options = s.options?.length
           ? s.options
-          : suggestActivities(s.checkin, s.level);
+          : suggestActivities(s.checkin, s.level, { eventsByDay: s.events });
         const picked = options[Math.floor(Math.random() * options.length)];
         return { ...s, options, currentSpin: picked };
       }),
@@ -2200,10 +2233,11 @@ export function useAttuneStore(){
           return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        const pickedTask = taskEventPayload(s.currentSpin, { pace: s.currentSpin?.level || s.level, source: "spin" });
         const pickToast = getNextPickToast(s.checkin, s.currentSpin?.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
-          myDay: [...s.myDay, { id, text: s.currentSpin.text, done:false }],
+          myDay: [...s.myDay, { id, ...pickedTask, text: s.currentSpin.text, done:false }],
           pickToastCycle: pickToast.nextCycle,
           currentSpin: null,
           toast: {
@@ -2216,7 +2250,7 @@ export function useAttuneStore(){
         return recordEventOnState(
           next,
           "activityPicked",
-          { text: s.currentSpin?.text, pace: s.currentSpin?.level || s.level, source: "spin" },
+          pickedTask,
           { maxDays: EVENT_DAYS_TO_KEEP }
         );
       }),
@@ -2231,10 +2265,11 @@ export function useAttuneStore(){
           return { ...s, toast: { text: "That’s plenty for today. Let’s cap it at 10.", good: false, screen: s.screen } };
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
+        const pickedTask = taskEventPayload(opt, { pace: opt.level || s.level, source: "board" });
         const pickToast = getNextPickToast(s.checkin, opt.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
-          myDay: [...s.myDay, { id, text: opt.text, done:false }],
+          myDay: [...s.myDay, { id, ...pickedTask, text: opt.text, done:false }],
           pickToastCycle: pickToast.nextCycle,
           toast: {
             text: pickToast.text,
@@ -2246,7 +2281,7 @@ export function useAttuneStore(){
         return recordEventOnState(
           next,
           "activityPicked",
-          { text: opt.text, pace: opt.level || s.level, source: "board" },
+          pickedTask,
           { maxDays: EVENT_DAYS_TO_KEEP }
         );
       }),
@@ -2741,7 +2776,7 @@ export function useAttuneStore(){
           return recordEventOnState(
             next,
             "activityCompleted",
-            { id, text: prevTask?.text, pace: s.level },
+            taskEventPayload(prevTask, { id, pace: s.level }),
             { maxDays: EVENT_DAYS_TO_KEEP }
           );
         }
@@ -2790,7 +2825,7 @@ export function useAttuneStore(){
         return recordEventOnState(
           next,
           "activityRemoved",
-          { id, text: prevTask?.text, done: !!prevTask?.done, pace: s.level },
+          taskEventPayload(prevTask, { id, done: !!prevTask?.done, pace: s.level }),
           { maxDays: EVENT_DAYS_TO_KEEP }
         );
       }),

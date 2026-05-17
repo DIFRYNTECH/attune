@@ -7,13 +7,37 @@ function cleanText(value) {
   return typeof text === "string" ? text.trim().replace(/\s+/g, " ").slice(0, 120) : "";
 }
 
-function pushUnique(list, value, limit) {
+function cleanTaskSnapshot(value) {
   const text = cleanText(value);
-  if (!text) return;
-  const key = text.toLowerCase();
-  const existing = list.findIndex((item) => item.toLowerCase() === key);
+  if (!text) return null;
+
+  const out = { text };
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    for (const key of [
+      "level",
+      "mode",
+      "domain",
+      "effort",
+      "friction",
+      "pace",
+      "canonicalKey",
+      "canonical_key",
+      "repetitionFamily",
+      "repetition_family",
+    ]) {
+      if (value[key] !== undefined && value[key] !== "") out[key] = value[key];
+    }
+  }
+  return out;
+}
+
+function pushUnique(list, value, limit) {
+  const snapshot = cleanTaskSnapshot(value);
+  if (!snapshot?.text) return;
+  const key = snapshot.text.toLowerCase();
+  const existing = list.findIndex((item) => cleanText(item).toLowerCase() === key);
   if (existing >= 0) list.splice(existing, 1);
-  list.unshift(text);
+  list.unshift(snapshot);
   if (list.length > limit) list.length = limit;
 }
 
@@ -44,9 +68,9 @@ export function buildBoardHistoryForAi(eventsByDay, opts = {}) {
         for (const activity of activities) pushUnique(recentShown, activity, limits.shown);
         continue;
       }
-      if (type === "activityPicked") pushUnique(recentPicked, event?.text, limits.picked);
-      if (type === "activityCompleted") pushUnique(recentCompleted, event?.text, limits.completed);
-      if (type === "activityRemoved") pushUnique(recentRemoved, event?.text, limits.removed);
+      if (type === "activityPicked") pushUnique(recentPicked, event, limits.picked);
+      if (type === "activityCompleted") pushUnique(recentCompleted, event, limits.completed);
+      if (type === "activityRemoved") pushUnique(recentRemoved, event, limits.removed);
     }
   }
 

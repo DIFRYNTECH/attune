@@ -94,6 +94,30 @@ function shuffle(arr) {
   return a;
 }
 
+function boardOptionSnapshot(option) {
+  const text = typeof option?.text === "string" ? option.text : "";
+  if (!text) return { text: "", placeholder: true };
+
+  const out = { text };
+  for (const key of [
+    "level",
+    "mode",
+    "domain",
+    "effort",
+    "friction",
+    "pace",
+    "canonicalKey",
+    "canonical_key",
+    "repetitionFamily",
+    "repetition_family",
+    "safetyReviewed",
+    "safety_reviewed",
+  ]) {
+    if (option?.[key] !== undefined && option?.[key] !== "") out[key] = option[key];
+  }
+  return out;
+}
+
 function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
   // Stable, no-repeats board assignment.
   // If we run out of unique options, fill with placeholders.
@@ -113,7 +137,7 @@ function buildBoardAssigned({ pool, pinnedTexts, tileCount }) {
     if (!o?.text) continue;
     if (seen.has(o.text)) continue;
     seen.add(o.text);
-    list.push({ text: o.text, level: o.level });
+    list.push(boardOptionSnapshot(o));
     if (list.length >= tileCount) break;
   }
 
@@ -136,7 +160,7 @@ function mergeBoardAssigned({ existingBoard, pool, preservedTexts, prioritizedTe
     const text = typeof slot?.text === "string" ? slot.text : "";
     if (!text || !preserved.has(text) || seen.has(text)) continue;
 
-    next[i] = { text, level: slot?.level };
+    next[i] = boardOptionSnapshot(slot);
     seen.add(text);
   }
 
@@ -152,7 +176,7 @@ function mergeBoardAssigned({ existingBoard, pool, preservedTexts, prioritizedTe
     const slot = next.findIndex((entry) => !entry?.text);
     if (slot === -1) break;
 
-    next[slot] = { text: candidate.text, level: candidate?.level };
+    next[slot] = boardOptionSnapshot(candidate);
     seen.add(candidate.text);
   }
 
@@ -166,7 +190,7 @@ function mergeBoardAssigned({ existingBoard, pool, preservedTexts, prioritizedTe
       const text = typeof candidate?.text === "string" ? candidate.text : "";
       if (!text || seen.has(text)) continue;
 
-      next[i] = { text, level: candidate?.level };
+      next[i] = boardOptionSnapshot(candidate);
       seen.add(text);
       break;
     }
@@ -391,7 +415,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
       persistBoard(next);
     }
 
-    const activities = (shown || []).map((x) => (typeof x?.text === "string" ? x.text : "")).filter(Boolean);
+    const activities = (shown || []).map((x) => boardOptionSnapshot(x)).filter((x) => x.text);
     actions.trackEvent?.("activityShown", {
       count: TILE_COUNT,
       activities,
@@ -448,7 +472,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
         const slot = next.findIndex((x) => x?.placeholder);
         if (slot === -1) break;
-        next[slot] = { text: t.text };
+        next[slot] = boardOptionSnapshot(t);
         present.add(t.text);
         changed = true;
       }
@@ -526,7 +550,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
     // Reveal the tile then add it.
     revealTile(idx);
-    actions.addOption({ text: opt.text, level: opt.level });
+    actions.addOption(boardOptionSnapshot(opt));
     setPassedTiles((prev) => {
       if (!prev[idx]) return prev;
       const next = [...prev];
@@ -553,7 +577,7 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     }
     actions.setMyDayCap?.(HARD_CAP);
     revealTile(pendingAdd.idx);
-    actions.addOption({ text: pendingAdd.opt.text, level: pendingAdd.opt.level });
+    actions.addOption(boardOptionSnapshot(pendingAdd.opt));
     setPassedTiles((prev) => {
       if (!prev[pendingAdd.idx]) return prev;
       const next = [...prev];

@@ -14,7 +14,8 @@ function safeObject(value) {
 }
 
 function normText(text) {
-  return String(text || "")
+  const value = typeof text === "string" ? text : text?.text;
+  return String(value || "")
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();

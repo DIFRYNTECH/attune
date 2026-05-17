@@ -9,12 +9,16 @@ import { createClient } from "@supabase/supabase-js";
 import { TASKS } from "../src/data/tasks.js";
 import { getAiBoardAccessError, getAiDailyNoteAccessError } from "./lib/aiAccess.js";
 import {
-  BOARD_RESPONSE_FORMAT,
   DAILY_NOTE_RESPONSE_FORMAT,
   UNTRUSTED_CONTEXT_INSTRUCTION,
   sanitizeUntrustedAiText,
   validateGeneratedAiTextSafety,
 } from "./lib/aiPromptSecurity.js";
+import {
+  BOARD_CANDIDATE_RESPONSE_FORMAT,
+  sanitizeBoardHistoryForQuality,
+  sanitizeGeneratedTaskCandidates,
+} from "./lib/boardCandidates.js";
 import { selectQualityBoard } from "./lib/boardQuality.js";
 import { getGooglePlayBillingConfig, verifyGooglePlaySubscriptionPurchase } from "./lib/googlePlayBilling.js";
 import { getDistributedRateLimitConfigError } from "./lib/rateLimitConfig.js";
@@ -36,8 +40,8 @@ const BOARD_FALLBACK_MODEL = process.env.OPENAI_BOARD_FALLBACK_MODEL || MODEL;
 const BOARD_MODEL_CANDIDATES = Array.from(
   new Set([BOARD_MODEL, BOARD_FALLBACK_MODEL].map((value) => String(value || "").trim()).filter(Boolean))
 );
-const BOARD_AI_CANDIDATE_COUNT = 24;
-const BOARD_MAX_COMPLETION_TOKENS = Math.max(360, Math.min(900, Number(process.env.OPENAI_BOARD_MAX_COMPLETION_TOKENS) || 620));
+const BOARD_AI_CANDIDATE_COUNT = 50;
+const BOARD_MAX_COMPLETION_TOKENS = Math.max(1200, Math.min(5000, Number(process.env.OPENAI_BOARD_MAX_COMPLETION_TOKENS) || 3200));
 const openAiClient = OPENAI_API_KEY ? new OpenAI({ apiKey: OPENAI_API_KEY }) : null;
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -1366,65 +1370,6 @@ const dailyThemes = [
   "Finish one loop",
 ];
 
-// The Weekly screen already supports week-level reflection.
-// Keep the Activity Picker board focused on today.
-const weeklyReflectionFragments = [
-  "reflect on the week",
-  "reflect on your week",
-  "weekly reflection",
-  "weekly review",
-  "review your week",
-  "journal about the week",
-  "journal about your week",
-  "week journal",
-];
-
-function looksWeeklyReflectionTask(text) {
-  const t = String(text || "").toLowerCase();
-  if (!t) return false;
-  if (weeklyReflectionFragments.some((f) => t.includes(f))) return true;
-  // Catch common variants without banning all journaling.
-  if (t.includes("journal") && t.includes("week")) return true;
-  if (t.includes("journaling") && t.includes("week")) return true;
-  if (t.includes("reflect") && t.includes("week")) return true;
-  return false;
-}
-
-function fillAndSanitizeTasks(tasks, targetCount = BOARD_TOTAL_TASK_COUNT) {
-  const out = [];
-  const seen = new Set();
-
-  for (const t of Array.isArray(tasks) ? tasks : []) {
-    const rawText = typeof t === "string" ? t : t?.text;
-    const text = clampString(rawText, 120);
-    if (!text) continue;
-    if (looksWeeklyReflectionTask(text)) continue;
-    const k = text.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-
-    out.push({ text });
-  }
-
-  return out.slice(0, targetCount);
-}
-
-function sanitizeBoardHistoryPayload(value) {
-  const input = value && typeof value === "object" && !Array.isArray(value) ? value : {};
-  const cleanList = (list, limit) =>
-    (Array.isArray(list) ? list : [])
-      .map((item) => sanitizeUntrustedAiText(typeof item === "string" ? item : item?.text, { maxLength: 120 }).text)
-      .filter(Boolean)
-      .slice(0, limit);
-
-  return {
-    recentShown: cleanList(input.recentShown, 45),
-    recentPicked: cleanList(input.recentPicked, 30),
-    recentCompleted: cleanList(input.recentCompleted, 30),
-    recentRemoved: cleanList(input.recentRemoved, 30),
-  };
-}
-
 function normalizeBoardStyle(value) {
   return String(value || "").trim().toLowerCase() === "challenge" ? "challenge" : "steady";
 }
@@ -1701,12 +1646,14 @@ function validateBoardPayload(payload, allowedContextLower, groundingFragments, 
   const tasks = payload.tasks;
   if (!Array.isArray(tasks)) return { ok: false, error: "Missing tasks[]" };
   const minCount = Number.isFinite(opts.minCount) ? Math.max(1, Math.floor(opts.minCount)) : expectedCount;
+  const isCandidatePool = expectedCount > BOARD_TOTAL_TASK_COUNT;
   if (tasks.length < minCount) return { ok: false, error: `tasks[] must have at least ${minCount} items` };
   if (tasks.length > expectedCount) return { ok: false, error: `tasks[] must have no more than ${expectedCount} items` };
 
   const seen = new Set();
   const tokenLists = [];
   let groundedCount = 0;
+  let nearDuplicateWarningAdded = false;
   for (const task of tasks) {
     const text = clampString(task?.text, 120);
     if (!text) return { ok: false, error: "Each task needs text" };
@@ -1718,7 +1665,12 @@ function validateBoardPayload(payload, allowedContextLower, groundingFragments, 
     const tokens = normalizeForSimilarity(text);
     for (const prev of tokenLists) {
       if (overlapRatio(tokens, prev) >= 0.72) {
-        return { ok: false, error: "Tasks are too similar (near-duplicate)" };
+        if (!isCandidatePool) return { ok: false, error: "Tasks are too similar (near-duplicate)" };
+        if (!nearDuplicateWarningAdded) {
+          warnings.push("Candidate pool contains near-duplicates; quality layer will dedupe.");
+          nearDuplicateWarningAdded = true;
+        }
+        break;
       }
     }
     tokenLists.push(tokens);
@@ -1765,7 +1717,7 @@ async function generateBoardWithRetries(client, { system, userPayload, models, c
           { role: "system", content: system },
           { role: "user", content: JSON.stringify(userPayload) },
         ],
-        response_format: BOARD_RESPONSE_FORMAT,
+        response_format: BOARD_CANDIDATE_RESPONSE_FORMAT,
       });
       content = completion.choices?.[0]?.message?.content || "";
     } catch (error) {
@@ -1805,7 +1757,7 @@ async function generateBoardWithRetries(client, { system, userPayload, models, c
       ? userPayload.grounding.fragments
       : [];
 
-    const sanitizedTasks = fillAndSanitizeTasks(parsed?.tasks, desiredCandidateCount);
+    const sanitizedTasks = sanitizeGeneratedTaskCandidates(parsed?.tasks, { targetCount: desiredCandidateCount });
 
     const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
 
@@ -1922,7 +1874,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       ? sanitizeUntrustedAiText(checkin.note, { maxLength: 200 })
       : { text: "", omitted: false, flags: [] };
     const note = noteGuard.text;
-    const boardHistory = sanitizeBoardHistoryPayload(req.body?.boardHistory);
+    const boardHistory = sanitizeBoardHistoryForQuality(req.body?.boardHistory);
 
     const cacheKey = JSON.stringify({
       kind: "board",
@@ -1995,6 +1947,13 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
       "The user also chooses a boardStyle. If boardStyle is steady, keep suggestions grounded and follow-through focused. If boardStyle is challenge, include more active progress-oriented steps, but still respect energy, body, and pace so the board never becomes hustle-coded or overwhelming. " +
+      "Return a broad candidate pool only; the Attune server will compose the final 15-task board. " +
+      "Each candidate must include metadata: text, mode, domain, effort, friction, pace, canonicalKey, and repetitionFamily. " +
+      "Use mode=support for stabilizing, reducing friction, recovering, regulating, or making the day easier. " +
+      "Use mode=stretch for gently moving something forward without shame, pressure, productivity theater, or hustle language. " +
+      "Stretch candidates must still obey the user's energy, body, and pace caps. " +
+      "Use domains from body, environment, practical, connection, comfort, and regulation. " +
+      "Use effort and friction from 1 to 5, where 1 is tiny/low-friction and 5 is demanding; avoid 5 unless the check-in clearly supports it. " +
       "Keep tasks small, doable, varied, and non-punitive. " +
         "Each task must be a single short line written as a direct action or invitation. " +
         "Use the check-in as hidden context for choosing the task, not as a required opening clause. " +
@@ -2011,7 +1970,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Keep task text concise and within maxTextChars. " +
       "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. Avoid near-duplicate tasks. " +
       "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
-      "Return only the task strings the app needs for the AI-generated part of the board. No explanations, labels, categories, or metadata.";
+      "Return only the JSON candidate pool. No explanations, labels outside the schema, markdown, or extra keys.";
 
     const userPayload = {
       checkin: {
@@ -2036,11 +1995,14 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       taskRequirements: {
         count: BOARD_AI_CANDIDATE_COUNT,
         finalBoardCountAfterServerCuration: BOARD_TOTAL_TASK_COUNT,
-        style: "short, actionable, editorial, grounded in today's check-in",
+        style: "40-60 metadata-rich candidates; short, actionable, editorial, grounded in today's check-in",
         maxTextChars: 120,
         avoidAssumptions: true,
         avoidNearDuplicates: true,
         avoidRecentRepeats: true,
+        includeMetadata: ["mode", "domain", "effort", "friction", "pace", "canonicalKey", "repetitionFamily"],
+        supportDefinition: "stabilize, reduce friction, recover, regulate, or make today easier",
+        stretchDefinition: "gently move something forward while respecting energy, body, and pace",
         boardStyle,
         boardStyleHint: boardStyle === "challenge"
           ? "more active, progress-oriented, and still realistic for this check-in"
@@ -2052,7 +2014,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
           "Reset the space directly around you.",
         ],
       },
-      outputSchema: "{\"tasks\":[string]}"
+      outputSchema: "{\"tasks\":[{\"text\":string,\"mode\":\"support|stretch\",\"domain\":\"body|environment|practical|connection|comfort|regulation\",\"effort\":1-5,\"friction\":1-5,\"pace\":\"rest|gentle|light|steady|capable|brave\",\"canonicalKey\":string,\"repetitionFamily\":string}]}"
     };
 
     const generationStartedMs = Date.now();
