@@ -34,6 +34,7 @@ export function shuffle(arr, randomFn = Math.random){
 }
 
 const PACE_ORDER = ["rest", "gentle", "light", "steady", "capable", "brave"];
+const VISIBLE_BOARD_COUNT = 12;
 const MIN_BOARD_OPTION_POOL = 18;
 const BOARD_STYLES = new Set(["steady", "challenge"]);
 const PACE_FILL_ORDER = {
@@ -100,6 +101,20 @@ function tokenOverlapRatio(aText, bText){
   return hits / Math.max(1, Math.min(a.length, b.length));
 }
 
+function isDuplicateLikeTask(existing, candidate, maxOverlap = 0.82){
+  if(!existing || !candidate) return false;
+  return (
+    normalizeTaskText(existing.text) === normalizeTaskText(candidate.text) ||
+    existing.canonicalKey === candidate.canonicalKey ||
+    existing.repetitionFamily === candidate.repetitionFamily ||
+    tokenOverlapRatio(existing.text, candidate.text) >= maxOverlap
+  );
+}
+
+function selectedHasDuplicateLike(selected, candidate, maxOverlap = 0.82){
+  return selected.some((existing) => isDuplicateLikeTask(existing, candidate, maxOverlap));
+}
+
 function materializeTask(text, fallbackLevel){
   const key = normalizeTaskText(text);
   const meta = TASK_CATALOG.find((task) => task.level === fallbackLevel && normalizeTaskText(task.text) === key) || TASK_METADATA_BY_TEXT[key];
@@ -121,6 +136,10 @@ function materializeTask(text, fallbackLevel){
 function paceIndex(key){
   const idx = PACE_ORDER.indexOf(key);
   return idx === -1 ? PACE_ORDER.indexOf("light") : idx;
+}
+
+function taskPaceIndex(task){
+  return paceIndex(task?.level || task?.pace);
 }
 
 function addDaysAgo(nowMs, days){
@@ -244,7 +263,7 @@ function getExactLastShownTs(task, history){
   return history.exact.get(normalizeTaskText(task.text))?.lastShownTs || 0;
 }
 
-function rebalanceTowardMode(selected, targetMode, history, nowMs){
+function rebalanceTowardMode(selected, targetMode, history, nowMs, checkin, level, boardStyle){
   const countMode = (tasks, mode) => tasks.filter((task) => task.mode === mode).length;
   const oppositeMode = targetMode === "stretch" ? "support" : "stretch";
   if(countMode(selected, targetMode) > countMode(selected, oppositeMode)) return selected;
@@ -253,6 +272,7 @@ function rebalanceTowardMode(selected, targetMode, history, nowMs){
   const selectedKeys = new Set(selected.map((task) => task.canonicalKey));
   const targetCandidates = TASK_CATALOG
     .filter((task) => task.mode === targetMode && !selectedKeys.has(task.canonicalKey))
+    .filter((task) => fitsCapacity(task, checkin, level, boardStyle))
     .map((task) => ({ task, lastShownTs: getExactLastShownTs(task, history) }))
     .sort((a, b) => a.lastShownTs - b.lastShownTs);
   const staleCandidates = targetCandidates.filter((entry) => entry.lastShownTs < staleRepeatCutoff);
@@ -263,7 +283,7 @@ function rebalanceTowardMode(selected, targetMode, history, nowMs){
     if(countMode(next, targetMode) > countMode(next, oppositeMode)) break;
     const replaceIndex = next.map((item) => item.mode).lastIndexOf(oppositeMode);
     if(replaceIndex === -1) break;
-    if(next.some((item) => item.canonicalKey === task.canonicalKey)) continue;
+    if(next.some((item, index) => index !== replaceIndex && isDuplicateLikeTask(item, task, 0.82))) continue;
     next[replaceIndex] = { ...task };
   }
 
@@ -287,6 +307,10 @@ function getCapacityCap(checkin, level, boardStyle){
   return Math.max(paceIndex("rest"), Math.min(paceIndex("brave"), cap));
 }
 
+function fitsCapacity(task, checkin, level, boardStyle){
+  return taskPaceIndex(task) <= getCapacityCap(checkin, level, boardStyle);
+}
+
 function boardModeFromStyle(style){
   return style === "challenge" ? "stretch" : "support";
 }
@@ -301,10 +325,10 @@ function desiredModeCounts(mode, checkin, level){
     level === "gentle";
 
   if(mode === "stretch"){
-    return lowCapacity ? { stretch: 8, support: 7 } : { stretch: 9, support: 6 };
+    return lowCapacity ? { stretch: 7, support: 5 } : { stretch: 8, support: 4 };
   }
 
-  return lowCapacity ? { support: 11, stretch: 4 } : { support: 10, stretch: 5 };
+  return lowCapacity ? { support: 9, stretch: 3 } : { support: 8, stretch: 4 };
 }
 
 function withSeededScores(tasks, seed, checkin, level, boardStyle, history){
@@ -348,10 +372,8 @@ function canUseCandidate(candidate, selected, seen, domainCounts, constraints){
   if(seen.text.has(textKey) || seen.canonical.has(candidate.canonicalKey)) return false;
   if(seen.family.has(candidate.repetitionFamily)) return false;
   if((domainCounts[candidate.domain] || 0) >= constraints.maxDomainCount) return false;
-
-  for(const existing of selected){
-    if(tokenOverlapRatio(existing.text, candidate.text) >= constraints.maxOverlap) return false;
-  }
+  if(Number.isFinite(constraints.maxPaceIndex) && taskPaceIndex(candidate) > constraints.maxPaceIndex) return false;
+  if(selectedHasDuplicateLike(selected, candidate, constraints.maxOverlap)) return false;
 
   return true;
 }
@@ -377,7 +399,8 @@ function composeBoard(candidates, checkin, level, boardStyle){
   const domainCounts = {};
   const targetMode = boardModeFromStyle(boardStyle);
   const modeCounts = desiredModeCounts(targetMode, checkin, level);
-  const constraints = { maxDomainCount: 4, maxOverlap: 0.72 };
+  const maxPaceIndex = getCapacityCap(checkin, level, boardStyle);
+  const constraints = { maxDomainCount: 4, maxOverlap: 0.72, maxPaceIndex };
 
   const modes = [];
   if(targetMode === "stretch"){
@@ -394,15 +417,15 @@ function composeBoard(candidates, checkin, level, boardStyle){
   }
 
   for(const candidate of candidates){
-    if(selected.length >= 15) break;
+    if(selected.length >= VISIBLE_BOARD_COUNT) break;
     if(canUseCandidate(candidate, selected, seen, domainCounts, constraints)){
       addCandidate(candidate, selected, seen, domainCounts);
     }
   }
 
-  const relaxed = { maxDomainCount: 6, maxOverlap: 0.82 };
+  const relaxed = { maxDomainCount: 6, maxOverlap: 0.82, maxPaceIndex };
   for(const candidate of candidates){
-    if(selected.length >= 15) break;
+    if(selected.length >= VISIBLE_BOARD_COUNT) break;
     if(canUseCandidate(candidate, selected, seen, domainCounts, relaxed)){
       addCandidate(candidate, selected, seen, domainCounts);
     }
@@ -598,8 +621,9 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       for(const text of TASK_LIBRARY[pace] || []){
         if(selected.length >= MIN_BOARD_OPTION_POOL) break;
         const task = materializeTask(text, pace);
+        if(!fitsCapacity(task, checkin, level, boardStyle)) continue;
         if(isExactRecentlyShown(task, history)) continue;
-        if(selected.some((option) => option.canonicalKey === task.canonicalKey)) continue;
+        if(selectedHasDuplicateLike(selected, task)) continue;
         selected.push(task);
       }
     }
@@ -611,8 +635,9 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       for(const text of TASK_LIBRARY[pace] || []){
         if(selected.length >= MIN_BOARD_OPTION_POOL) break;
         const task = materializeTask(text, pace);
+        if(!fitsCapacity(task, checkin, level, boardStyle)) continue;
         if(isExactRecentlyShown(task, history)) continue;
-        if(selected.some((option) => option.canonicalKey === task.canonicalKey)) continue;
+        if(selectedHasDuplicateLike(selected, task)) continue;
         selected.push(task);
       }
     }
@@ -620,6 +645,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
 
   if(selected.length < MIN_BOARD_OPTION_POOL){
     const fallbackTasks = TASK_CATALOG
+      .filter((task) => fitsCapacity(task, checkin, level, boardStyle))
       .map((task) => ({ task, lastShownTs: getExactLastShownTs(task, history) }))
       .sort((a, b) => a.lastShownTs - b.lastShownTs)
       .map((entry) => entry.task);
@@ -638,7 +664,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
     }
 
     const appendFallbackTask = (task) => {
-      if(selected.some((option) => option.canonicalKey === task.canonicalKey)) return false;
+      if(selectedHasDuplicateLike(selected, task)) return false;
       selected.push({ ...task });
       return true;
     };
@@ -647,7 +673,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       if(selected.length >= MIN_BOARD_OPTION_POOL) break;
       const task = staleFallbackTasks.find((candidate) => (
         candidate.mode === mode &&
-        !selected.some((option) => option.canonicalKey === candidate.canonicalKey)
+        !selectedHasDuplicateLike(selected, candidate)
       ));
       if(task) appendFallbackTask(task);
     }
@@ -661,7 +687,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       if(selected.length >= MIN_BOARD_OPTION_POOL) break;
       const task = fallbackTasks.find((candidate) => (
         candidate.mode === mode &&
-        !selected.some((option) => option.canonicalKey === candidate.canonicalKey)
+        !selectedHasDuplicateLike(selected, candidate)
       ));
       if(task) appendFallbackTask(task);
     }
@@ -672,11 +698,11 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
     }
   }
 
-  const visibleBoard = rebalanceTowardMode(selected.slice(0, 15), boardModeFromStyle(boardStyle), history, nowMs);
+  const visibleBoard = rebalanceTowardMode(selected.slice(0, VISIBLE_BOARD_COUNT), boardModeFromStyle(boardStyle), history, nowMs, checkin, level, boardStyle);
   const visibleKeys = new Set(visibleBoard.map((task) => task.canonicalKey));
   selected = [
     ...visibleBoard,
-    ...selected.slice(15).filter((task) => !visibleKeys.has(task.canonicalKey)),
+    ...selected.slice(VISIBLE_BOARD_COUNT).filter((task) => !visibleKeys.has(task.canonicalKey)),
   ];
 
   return selected.slice(0, 30).map((task) => ({

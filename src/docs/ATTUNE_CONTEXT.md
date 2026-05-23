@@ -53,7 +53,7 @@ The user can always choose rest.
 - Supabase email OTP auth + remote sync for profile, weekly summaries, and note memory
 
 AI board generation (optional):
-- On entering the Activity Picker, Attune can generate a fresh 15-tile board from the user’s Check-in (mood/energy/body/pace + optional note)
+- On entering the Activity Picker, Attune can generate a fresh 12-tile board from the user’s Check-in (mood/energy/body/pace + optional note)
 - The browser calls a local/prod `/api/generate-board` endpoint (Vite proxies `/api/*` in dev)
 - The backend calls OpenAI using the app’s API key (kept server-side)
 - If AI is unavailable, Attune falls back to the built-in task list
@@ -95,7 +95,7 @@ Local dev:
 
 ### AI board generation (optional)
 - Local API server: `server/index.js`
-	- `POST /api/generate-board` returns strict JSON `{ tasks: [...] }` (exactly 15)
+	- `POST /api/generate-board` returns strict JSON `{ tasks: [...] }` (exactly 12)
 	- Output is validated + safety-filtered (no harm, no meds/treatment plans)
 - Frontend trigger:
 	- `src/screens/ActivityPicker.jsx` calls `actions.ensureAiBoard(...)` on mount
@@ -116,7 +116,7 @@ Local dev:
 	- `PORT` (default: 8787)
 
 ### UX invariants worth protecting
-- Activity Picker: 15 tiles, stable assignment, no repeats
+- Activity Picker: 12 tiles, stable assignment, no repeats
 - Caps: soft cap 5 (confirm), hard cap 10 (stop reveals/adds)
 - Toast: above bottom nav, screen-scoped, non-persistent
 - Weekly: calendar week (Mon → Sun), weekly note keyed to week
@@ -124,14 +124,14 @@ Local dev:
 
 Screens:
 1. Check-in
-2. Activity Picker (15-tile board)
+2. Activity Picker (12-tile board)
 3. My Day
 4. Weekly
 5. Profile
 
 Current behavior highlights:
 - Activity Picker board
-	- 15 tiles per board
+	- 12 tiles per board
 	- Single tap adds to My Day
 	- No repeats; stable assignment (tiles shouldn’t “jump” when revealing)
 	- Soft cap: 5 tasks (confirm to continue)

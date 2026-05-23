@@ -2301,13 +2301,31 @@
       font-weight:700;
       color: color-mix(in oklab, var(--muted) 90%, var(--ink) 10%);
     }
-    .boardSmartHint{
-      margin:-4px 0 14px;
+    .boardReason{
+      margin:-2px 0 14px;
+      padding-left:10px;
+      border-left:2px solid color-mix(in oklab, var(--brand) 34%, var(--line));
+    }
+    .boardReason span{
+      display:block;
+      margin-bottom:2px;
+      font-size:10px;
+      line-height:1.2;
+      font-weight:950;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      color: color-mix(in oklab, var(--brand) 72%, var(--muted));
+    }
+    .boardReason p{
+      margin:0;
+      max-width:560px;
       font-size:12px;
-      line-height:1.4;
-      color:color-mix(in oklab, var(--muted) 88%, var(--brand));
+      line-height:1.45;
+      font-weight:700;
+      color: color-mix(in oklab, var(--muted) 84%, var(--ink) 16%);
     }
     .boardWrap.loading .boardTop,
+    .boardWrap.loading .boardReason,
     .boardWrap.loading .boardGrid{
       opacity:.42;
       filter: blur(1.5px);
@@ -2318,6 +2336,8 @@
       .boardWrap{margin-top:10px;}
       .boardTop{margin-bottom:10px;}
       .boardRevealHint{margin:-4px 0 10px;}
+      .boardReason{margin:-2px 0 12px;}
+      .boardReason p{font-size:11.5px; line-height:1.38;}
       .boardTile{min-height:84px;}
       .boardGrid{align-content: stretch; grid-auto-rows: minmax(84px, 1fr);}
       .boardTile{height:100%;}

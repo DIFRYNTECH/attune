@@ -27,7 +27,7 @@ The backend does more than proxy an OpenAI call. It is the trust boundary for:
 - `/api/health`
 Simple health probe used to verify the API is alive.
 - `/api/generate-board`
-Generates a strict 15-task board matched to current check-in context.
+Generates a strict 12-task board matched to current check-in context.
 - `/api/daily-note`
 Generates a short daily note plus optional themes.
 

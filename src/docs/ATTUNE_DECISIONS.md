@@ -33,7 +33,7 @@ Toasts are screen-scoped and ephemeral.
 ## Activity Picker board rules
 
 ### Decision
-Use a 15-tile board with stable, no-repeat assignment and “gentle caps” for adding to My Day.
+Use a 12-tile board with stable, no-repeat assignment and “gentle caps” for adding to My Day.
 
 ### Why
 - Tiles should not jump around (that feels chaotic).
@@ -74,7 +74,7 @@ Profile is the account and preferences surface for the live app.
 ## AI-generated Activity Picker board (optional)
 
 ### Decision
-Generate a fresh 15-tile Activity Picker board on each check-in using OpenAI, while preserving the existing built-in task list as a fallback.
+Generate a fresh 12-tile Activity Picker board on each check-in using OpenAI, while preserving the existing built-in task list as a fallback.
 
 ### Why
 - Personalization should come from the user’s current state (mood/energy/body/pace + optional note)

@@ -33,13 +33,14 @@ import { isNativePlatform } from "../lib/platform";
 const SCHEMA_VERSION = 9;
 
 // Bump this when the AI prompt/validation changes and you want fresh boards.
-const AI_BOARD_VERSION = 6;
+const AI_BOARD_VERSION = 7;
 
 // Bump this when the AI daily note prompt changes.
 const AI_DAILY_NOTE_VERSION = 2;
 
 const EVENT_DAYS_TO_KEEP = 90;
 const NOTE_MEMORY_MAX = 30;
+const BOARD_TILE_COUNT = 12;
 const PICK_TOAST_MATRIX = {
   low: {
     rest: [
@@ -748,14 +749,25 @@ function sanitizeCheckinForSync(checkin){
   };
 }
 
+function sanitizeTaskForSync(item, { includeDone = true } = {}){
+  const out = {
+    text: clampText(item.text, 140),
+    level: clampText(item.level, 24),
+  };
+  if (includeDone) out.done = item.done === true;
+  for (const key of ["mode", "domain", "pace", "canonicalKey", "repetitionFamily"]) {
+    const value = clampText(item[key], key === "canonicalKey" || key === "repetitionFamily" ? 80 : 32);
+    if (value) out[key] = value;
+  }
+  if (Number.isFinite(Number(item.effort))) out.effort = Math.max(1, Math.min(5, Math.round(Number(item.effort))));
+  if (Number.isFinite(Number(item.friction))) out.friction = Math.max(1, Math.min(5, Math.round(Number(item.friction))));
+  return out;
+}
+
 function sanitizeTaskListForSync(list, maxItems){
   return (Array.isArray(list) ? list : [])
     .filter((item) => item && typeof item === "object" && !Array.isArray(item))
-    .map((item) => ({
-      text: clampText(item.text, 140),
-      level: clampText(item.level, 24),
-      done: item.done === true,
-    }))
+    .map((item) => sanitizeTaskForSync(item))
     .filter((item) => item.text)
     .slice(0, maxItems);
 }
@@ -763,12 +775,9 @@ function sanitizeTaskListForSync(list, maxItems){
 function sanitizeOptionsForSync(list){
   return (Array.isArray(list) ? list : [])
     .filter((item) => item && typeof item === "object" && !Array.isArray(item))
-    .map((item) => ({
-      text: clampText(item.text, 140),
-      level: clampText(item.level, 24),
-    }))
-    .filter((item) => item.text)
-    .slice(0, 15);
+    .map((item) => sanitizeTaskForSync(item, { includeDone: false }))
+    .filter((item) => item?.text)
+    .slice(0, BOARD_TILE_COUNT);
 }
 
 function sanitizeEventsForSync(events){
@@ -804,7 +813,7 @@ function buildDeviceStateSyncPayload(state){
     checkin: sanitizeCheckinForSync(state?.checkin),
     level: clampText(state?.level, 24) || "gentle",
     checkedInToday: state?.checkedInToday === true,
-    boardAssigned: sanitizeTaskListForSync(state?.boardAssigned, 15),
+    boardAssigned: sanitizeTaskListForSync(state?.boardAssigned, BOARD_TILE_COUNT),
     myDay: sanitizeTaskListForSync(state?.myDay, 10),
     myDayCap: state?.myDayCap === 10 ? 10 : 5,
     options: sanitizeOptionsForSync(state?.options),
@@ -2029,7 +2038,7 @@ export function useAttuneStore(){
 
         const data = await resp.json();
         const tasks = Array.isArray(data?.tasks) ? data.tasks : null;
-        if(!tasks || tasks.length !== 15) throw new Error("invalid_tasks");
+        if(!tasks || tasks.length !== BOARD_TILE_COUNT) throw new Error("invalid_tasks");
 
         const uniqueTasks = [];
         const seenTexts = new Set();
@@ -2045,10 +2054,10 @@ export function useAttuneStore(){
           });
         }
 
-        const nextOptions = uniqueTasks.slice(0, 15);
+        const nextOptions = uniqueTasks.slice(0, BOARD_TILE_COUNT);
         const nextTasks = nextOptions.map((option) => ({ ...option }));
 
-        if(nextOptions.length !== 15) throw new Error("invalid_texts");
+        if(nextOptions.length !== BOARD_TILE_COUNT) throw new Error("invalid_texts");
 
         // Ignore stale responses.
         if(requestId !== aiReqRef.current.requestId) return;

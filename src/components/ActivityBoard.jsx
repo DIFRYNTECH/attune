@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAttuneStore } from "../store/useAttuneStore";
 import { getAttuneRecommendedPicks, smartPickPool } from "../lib/smartPick";
+import { buildLearningBoardInsight } from "../lib/boardInsight";
 
 const PACE_LABELS = {
   rest: "rest",
@@ -19,6 +20,9 @@ const FALLBACK_TIME_BY_PACE = {
   capable: "10-15 min",
   brave: "5-20 min",
 };
+
+const TILE_COUNT = 12;
+const HARD_CAP = 10;
 
 function normalizeMoodWord(word) {
   if (word === "Steady") return "Settled";
@@ -206,9 +210,6 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
   const { options, myDay, myDayCap, boardAssigned: storedBoardAssigned } = state;
 
-  const TILE_COUNT = 15;
-  const HARD_CAP = 10;
-
   const canSmartPick = !!state?.entitlements?.smartPick;
   const optionsPool = useMemo(() => {
     const base = Array.isArray(options) ? options : [];
@@ -306,6 +307,14 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
     ? getActivityTimeCue(selectedTile.text, selectedTile.level || state.level)
     : "";
   const selectedSetupCue = selectedTile?.text ? getActivitySetupCue(selectedTile.text) : "";
+  const boardInsight = useMemo(
+    () => buildLearningBoardInsight({
+      board: boardAssigned,
+      events: state?.events,
+      canSmartPick,
+    }),
+    [boardAssigned, state?.events, canSmartPick],
+  );
 
   const clearBoard = () => {
     revealTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
@@ -606,9 +615,10 @@ export default function ActivityBoard({ state: stateProp, actions: actionsProp, 
 
       <div className="boardRevealHint">Tap any tile to reveal a small step.</div>
 
-      {canSmartPick && attunePicks.length > 0 && (
-        <div className="boardSmartHint" aria-label="Attune recommendations">
-          Attune marked 3 suggestions for you today.
+      {boardInsight && (
+        <div className="boardReason" aria-label="Why this board">
+          <span>{boardInsight.title}</span>
+          <p>{boardInsight.body}</p>
         </div>
       )}
 

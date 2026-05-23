@@ -15,7 +15,7 @@ The product values matter to the implementation:
 
 - Lets a user sign in or sign up with email OTP
 - Captures a lightweight daily check-in
-- Generates a 15-tile Activity Picker board using built-in suggestions or AI
+- Generates a 12-tile Activity Picker board using built-in suggestions or AI
 - Lets the user add a few tasks to My Day
 - Stores weekly reflections and note memory in Supabase
 - Generates a short daily note through the backend AI flow
