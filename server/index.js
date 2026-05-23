@@ -34,7 +34,7 @@ const PORT = Number(process.env.PORT || 8787);
 const ATTUNE_ENV = process.env.ATTUNE_ENV || process.env.NODE_ENV || "development";
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const MODEL = process.env.OPENAI_MODEL || "gpt-4o-mini";
-const BOARD_TOTAL_TASK_COUNT = 15;
+const BOARD_TOTAL_TASK_COUNT = 12;
 const BOARD_MODEL = process.env.OPENAI_BOARD_MODEL || MODEL;
 const BOARD_FALLBACK_MODEL = process.env.OPENAI_BOARD_FALLBACK_MODEL || MODEL;
 const BOARD_MODEL_CANDIDATES = Array.from(
@@ -1580,10 +1580,10 @@ function computeBoardPreferences({ pace, energy, boardStyle }) {
 
   const baseByPace = {
     rest: { minLow: 12, minMedium: 0, minHigh: 0, maxHigh: 0, maxMinutes: 20 },
-    gentle: { minLow: 10, minMedium: 2, minHigh: 0, maxHigh: 0, maxMinutes: 30 },
-    light: { minLow: 8, minMedium: 4, minHigh: 1, maxHigh: 1, maxMinutes: 35 },
-    steady: { minLow: 6, minMedium: 6, minHigh: 1, maxHigh: 2, maxMinutes: 40 },
-    capable: { minLow: 4, minMedium: 7, minHigh: 2, maxHigh: 4, maxMinutes: 45 },
+    gentle: { minLow: 9, minMedium: 3, minHigh: 0, maxHigh: 0, maxMinutes: 30 },
+    light: { minLow: 7, minMedium: 4, minHigh: 1, maxHigh: 1, maxMinutes: 35 },
+    steady: { minLow: 5, minMedium: 5, minHigh: 1, maxHigh: 2, maxMinutes: 40 },
+    capable: { minLow: 4, minMedium: 6, minHigh: 2, maxHigh: 4, maxMinutes: 45 },
     brave: { minLow: 3, minMedium: 6, minHigh: 3, maxHigh: 5, maxMinutes: 45 },
   };
 
@@ -1594,18 +1594,18 @@ function computeBoardPreferences({ pace, energy, boardStyle }) {
     prefs.maxHigh = Math.min(prefs.maxHigh, 1);
     prefs.minHigh = 0;
     prefs.minMedium = Math.max(0, prefs.minMedium - 2);
-    prefs.minLow = Math.min(15, prefs.minLow + 2);
+    prefs.minLow = Math.min(BOARD_TOTAL_TASK_COUNT, prefs.minLow + 2);
     prefs.maxMinutes = Math.min(prefs.maxMinutes, 30);
   } else if (energyLower === "high") {
     prefs.minHigh = clampInt(prefs.minHigh + 1, 0, 6, prefs.minHigh);
-    prefs.minLow = clampInt(prefs.minLow - 1, 0, 15, prefs.minLow);
+    prefs.minLow = clampInt(prefs.minLow - 1, 0, BOARD_TOTAL_TASK_COUNT, prefs.minLow);
   }
 
   if (style === "challenge") {
     prefs.minHigh = clampInt(prefs.minHigh + 2, 0, 7, prefs.minHigh);
     prefs.maxHigh = clampInt(prefs.maxHigh + 2, 1, 7, prefs.maxHigh);
     prefs.minMedium = clampInt(prefs.minMedium + 1, 0, 10, prefs.minMedium);
-    prefs.minLow = clampInt(prefs.minLow - 2, 0, 15, prefs.minLow);
+    prefs.minLow = clampInt(prefs.minLow - 2, 0, BOARD_TOTAL_TASK_COUNT, prefs.minLow);
     prefs.maxMinutes = Math.min(50, Math.max(prefs.maxMinutes, energyLower === "high" ? 45 : 35));
 
     if (energyLower === "verylow") {
@@ -1619,11 +1619,11 @@ function computeBoardPreferences({ pace, energy, boardStyle }) {
     }
   }
 
-  // Safety: ensure mins do not exceed 15.
+  // Safety: ensure mins do not exceed the final board size.
   const minTotal = prefs.minLow + prefs.minMedium + prefs.minHigh;
-  if (minTotal > 15) {
+  if (minTotal > BOARD_TOTAL_TASK_COUNT) {
     // Reduce low first, then medium.
-    const overflow = minTotal - 15;
+    const overflow = minTotal - BOARD_TOTAL_TASK_COUNT;
     const reduceLow = Math.min(overflow, prefs.minLow);
     prefs.minLow -= reduceLow;
     const remaining = overflow - reduceLow;
@@ -1947,7 +1947,7 @@ app.post("/api/generate-board", enforceAllowedOrigin, limitBoard, async (req, re
       "Do NOT infer emotions or problems the user did not state. " +
       "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
       "The user also chooses a boardStyle. If boardStyle is steady, keep suggestions grounded and follow-through focused. If boardStyle is challenge, include more active progress-oriented steps, but still respect energy, body, and pace so the board never becomes hustle-coded or overwhelming. " +
-      "Return a broad candidate pool only; the Attune server will compose the final 15-task board. " +
+      "Return a broad candidate pool only; the Attune server will compose the final 12-task board. " +
       "Each candidate must include metadata: text, mode, domain, effort, friction, pace, canonicalKey, and repetitionFamily. " +
       "Use mode=support for stabilizing, reducing friction, recovering, regulating, or making the day easier. " +
       "Use mode=stretch for gently moving something forward without shame, pressure, productivity theater, or hustle language. " +
