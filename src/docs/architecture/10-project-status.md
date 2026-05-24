@@ -29,9 +29,15 @@ It now has:
 ### Must-do before calling the project stable
 
 1. Run a clean production smoke test after the recent secret rotation.
+   - Evidence: pending live run using `docs/PRODUCTION_SMOKE_TEST.md`.
 2. Verify daily note flow as thoroughly as generate-board.
+   - Local evidence, 2026-05-23: `npm run verify` passed, including `node --test`.
+   - Live evidence: pending production smoke test.
 3. Confirm all production env vars are documented and correct.
+   - Documentation evidence, 2026-05-23: `.env.example`, `README.md`, and `src/docs/architecture/07-deployment-and-environments.md` describe the current Paddle, Google Play, Supabase, OpenAI, Upstash, and Vercel variables.
+   - Secret-manager evidence: pending environment-by-environment check.
 4. Review Vercel function logs for hidden runtime noise or quota/rate-limit surprises.
+   - Evidence: pending live log review after the next deployment.
 
 ### Should-do soon
 
@@ -64,3 +70,14 @@ It now has:
 2. Documentation freshness
 3. Mobile release readiness
 4. Product refinement rather than major re-architecture
+
+## Production Readiness Evidence
+
+As of 2026-05-23, local production-readiness gates have been added and run:
+
+- `npm ci` completed with 0 vulnerabilities after stale local build processes were stopped.
+- `npm run verify` completed lint, tests, and production build successfully.
+- `npm audit --omit=dev --audit-level=moderate` reported 0 vulnerabilities.
+- `VERCEL=1` API import check printed `api import ok`.
+
+Attune should not be called ready for broad production launch until `docs/PRODUCTION_SMOKE_TEST.md` is run against the target deployment and the remaining live evidence items above are checked.

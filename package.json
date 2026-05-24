@@ -21,6 +21,8 @@
     "cap:sync:prod": "node scripts/cap-sync-env.mjs production",
     "cap:open": "npx cap open android",
     "lint": "eslint .",
+    "test": "node --test",
+    "verify": "npm run lint && npm test && npm run build",
     "preview": "vite preview",
     "video:studio": "remotion studio remotion/index.ts --port=3002",
     "video:still:opening": "remotion still remotion/index.ts AttuneBrandVertical remotion/renders/opening.png --frame=72 --scale=0.35",
@@ -45,8 +47,7 @@
     "googleapis": "^171.4.0",
     "openai": "^4.89.0",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "stripe": "^22.0.0"
+    "react-dom": "^19.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

@@ -29,18 +29,21 @@ import {
 } from "../lib/playBilling";
 import { isPaddleCheckoutSupported, openPaddleCheckout } from "../lib/paddleCheckout";
 import { isNativePlatform } from "../lib/platform";
-
-const SCHEMA_VERSION = 9;
-
-// Bump this when the AI prompt/validation changes and you want fresh boards.
-const AI_BOARD_VERSION = 7;
-
-// Bump this when the AI daily note prompt changes.
-const AI_DAILY_NOTE_VERSION = 2;
-
-const EVENT_DAYS_TO_KEEP = 90;
-const NOTE_MEMORY_MAX = 30;
-const BOARD_TILE_COUNT = 12;
+import {
+  defaultBillingState,
+  getBillingErrorMessage,
+  getBillingPlanIdFromState,
+  hasVerifiedPlusNoteMemoryAccess,
+  normalizeBillingState,
+} from "./billingState";
+import {
+  AI_BOARD_VERSION,
+  AI_DAILY_NOTE_VERSION,
+  BOARD_TILE_COUNT,
+  EVENT_DAYS_TO_KEEP,
+  NOTE_MEMORY_MAX,
+  SCHEMA_VERSION,
+} from "./storeConstants";
 const PICK_TOAST_MATRIX = {
   low: {
     rest: [
@@ -310,59 +313,6 @@ function getNextPickToast(checkin, pace, cycleMap){
   };
 }
 
-function defaultBillingState(){
-  return {
-    planId: "free",
-    status: "active",
-    source: "manual",
-    currentPeriodStart: "",
-    currentPeriodEnd: "",
-    providerSubscriptionId: "",
-    productId: "",
-    purchaseStatus: "",
-    acknowledged: false,
-    syncing: false,
-    configuredGooglePlay: false,
-    configuredPaddle: false,
-    customerPortalAvailable: false,
-    error: "",
-    lastSyncedAt: 0,
-  };
-}
-
-function normalizeBillingState(input){
-  const next = input && typeof input === "object" && !Array.isArray(input)
-    ? { ...defaultBillingState(), ...input }
-    : defaultBillingState();
-
-  next.planId = next.planId === "plus" ? "plus" : "free";
-  next.status = typeof next.status === "string" && next.status ? next.status : "active";
-  next.source = typeof next.source === "string" && next.source ? next.source : "manual";
-  next.currentPeriodStart = typeof next.currentPeriodStart === "string" ? next.currentPeriodStart : "";
-  next.currentPeriodEnd = typeof next.currentPeriodEnd === "string" ? next.currentPeriodEnd : "";
-  next.providerSubscriptionId = typeof next.providerSubscriptionId === "string" ? next.providerSubscriptionId : "";
-  next.productId = typeof next.productId === "string" ? next.productId : "";
-  next.purchaseStatus = typeof next.purchaseStatus === "string" ? next.purchaseStatus : "";
-  next.acknowledged = next.acknowledged === true;
-  next.syncing = next.syncing === true;
-  next.configuredGooglePlay = next.configuredGooglePlay === true;
-  next.configuredPaddle = next.configuredPaddle === true;
-  next.customerPortalAvailable = next.customerPortalAvailable === true;
-  next.error = typeof next.error === "string" ? next.error : "";
-  next.lastSyncedAt = Number(next.lastSyncedAt) || 0;
-
-  return next;
-}
-
-function getBillingPlanIdFromState(state){
-  return state?.billing?.planId === "plus" ? "plus" : "free";
-}
-
-function hasVerifiedPlusNoteMemoryAccess(input){
-  const billing = normalizeBillingState(input);
-  return billing.planId === "plus" && billing.lastSyncedAt > 0 && !billing.error;
-}
-
 function applyBillingStateToLocalState(baseState, billingPatch){
   const billing = normalizeBillingState({ ...(baseState?.billing || defaultBillingState()), ...(billingPatch || {}) });
   const planId = billing.planId === "plus" ? "plus" : "free";
@@ -379,43 +329,6 @@ function applyBillingStateToLocalState(baseState, billingPatch){
   };
 
   return planId === "plus" ? nextState : toFreeLocalBoardState(nextState);
-}
-
-function getBillingErrorMessage(errorCode){
-  switch(String(errorCode || "")){
-    case "google_play_not_configured":
-      return "Google Play billing is not configured yet.";
-    case "paddle_not_configured":
-      return "Web billing is not configured yet.";
-    case "paddle_portal_not_configured":
-      return "Billing management is not configured yet.";
-    case "paddle_customer_missing":
-      return "No web subscription was found for this account.";
-    case "play_billing_unavailable":
-      return "Google Play billing is only available inside the Android app.";
-    case "play_billing_missing_product_id":
-      return "Google Play product ID is missing.";
-    case "missing_account_id":
-      return "Sign in again before starting a purchase.";
-    case "purchase_canceled":
-      return "Purchase canceled.";
-    case "billing_not_ready":
-      return "Google Play billing is still connecting. Try again in a moment.";
-    case "google_play_verify_failed":
-      return "Google Play purchase verification failed.";
-    case "paddle_checkout_failed":
-      return "Starting web checkout failed.";
-    case "paddle_portal_failed":
-      return "Opening billing management failed.";
-    case "google_play_account_mismatch":
-      return "This Google Play purchase belongs to a different Attune account.";
-    case "google_play_missing_account_binding":
-      return "This purchase is missing the required account binding. Start the upgrade again from this account.";
-    case "google_play_purchase_already_linked":
-      return "This purchase token is already linked to another Attune account.";
-    default:
-      return "Billing is unavailable right now.";
-  }
 }
 
 function clamp(n, min, max){

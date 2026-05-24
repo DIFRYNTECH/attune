@@ -145,7 +145,7 @@ Expected results:
 - `public.play_store_purchases` exists
 - `note_memory_*_plus_only` policies exist
 - `reserve_ai_usage_quota` exists
-- `user_entitlements_source_check` exists with `stripe` and `paddle` allowed as sources
+- `user_entitlements_source_check` exists with `paddle` allowed as a source
 
 ### Rollback note
 
@@ -154,7 +154,7 @@ Do not deploy the new billing code before these migrations are live. The runtime
 - `play_store_purchases` for verified Google Play purchases
 - Plus-only `note_memory` RLS policies
 - `reserve_ai_usage_quota(...)` for atomic AI quota reservations
-- `stripe` and `paddle` as valid `user_entitlements.source` values
+- `paddle` as a valid `user_entitlements.source` value
 
 ## Production Hosting Notes
 
@@ -163,6 +163,31 @@ Do not deploy the new billing code before these migrations are live. The runtime
 - `ALLOWED_ORIGINS` must include the live frontend origin.
 - `TRUST_PROXY=1` should be set on Vercel so request IP handling is correct.
 - Paddle webhooks should point to `/api/billing/paddle/webhook` on the same deployment.
+
+## Billing Setup
+
+Web billing uses Paddle Checkout. Android billing uses Google Play Billing.
+
+Required Paddle client variables:
+
+- `VITE_PADDLE_CLIENT_TOKEN`
+- `VITE_PADDLE_PLUS_PRICE_ID`
+- `VITE_PADDLE_ENV`
+
+Required Paddle server variables:
+
+- `PADDLE_API_KEY`
+- `PADDLE_WEBHOOK_SECRET`
+- `PADDLE_PLUS_PRICE_ID`
+
+Required Google Play server variables:
+
+- `GOOGLE_PLAY_PACKAGE_NAME`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_EMAIL`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_PRIVATE_KEY`
+- `GOOGLE_PLAY_PRODUCT_ID` or `GOOGLE_PLAY_ALLOWED_PRODUCT_IDS`
+
+Paddle webhooks must cover subscription lifecycle events handled by `server/index.js`: `subscription.created`, `subscription.updated`, `subscription.activated`, `subscription.trialing`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`, and `subscription.canceled`.
 
 ## What a New Engineer Should Verify First in Production
 

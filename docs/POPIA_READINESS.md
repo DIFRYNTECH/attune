@@ -63,3 +63,11 @@ Some processing may happen outside South Africa. The privacy policy must keep th
 - Add an in-app delete-account/data flow when practical.
 - Keep privacy policy copy aligned with actual product features and vendors.
 - Review POPIA posture with a qualified privacy/legal professional before a broad public launch.
+
+## Launch Evidence
+
+- [ ] support@useattune.co receives mail reliably.
+- [ ] The production privacy policy URL is live.
+- [ ] Account-level deletion process has an owner and tested manual runbook.
+- [ ] Payment processors and AI processors listed here match production configuration.
+- [ ] A qualified privacy/legal review has been completed or explicitly deferred for limited beta.

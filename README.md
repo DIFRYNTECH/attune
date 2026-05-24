@@ -25,26 +25,27 @@ If the AI endpoint is unavailable, the app automatically falls back to the built
 
 ## Web Billing
 
-Attune now supports web subscriptions through Stripe Checkout, while native Android continues to use Google Play Billing.
+Attune supports web subscriptions through Paddle Checkout. Native Android subscriptions use Google Play Billing.
 
-### Required server env vars
+### Required Paddle client env vars
 
-- `PUBLIC_APP_URL=https://your-domain.example`
-- `STRIPE_SECRET_KEY`
-- `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PLUS_PRICE_ID`
+- `VITE_PADDLE_CLIENT_TOKEN`
+- `VITE_PADDLE_PLUS_PRICE_ID`
+- `VITE_PADDLE_ENV=sandbox` for UAT or `live` for production
 
-### Required Stripe setup
+### Required Paddle server env vars
 
-- Create a recurring price for Attune Plus and set its ID as `STRIPE_PLUS_PRICE_ID`.
-- Point a Stripe webhook endpoint at `/api/billing/stripe/webhook`.
-- Subscribe the webhook to:
-	- `checkout.session.completed`
-	- `customer.subscription.created`
-	- `customer.subscription.updated`
-	- `customer.subscription.deleted`
+- `PADDLE_API_KEY`
+- `PADDLE_WEBHOOK_SECRET`
+- `PADDLE_PLUS_PRICE_ID`
 
-The server updates `user_entitlements` from Stripe webhook events, and the billing status endpoint also reconciles Stripe state for signed-in web users.
+### Required Paddle setup
+
+- Create the Attune Plus price in Paddle and set the same price ID in client and server env.
+- Point Paddle webhooks at `/api/billing/paddle/webhook`.
+- Subscribe the webhook to subscription lifecycle events such as `subscription.created`, `subscription.updated`, `subscription.activated`, `subscription.trialing`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`, and `subscription.canceled`.
+
+The server updates `user_entitlements` from Paddle webhook events, and the billing status endpoint also reconciles Paddle state for signed-in web users.
 
 ## Current trust boundary and go-live recommendation
 
