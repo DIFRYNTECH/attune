@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { Info } from "lucide-react";
 
 export default function InfoTip({ label = "More info", children, align = "right" }) {
   const [open, setOpen] = useState(false);
@@ -85,11 +86,12 @@ export default function InfoTip({ label = "More info", children, align = "right"
         className="infoBtn"
         ref={btnRef}
         aria-label={label}
+        title={label}
         aria-expanded={open ? "true" : "false"}
         aria-controls={open ? tipId : undefined}
         onClick={() => setOpen((v) => !v)}
       >
-        i
+        <Info size={16} aria-hidden="true" />
       </button>
       {open
         ? createPortal(

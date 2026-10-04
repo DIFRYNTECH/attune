@@ -1,3 +1,5 @@
+import { learningPreferences } from "./activityLearning.js";
+
 function safeEvents(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
 }
@@ -36,13 +38,14 @@ function pushUnique(list, value, limit) {
   if (!snapshot?.text) return;
   const key = snapshot.text.toLowerCase();
   const existing = list.findIndex((item) => cleanText(item).toLowerCase() === key);
-  if (existing >= 0) list.splice(existing, 1);
-  list.unshift(snapshot);
+  if (existing >= 0) return;
+  list.push(snapshot);
   if (list.length > limit) list.length = limit;
 }
 
 export function buildBoardHistoryForAi(eventsByDay, opts = {}) {
   const events = safeEvents(eventsByDay);
+  const nowMs = opts.nowMs ?? Date.now();
   const maxDays = Number.isFinite(opts.maxDays) ? Math.max(1, Math.floor(opts.maxDays)) : 21;
   const limits = {
     shown: Number.isFinite(opts.shownLimit) ? Math.max(1, Math.floor(opts.shownLimit)) : 45,
@@ -51,7 +54,7 @@ export function buildBoardHistoryForAi(eventsByDay, opts = {}) {
     removed: Number.isFinite(opts.removedLimit) ? Math.max(1, Math.floor(opts.removedLimit)) : 30,
   };
 
-  const days = Object.keys(events).filter(Boolean).sort().slice(-maxDays).reverse();
+  const days = Object.keys(events).filter(day => /^\d{4}-\d{2}-\d{2}$/.test(day)).sort().reverse();
   const recentShown = [];
   const recentPicked = [];
   const recentCompleted = [];
@@ -62,22 +65,27 @@ export function buildBoardHistoryForAi(eventsByDay, opts = {}) {
     list.sort((a, b) => (Number(b?.ts) || 0) - (Number(a?.ts) || 0));
 
     for (const event of list) {
+      if (!Number.isFinite(event?.ts) || event.ts <= nowMs - maxDays * 86400000 || event.ts > nowMs + 300000) continue;
       const type = typeof event?.type === "string" ? event.type : "";
-      if (type === "activityShown") {
-        const activities = Array.isArray(event?.activities) ? [...event.activities].reverse() : [];
+      if (type === "activityShown" || type === "activityViewed") {
+        const activities = Array.isArray(event?.activities) ? event.activities : [];
         for (const activity of activities) pushUnique(recentShown, activity, limits.shown);
         continue;
       }
       if (type === "activityPicked") pushUnique(recentPicked, event, limits.picked);
       if (type === "activityCompleted") pushUnique(recentCompleted, event, limits.completed);
-      if (type === "activityRemoved") pushUnique(recentRemoved, event, limits.removed);
+      if (type === "activityRemoved" && !event.done && event.ts > nowMs - 7 * 86400000) pushUnique(recentRemoved, event, limits.removed);
     }
   }
 
+  const preferences = learningPreferences(events, nowMs);
   return {
     recentShown,
     recentPicked,
     recentCompleted,
     recentRemoved,
+    recentHelpful: preferences.helpful.slice(-30),
+    favorites: preferences.favorites,
+    excluded: [...preferences.hidden, ...preferences.temporary],
   };
 }

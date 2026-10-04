@@ -12,7 +12,7 @@ import {
 
 test("store constants preserve persisted data and AI cache versions", () => {
   assert.equal(SCHEMA_VERSION, 9);
-  assert.equal(AI_BOARD_VERSION, 7);
+  assert.equal(AI_BOARD_VERSION, 9);
   assert.equal(AI_DAILY_NOTE_VERSION, 2);
 });
 

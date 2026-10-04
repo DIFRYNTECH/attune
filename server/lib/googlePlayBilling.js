@@ -51,7 +51,8 @@ export function getGooglePlayBillingConfig() {
     configured:
       !!googlePlayConfig.packageName &&
       !!googlePlayConfig.serviceAccountEmail &&
-      !!googlePlayConfig.privateKey,
+      !!googlePlayConfig.privateKey &&
+      googlePlayConfig.allowedProductIds.length > 0,
   };
 }
 
@@ -117,10 +118,10 @@ function getLatestLineItem(lineItems) {
   return latest;
 }
 
-function mapGooglePlayStatus(subscriptionState, currentPeriodEnd) {
+export function mapGooglePlayStatus(subscriptionState, currentPeriodEnd, nowMs = Date.now()) {
   const state = String(subscriptionState || "").trim().toUpperCase();
   const endTs = Date.parse(String(currentPeriodEnd || ""));
-  const isActiveByEnd = Number.isFinite(endTs) && endTs >= Date.now();
+  const isActiveByEnd = Number.isFinite(endTs) && endTs > nowMs;
 
   switch (state) {
     case "SUBSCRIPTION_STATE_ACTIVE":
@@ -137,7 +138,7 @@ function mapGooglePlayStatus(subscriptionState, currentPeriodEnd) {
     case "SUBSCRIPTION_STATE_PENDING_PURCHASE_CANCELED":
       return "expired";
     default:
-      return isActiveByEnd ? "active" : "expired";
+      return "expired";
   }
 }
 
@@ -172,6 +173,7 @@ export async function verifyGooglePlaySubscriptionPurchase({ packageName, purcha
   }
 
   const client = await getAndroidPublisherClient();
+  const verifiedAt = new Date().toISOString();
   const response = await client.purchases.subscriptionsv2.get({
     packageName: resolvedPackageName,
     token,
@@ -193,6 +195,7 @@ export async function verifyGooglePlaySubscriptionPurchase({ packageName, purcha
   const obfuscatedExternalAccountId = String(purchase.externalAccountIdentifiers?.obfuscatedExternalAccountId || "").trim() || null;
 
   return {
+    verifiedAt,
     packageName: resolvedPackageName,
     productId,
     planId: resolvePlanId(productId),
@@ -209,4 +212,12 @@ export async function verifyGooglePlaySubscriptionPurchase({ packageName, purcha
     obfuscatedExternalAccountId,
     raw: purchase,
   };
+}
+
+export async function acknowledgeGooglePlayPurchase(verification) {
+  if (verification.acknowledged || !["active", "grace", "canceled"].includes(verification.status)) return verification;
+  const client = await getAndroidPublisherClient();
+  await client.purchases.subscriptions.acknowledge({ packageName: verification.packageName,
+    subscriptionId: verification.productId, token: verification.purchaseToken, requestBody: {} });
+  return { ...verification, acknowledged: true };
 }

@@ -127,21 +127,3 @@ export async function initMobile() {
 
   return mobileInitPromise;
 }
-
-/**
- * Prevent double-tap zoom on input focus (common iOS/Android annoyance).
- * Should be called once during app init.
- */
-export function preventInputZoom() {
-  if (typeof document === "undefined") return;
-
-  // The viewport meta tag is the most reliable way.
-  // We ensure maximum-scale=1 is set.
-  const existing = document.querySelector('meta[name="viewport"]');
-  if (!existing) return;
-
-  const content = existing.getAttribute("content") || "";
-  if (!content.includes("maximum-scale")) {
-    existing.setAttribute("content", content + ", maximum-scale=1");
-  }
-}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { CalendarDays, Check, ChevronDown, Info, LockKeyhole } from "lucide-react";
+import Dialog from "../components/Dialog.jsx";
 
 import { todayKey } from "../lib/storage";
 import { computeWeekArchetype, prettyLevel } from "../lib/attuneEngine";
@@ -227,9 +228,6 @@ export default function Weekly({ state, actions }) {
   const [weekDetailsStart, setWeekDetailsStart] = useState(null);
   const [showWeekActivities, setShowWeekActivities] = useState(false);
   const [weekActivitiesStart, setWeekActivitiesStart] = useState(null);
-  const momentumCloseBtnRef = useRef(null);
-  const weekDetailsCloseBtnRef = useRef(null);
-  const weekActivitiesCloseBtnRef = useRef(null);
   const noteRef = useRef(null);
 
   const weekRecords = buildWeekRecords(state);
@@ -314,25 +312,6 @@ export default function Weekly({ state, actions }) {
     return () => window.clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftNote, isDirty, hasLocalWeekNoteEdits, weekRange.startKey]);
-
-  useEffect(() => {
-    if (!showMomentumInfo && !showWeekDetails && !showWeekActivities) return;
-
-    if (showWeekActivities) weekActivitiesCloseBtnRef.current?.focus?.();
-    else if (showWeekDetails) weekDetailsCloseBtnRef.current?.focus?.();
-    else momentumCloseBtnRef.current?.focus?.();
-
-    function onKeyDown(e) {
-      if (e.key === "Escape") {
-        setShowMomentumInfo(false);
-        setShowWeekDetails(false);
-        setShowWeekActivities(false);
-      }
-    }
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showMomentumInfo, showWeekDetails, showWeekActivities]);
 
   const weekDetailsRecords = (() => {
     if (!showWeekDetails) return [];
@@ -466,7 +445,6 @@ export default function Weekly({ state, actions }) {
   const weeklyPaceLine = buildWeeklyPaceLine(currentWeekSummary.avgPace, dominantLevel, dominantLevelCount);
   const daysPresentText = daysPresent === 1 ? "day checked in" : "days checked in";
   const completedTasksText = tasksDone === 1 ? "task finished" : "tasks finished";
-  const renderModal = (node) => (typeof document === "undefined" ? null : createPortal(node, document.body));
   const primaryPattern = canPatternCallouts && patternCallouts.length > 0 ? patternCallouts[0] : null;
   const remainingPatterns = primaryPattern ? patternCallouts.slice(1) : [];
 
@@ -511,7 +489,7 @@ export default function Weekly({ state, actions }) {
                 title="What does Momentum mean?"
                 className="infoBtn weeklyDigestInfoBtn"
               >
-                i
+                <Info size={16} aria-hidden="true" />
               </button>
             </div>
             <div className="weeklyDigestTitleRow">
@@ -526,7 +504,7 @@ export default function Weekly({ state, actions }) {
                   aria-label="Unlock exact Momentum score with Attune Plus"
                   title="Plus feature"
                 >
-                  🔒 Exact score
+                  <LockKeyhole size={14} aria-hidden="true" /> Exact score
                 </button>
               )}
             </div>
@@ -626,7 +604,7 @@ export default function Weekly({ state, actions }) {
             onClick={() => actions?.openPaywall?.("plus", "weekly")}
             aria-label="Try Attune Plus"
           >
-            🔒 Try Plus
+            <LockKeyhole size={14} aria-hidden="true" /> Try Plus
           </button>
         </div>
       )}
@@ -776,7 +754,7 @@ export default function Weekly({ state, actions }) {
                   }}
                   aria-label="Show which days you were present during this selected week"
                 >
-                  📅 {activePastSummary.presence}/7 present
+                  <CalendarDays size={14} aria-hidden="true" /> {activePastSummary.presence}/7 present
                 </button>
                 <button
                   type="button"
@@ -787,7 +765,7 @@ export default function Weekly({ state, actions }) {
                   }}
                   aria-label="Show how many activities you completed each day during this selected week"
                 >
-                  ✅ {activePastSummary.completions} completed
+                  <Check size={14} aria-hidden="true" /> {activePastSummary.completions} completed
                 </button>
               </div>
 
@@ -803,18 +781,8 @@ export default function Weekly({ state, actions }) {
         </div>
       )}
 
-      {showWeekDetails && renderModal(
-        <div
-          className="modalOverlay weekDetailsOverlay weekSheetOverlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Week details"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowWeekDetails(false);
-          }}
-        >
-          <div className="modalCard weekDetailsModal weekSheetModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="modalTitle">Week details</div>
+      {showWeekDetails && (
+        <Dialog title="Week details" onClose={() => setShowWeekDetails(false)}>
             <div className="modalBody">
               {weekDetailsStart && weekDetailsEnd
                 ? `${formatDateLong(weekDetailsStart)} to ${formatDateLong(weekDetailsEnd)}`
@@ -846,32 +814,11 @@ export default function Weekly({ state, actions }) {
               ))}
             </div>
 
-            <div className="modalActions">
-              <button
-                ref={weekDetailsCloseBtnRef}
-                type="button"
-                className="btn"
-                onClick={() => setShowWeekDetails(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
-      {showWeekActivities && renderModal(
-        <div
-          className="modalOverlay weekSheetOverlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Week activities"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowWeekActivities(false);
-          }}
-        >
-          <div className="modalCard weekActivitiesModal weekSheetModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="modalTitle">Completed activities</div>
+      {showWeekActivities && (
+        <Dialog title="Completed activities" onClose={() => setShowWeekActivities(false)}>
             <div className="modalBody">
               {weekActivitiesStart && weekActivitiesEnd
                 ? `${formatDateLong(weekActivitiesStart)} to ${formatDateLong(weekActivitiesEnd)}`
@@ -915,32 +862,11 @@ export default function Weekly({ state, actions }) {
               )}
             </div>
 
-            <div className="modalActions">
-              <button
-                ref={weekActivitiesCloseBtnRef}
-                type="button"
-                className="btn"
-                onClick={() => setShowWeekActivities(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
-      {showMomentumInfo && renderModal(
-        <div
-          className="modalOverlay weekSheetOverlay"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Momentum explanation"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setShowMomentumInfo(false);
-          }}
-        >
-          <div className="modalCard weekSheetModal weekMomentumModal" onMouseDown={(e) => e.stopPropagation()}>
-            <div className="modalTitle">About Momentum</div>
+      {showMomentumInfo && (
+        <Dialog title="About Momentum" onClose={() => setShowMomentumInfo(false)}>
             <div className="modalBody">
               Momentum is a helpful score based on your last 7 days: showing up matters most, with a small boost for finishing
               activities.
@@ -954,18 +880,7 @@ export default function Weekly({ state, actions }) {
               ))}
             </div>
 
-            <div className="modalActions">
-              <button
-                ref={momentumCloseBtnRef}
-                type="button"
-                className="btn"
-                onClick={() => setShowMomentumInfo(false)}
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
+        </Dialog>
       )}
 
       <div className="result weeklyNoteResult" aria-label="Week note section">
@@ -996,7 +911,7 @@ export default function Weekly({ state, actions }) {
               aria-controls="weekly-note-panel"
               aria-label={isWeekNoteOpen ? "Collapse weekly note" : "Expand weekly note"}
             >
-              <span className={"checkinNoteChevron" + (isWeekNoteOpen ? " open" : "")} aria-hidden="true" />
+              <ChevronDown size={18} className={"disclosureIcon" + (isWeekNoteOpen ? " open" : "")} aria-hidden="true" />
             </button>
           </div>
         </div>

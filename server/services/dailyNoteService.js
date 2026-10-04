@@ -4,6 +4,7 @@ import {
   sanitizeUntrustedAiText,
 } from "../lib/aiPromptSecurity.js";
 import { clampString, looksAssumptive, looksUnsafe, stableHash } from "./aiText.js";
+import { createAiUsageTracker } from "../lib/aiUsage.js";
 
 const dailyThemes = [
   "Make it simple",
@@ -146,6 +147,7 @@ export function buildDailyNoteRequest({ userId, checkin, level, today, useNoteFo
 export async function generateDailyNoteWithRetries(client, { system, userPayload, model }) {
   const maxAttempts = 2;
   let lastError = "";
+  const usageTracker = createAiUsageTracker();
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const prompt =
@@ -159,15 +161,20 @@ export async function generateDailyNoteWithRetries(client, { system, userPayload
               ". Return a corrected JSON object that follows the schema exactly. Keep it calm, specific to the check-in, and avoid generic advice.",
           };
 
-    const completion = await client.chat.completions.create({
-      model,
-      temperature: attempt === 1 ? 0.7 : 0.4,
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: JSON.stringify(prompt) },
-      ],
-      response_format: DAILY_NOTE_RESPONSE_FORMAT,
-    });
+    let completion;
+    try {
+      completion = await usageTracker.complete(client, {
+        model,
+        temperature: attempt === 1 ? 0.7 : 0.4,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: JSON.stringify(prompt) },
+        ],
+        response_format: DAILY_NOTE_RESPONSE_FORMAT,
+      });
+    } catch {
+      return { ok: false, error: "model_request_failed", providerUsage: usageTracker.snapshot() };
+    }
 
     const content = completion.choices?.[0]?.message?.content;
     if (typeof content !== "string" || !content.trim()) {
@@ -201,8 +208,8 @@ export async function generateDailyNoteWithRetries(client, { system, userPayload
       continue;
     }
 
-    return { ok: true, note: validated.note };
+    return { ok: true, note: validated.note, providerUsage: usageTracker.snapshot() };
   }
 
-  return { ok: false, error: lastError || "Invalid note" };
+  return { ok: false, error: lastError || "Invalid note", providerUsage: usageTracker.snapshot() };
 }

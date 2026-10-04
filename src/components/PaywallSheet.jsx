@@ -1,4 +1,5 @@
 import React from "react";
+import Dialog from "./Dialog.jsx";
 import { isNativePlatform } from "../lib/platform";
 
 function featureTitle(feature) {
@@ -73,18 +74,16 @@ export default function PaywallSheet({ state, actions }) {
   };
 
   return (
-    <div
-      className="modalOverlay modalOverlayCentered"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Attune Plus"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="modalCard paywallCard" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="paywallKicker">Attune Plus</div>
-        <div className="paywallTitle">A fuller rhythm, when you want it.</div>
+    <Dialog title="Attune Plus" onClose={onClose} footer={<>
+      <button type="button" className="btn primary" onClick={onPrimaryAction} disabled={billingSyncing}>
+        {getUpgradeCta(state)}
+      </button>
+      {isNativePlatform() ? <button type="button" className="btn ghost" onClick={onRestore} disabled={billingSyncing}>
+        Restore purchase
+      </button> : null}
+      <button type="button" className="btn ghost" onClick={onClose}>Not now</button>
+    </>}>
+        <div className="paywallTitle">More in tune with you.</div>
 
         <div className="modalBody paywallBody">
           {feature !== "plus" ? (
@@ -115,20 +114,6 @@ export default function PaywallSheet({ state, actions }) {
           </div>
         </div>
 
-        <div className="modalActions paywallActions">
-          <button type="button" className="btn paywallPrimary" onClick={onPrimaryAction} disabled={billingSyncing}>
-            {getUpgradeCta(state)}
-          </button>
-          {isNativePlatform() ? (
-            <button type="button" className="btn ghost" onClick={onRestore} disabled={billingSyncing}>
-              Restore purchase
-            </button>
-          ) : null}
-          <button type="button" className="btn ghost" onClick={onClose}>
-            Not now
-          </button>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

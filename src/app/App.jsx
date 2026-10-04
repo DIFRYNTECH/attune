@@ -1,7 +1,9 @@
 import { Suspense, lazy, useEffect, useRef, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 
 import { useAppInit } from "../hooks/useAppInit";
 import BottomNav from "../components/BottomNav.jsx";
+import { navigationItems } from "../components/navigation.js";
 import CheckIn from "../screens/CheckIn.jsx";
 import Landing from "../screens/Landing.jsx";
 import Login from "../screens/Login.jsx";
@@ -17,7 +19,7 @@ const PaywallSheet = lazy(() => import("../components/PaywallSheet.jsx"));
 
 function TopNav({ screen, go, entitlements, hideNav = false }) {
   return (
-    <div className="top">
+    <header className="top">
       <div className="brand">
         <div className="brandMark" aria-hidden="true"></div>
         <div className="brandText">
@@ -26,77 +28,34 @@ function TopNav({ screen, go, entitlements, hideNav = false }) {
             {entitlements?.isPlus ? <span className="planTag">Plus</span> : null}
           </div>
           <div className="tag">
-            Meet yourself where you are, then take one small step toward better.
+            A little more in tune.
           </div>
         </div>
       </div>
 
       {!hideNav ? (
-        <div className="nav">
-          <button
-            type="button"
-            className={"btn small" + (screen === "checkin" ? " primary" : "")}
-            onClick={() => go("checkin")}
-            aria-current={screen === "checkin" ? "page" : undefined}
-          >
-            Check-in
-          </button>
-          <button
-            type="button"
-            className={"btn small" + (screen === "wheel" ? " primary" : "")}
-            onClick={() => go("wheel")}
-            aria-current={screen === "wheel" ? "page" : undefined}
-          >
-            Pick
-          </button>
-          <button
-            type="button"
-            className={"btn small" + (screen === "today" ? " primary" : "")}
-            onClick={() => go("today")}
-            aria-current={screen === "today" ? "page" : undefined}
-          >
-            My Day
-          </button>
-          <button
-            type="button"
-            className={"btn small" + (screen === "week" ? " primary" : "")}
-            onClick={() => go("week")}
-            aria-current={screen === "week" ? "page" : undefined}
-          >
-            Weekly
-          </button>
-          <button
-            type="button"
-            className={"btn small" + (screen === "profile" ? " primary" : "")}
-            onClick={() => go("profile")}
-            aria-current={screen === "profile" ? "page" : undefined}
-          >
-            Profile
-          </button>
-        </div>
+        <nav className="nav" aria-label="Primary">
+          {navigationItems.map(({ key, label, Icon: icon }) => {
+            const Icon = icon;
+            return (
+            <button key={key} type="button" className={"navButton" + (screen === key ? " active" : "")}
+              onClick={() => go(key)} aria-current={screen === key ? "page" : undefined}>
+              <Icon size={18} strokeWidth={1.8} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+            );
+          })}
+        </nav>
       ) : null}
-    </div>
-  );
-}
-
-function ScreenShell({ title, subtitle }) {
-  return (
-    <div className="card">
-      <h2>{title}</h2>
-      <div className="sub">{subtitle}</div>
-      <div className="hint">
-        This is a placeholder screen. Next step: we paste your real UI for this
-        screen and wire it to state.
-      </div>
-    </div>
+    </header>
   );
 }
 
 function ScreenFallback({ label = "Loading..." }) {
   return (
-    <div className="card" aria-busy="true" aria-live="polite">
-      <h2>{label}</h2>
-      <div className="sub">Loading this part of Attune.</div>
+    <div className="screenLoading" aria-busy="true" role="status">
+      <LoaderCircle size={20} aria-hidden="true" />
+      <span>{label}</span>
     </div>
   );
 }
@@ -113,6 +72,10 @@ function isPrivacyPath() {
 
 function AttuneApp() {
   const { state, actions } = useAttuneStore();
+  return <AppExperience state={state} actions={actions} />;
+}
+
+export function AppExperience({ state, actions }) {
   const signedIn = !!state?.auth?.signedIn;
   const screen = state.screen;
   const activeToast = signedIn && state.toast && state.toast.screen === screen ? state.toast : null;
@@ -184,11 +147,7 @@ function AttuneApp() {
       <TopNav screen={screen} go={actions.go} entitlements={state.entitlements} />
 
       <div className="grid" ref={contentRef}>
-        <main>
-          {!signedIn && (
-            <Login state={state} actions={actions} />
-          )}
-
+        <main id="main-content">
           {screen === "checkin" && (
             <CheckIn state={state} actions={actions} />
           )}

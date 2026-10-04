@@ -1,3 +1,4 @@
+@layer legacy {
 :root{
       --fontUi: "Manrope", "Segoe UI", sans-serif;
   --bg:#eef2f6;
@@ -4503,3 +4504,4 @@
     }
 
     .hide{display:none !important;}
+}

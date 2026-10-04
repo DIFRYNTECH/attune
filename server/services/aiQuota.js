@@ -1,4 +1,5 @@
-import { hasPlusEntitlement, normalizePlanId } from "./entitlements.js";
+import { getUserEntitlementState, normalizePlanId } from "./entitlements.js";
+import { normalizeCompletionUsage } from "../lib/aiUsage.js";
 
 export const DEFAULT_PLAN_LIMITS = {
   free: { daily: 20, monthly: null },
@@ -51,7 +52,8 @@ export function createAiQuotaService({
     };
 
     try {
-      await supabaseAdmin.from("ai_usage").insert(payload);
+      const result = await supabaseAdmin.from("ai_usage").insert(payload);
+      if (result.error) throw result.error;
     } catch (error) {
       logEvent("warn", "ai_usage_record_failed", {
         userId,
@@ -72,17 +74,11 @@ export function createAiQuotaService({
         .select("use_note_for_ai")
         .eq("user_id", userId)
         .maybeSingle(),
-      supabaseAdmin
-        .from("user_entitlements")
-        .select("plan_id, status, current_period_end")
-        .eq("user_id", userId)
-        .maybeSingle(),
+      getUserEntitlementState({ supabaseAdmin, userId }),
     ]);
 
     if (profileResult.error) throw new Error("profile_lookup_failed");
-    if (entitlementResult.error) throw new Error("entitlement_lookup_failed");
-
-    const requestedPlanId = hasPlusEntitlement(entitlementResult.data) ? "plus" : "free";
+    const requestedPlanId = entitlementResult.planId;
     let planRow = planCatalogCache.get(requestedPlanId);
     let planError = null;
 
@@ -177,10 +173,21 @@ export function createAiQuotaService({
       quotaState: success ? "billed" : "released",
     };
 
+    const known = meta?.providerUsage?.knownTokens;
+    const counts = meta?.providerUsage?.usageComplete === true ? normalizeCompletionUsage({
+      prompt_tokens: known?.inputTokens,
+      completion_tokens: known?.outputTokens,
+      total_tokens: known?.totalTokens,
+    }) : null;
+    const completeCounts = counts && counts.totalTokens <= 2147483647 ? counts : null;
+
     const updates = {
       success: success === true,
       error_code: success === true ? null : (typeof errorCode === "string" ? errorCode : null),
       meta: nextMeta,
+      prompt_tokens: completeCounts?.inputTokens ?? null,
+      completion_tokens: completeCounts?.outputTokens ?? null,
+      total_tokens: completeCounts?.totalTokens ?? null,
     };
 
     if (typeof model === "string" && model) {

@@ -69,6 +69,8 @@ export function getBillingErrorMessage(errorCode){
       return "Sign in again before starting a purchase.";
     case "purchase_canceled":
       return "Purchase canceled.";
+    case "billing_purchase_pending":
+      return "Your purchase is not confirmed yet. Plus will activate once payment is verified. You can check again with Restore purchases.";
     case "billing_not_ready":
       return "Google Play billing is still connecting. Try again in a moment.";
     case "google_play_verify_failed":

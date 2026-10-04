@@ -26,6 +26,7 @@ import { createRequireAuthedUser } from "./lib/auth.js";
 import { registerHealthRoutes } from "./routes/health.js";
 import { registerClientErrorRoutes } from "./routes/clientError.js";
 import { registerBillingRoutes, registerPaddleWebhookRoute } from "./routes/billing.js";
+import { registerGooglePlayNotificationRoute } from "./routes/googlePlayNotifications.js";
 import { registerAiRoutes } from "./routes/ai.js";
 import { createAiQuotaService } from "./services/aiQuota.js";
 
@@ -109,6 +110,7 @@ export function createApp({ config = getServerConfig() } = {}) {
   }));
   app.use(createCorsMiddleware({ isOriginAllowed }));
   app.use(apiHardeningHeaders);
+  registerGooglePlayNotificationRoute({ app, supabaseAdmin, logEvent });
 
   const enforceAllowedOrigin = createEnforceAllowedOrigin({
     isOriginAllowed,

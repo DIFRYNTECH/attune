@@ -1,9 +1,12 @@
 export const SUPPORT_EMAIL = "support@useattune.co";
 export const PRIVACY_PATH = "/privacy";
+export const ACCOUNT_DELETION_PATH = `${PRIVACY_PATH}#delete-account`;
 export const MINIMUM_TESTER_AGE = 18;
 
 export const SUPPORT_MAILTO =
   `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Attune support request")}`;
+export const ACCOUNT_DELETION_MAILTO =
+  `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("Delete my Attune account and associated data")}`;
 
 export const PRIVACY_PROCESSORS = [
   "Supabase",

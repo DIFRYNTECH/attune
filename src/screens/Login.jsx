@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { PRIVACY_PATH } from "../content/privacy";
 import { validateEmail } from "../lib/authValidation";
 
@@ -7,6 +8,7 @@ export default function Login({ state, actions }) {
   const [username, setUsername] = useState(() => String(state?.auth?.username || ""));
   const [otpCode, setOtpCode] = useState(() => String(state?.auth?.otpCode || ""));
   const [rememberMe, setRememberMe] = useState(() => state?.auth?.rememberMe !== false);
+  const [emailTouched, setEmailTouched] = useState(false);
   const usernameRef = useRef(null);
   const codeRef = useRef(null);
   const authStep = state?.auth?.step === "verify" ? "verify" : "request";
@@ -80,9 +82,9 @@ export default function Login({ state, actions }) {
             <div className="brandMark" />
           </div>
 
-          <h1 className="loginTitle">Welcome back to Attune</h1>
+          <h1 className="loginTitle">Welcome to Attune</h1>
           <div className="loginLead">
-            Plan around your real energy, not your ideal day.
+            A day that fits how you feel. One small step at a time.
           </div>
           <div className="sub loginSub">
             Sign in with email to pick up your pace, notes, and weekly rhythm.
@@ -100,14 +102,17 @@ export default function Login({ state, actions }) {
                   className="input"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  onBlur={() => setEmailTouched(true)}
                   placeholder="you@example.com"
                   autoComplete="username"
                   inputMode="email"
+                  aria-label="Email"
                   maxLength={120}
                   spellCheck={false}
-                  aria-invalid={emailError ? "true" : undefined}
+                  aria-invalid={emailTouched && emailError ? "true" : undefined}
+                  aria-describedby={emailTouched && emailError ? "signin-email-error" : undefined}
                 />
-                {emailError ? <div className="fieldError">{emailError}</div> : null}
+                {emailTouched && emailError ? <div id="signin-email-error" className="fieldError">{emailError}</div> : null}
               </label>
 
               <div className="loginRow">
@@ -135,6 +140,7 @@ export default function Login({ state, actions }) {
                 <div className="fieldMeta">We sent an {OTP_LENGTH}-digit code to {sentTo || username}.</div>
                 <input
                   ref={codeRef}
+                  aria-label="Email code"
                   className="input"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, OTP_LENGTH))}
@@ -182,7 +188,7 @@ export default function Login({ state, actions }) {
           ) : null}
 
           <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
-            {submitLabel}
+            {submitLabel}<ArrowRight size={18} aria-hidden="true" />
           </button>
 
           <div className="loginFooterRail">

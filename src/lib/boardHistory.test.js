@@ -32,7 +32,7 @@ test("buildBoardHistoryForAi preserves task metadata for learning and freshness"
         repetitionFamily: "body-reset",
       },
     ],
-  });
+  }, { nowMs: 1779000002000 });
 
   assert.deepEqual(history.recentShown, [
     {

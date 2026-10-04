@@ -1,5 +1,7 @@
 import { TASKS, TASK_LIBRARY, TASK_CATALOG, TASK_METADATA_BY_TEXT } from "../data/tasks.js";
 import { LEVELS } from "../data/levels.js";
+import { isActivityEligible, sameActivity } from "./activityPolicy.js";
+import { learningPreferences, isActivitySuppressed } from "./activityLearning.js";
 
 export function prettyLevel(key){
   const lvl = LEVELS.find(l => l.key === key);
@@ -197,17 +199,18 @@ function buildLocalHistory(eventsByDay, nowMs){
   for(const day of days){
     const list = Array.isArray(events[day]) ? events[day] : [];
     for(const event of list){
+      if(!Number.isFinite(event?.ts) || event.ts <= nowMs - 90 * 86400000 || event.ts > nowMs + 300000) continue;
       const type = typeof event?.type === "string" ? event.type : "";
       const ts = typeof event?.ts === "number" ? event.ts : 0;
-      if(type === "activityShown"){
+      if(type === "activityShown" || type === "activityViewed"){
         const activities = Array.isArray(event?.activities) ? event.activities : [];
         for(const text of activities) noteTask(text, "shown", ts);
       }else if(type === "activityPicked"){
-        noteTask(event?.text, "picked", ts);
+        noteTask(event, "picked", ts);
       }else if(type === "activityCompleted"){
-        noteTask(event?.text, "completed", ts);
-      }else if(type === "activityRemoved"){
-        noteTask(event?.text, "removed", ts);
+        noteTask(event, "completed", ts);
+      }else if(type === "activityRemoved" && !event.done){
+        noteTask(event, "removed", ts);
       }
     }
   }
@@ -215,9 +218,9 @@ function buildLocalHistory(eventsByDay, nowMs){
   return {
     exact,
     family,
-    recentShownCutoff: addDaysAgo(nowMs, 28),
+    recentShownCutoff: addDaysAgo(nowMs, 7),
     recentFamilyCutoff: addDaysAgo(nowMs, 4),
-    recentRemovedCutoff: addDaysAgo(nowMs, 21),
+    recentRemovedCutoff: addDaysAgo(nowMs, 7),
     staleShownCutoff: addDaysAgo(nowMs, 7),
   };
 }
@@ -231,11 +234,6 @@ function getHistoryScore(task, history){
   if(family?.completed) score += Math.min(0.8, family.completed * 0.18);
   if(exact?.picked) score += Math.min(0.7, exact.picked * 0.2);
   if(family?.picked) score += Math.min(0.5, family.picked * 0.12);
-
-  const ignoredExact = Math.max(0, (exact?.shown || 0) - (exact?.picked || 0) - (exact?.completed || 0));
-  const ignoredFamily = Math.max(0, (family?.shown || 0) - (family?.picked || 0) - (family?.completed || 0));
-  score -= Math.min(1.6, ignoredExact * 0.28);
-  score -= Math.min(1.0, ignoredFamily * 0.12);
 
   if(exact?.removed) score -= Math.min(2.5, exact.removed * 0.7);
   if(family?.removed) score -= Math.min(1.4, family.removed * 0.28);
@@ -272,6 +270,7 @@ function rebalanceTowardMode(selected, targetMode, history, nowMs, checkin, leve
   const selectedKeys = new Set(selected.map((task) => task.canonicalKey));
   const targetCandidates = TASK_CATALOG
     .filter((task) => task.mode === targetMode && !selectedKeys.has(task.canonicalKey))
+    .filter((task) => !isFreshlySuppressed(task, history))
     .filter((task) => fitsCapacity(task, checkin, level, boardStyle))
     .map((task) => ({ task, lastShownTs: getExactLastShownTs(task, history) }))
     .sort((a, b) => a.lastShownTs - b.lastShownTs);
@@ -308,7 +307,7 @@ function getCapacityCap(checkin, level, boardStyle){
 }
 
 function fitsCapacity(task, checkin, level, boardStyle){
-  return taskPaceIndex(task) <= getCapacityCap(checkin, level, boardStyle);
+  return isActivityEligible(task, checkin, level) && taskPaceIndex(task) <= getCapacityCap(checkin, level, boardStyle);
 }
 
 function boardModeFromStyle(style){
@@ -566,6 +565,8 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
   const nowMs = typeof options?.nowMs === "number" ? options.nowMs : Date.now();
   const eventsByDay = options?.eventsByDay || options?.events || checkin?.events;
   const history = buildLocalHistory(eventsByDay, nowMs);
+  const preferences = learningPreferences(eventsByDay, nowMs);
+  const allowed = task => fitsCapacity(task, checkin, level, boardStyle) && !isActivitySuppressed(task, preferences);
 
   // 1. Start with a broad curated catalog, then score toward the selected
   // pace, Support/Stretch style, and local event history.
@@ -588,11 +589,12 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
   }
 
   // 3. Freshness: hard-suppress exact tasks removed recently or shown in the
-  // last day and a half, then dedupe by canonical key before scoring.
+  // last week, then dedupe by canonical key before scoring.
   const seen = new Set();
   const uniquePool = [];
   for (const task of pool) {
-    if (!task?.text || isFreshlySuppressed(task, history)) continue;
+    const familiar = [...preferences.favorites, ...preferences.helpful].some(item => sameActivity(item, task));
+    if (!task?.text || !allowed(task) || (!familiar && isFreshlySuppressed(task, history))) continue;
     const key = task.canonicalKey || normalizeTaskText(task.text);
     if (seen.has(key)) continue;
     seen.add(key);
@@ -604,6 +606,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
   // back into the old small pool after a few days.
   for (const task of TASK_CATALOG) {
     if(uniquePool.length >= MIN_BOARD_OPTION_POOL) break;
+    if(!allowed(task)) continue;
     if(isExactRecentlyShown(task, history)) continue;
     const key = task.canonicalKey || normalizeTaskText(task.text);
     if(seen.has(key)) continue;
@@ -621,7 +624,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       for(const text of TASK_LIBRARY[pace] || []){
         if(selected.length >= MIN_BOARD_OPTION_POOL) break;
         const task = materializeTask(text, pace);
-        if(!fitsCapacity(task, checkin, level, boardStyle)) continue;
+        if(!allowed(task)) continue;
         if(isExactRecentlyShown(task, history)) continue;
         if(selectedHasDuplicateLike(selected, task)) continue;
         selected.push(task);
@@ -635,7 +638,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
       for(const text of TASK_LIBRARY[pace] || []){
         if(selected.length >= MIN_BOARD_OPTION_POOL) break;
         const task = materializeTask(text, pace);
-        if(!fitsCapacity(task, checkin, level, boardStyle)) continue;
+        if(!allowed(task)) continue;
         if(isExactRecentlyShown(task, history)) continue;
         if(selectedHasDuplicateLike(selected, task)) continue;
         selected.push(task);
@@ -645,7 +648,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
 
   if(selected.length < MIN_BOARD_OPTION_POOL){
     const fallbackTasks = TASK_CATALOG
-      .filter((task) => fitsCapacity(task, checkin, level, boardStyle))
+      .filter(allowed)
       .map((task) => ({ task, lastShownTs: getExactLastShownTs(task, history) }))
       .sort((a, b) => a.lastShownTs - b.lastShownTs)
       .map((entry) => entry.task);
@@ -705,7 +708,7 @@ export function suggestActivities(checkin, level, seed = "", opts = {}) {
     ...selected.slice(VISIBLE_BOARD_COUNT).filter((task) => !visibleKeys.has(task.canonicalKey)),
   ];
 
-  return selected.slice(0, 30).map((task) => ({
+  return selected.filter(allowed).slice(0, 30).map((task) => ({
     ...task,
     text: task.text,
     level: task.level || task.pace || level,

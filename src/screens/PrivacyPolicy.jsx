@@ -1,13 +1,15 @@
+import { useEffect, useRef } from "react";
 import {
+  ACCOUNT_DELETION_MAILTO,
   DATA_SUBJECT_RIGHTS,
   MINIMUM_TESTER_AGE,
   PRIVACY_PROCESSORS,
   SUPPORT_EMAIL,
 } from "../content/privacy";
 
-function PrivacySection({ title, children }) {
+function PrivacySection({ id, title, children }) {
   return (
-    <section className="privacySection">
+    <section className="privacySection" id={id}>
       <h2>{title}</h2>
       {children}
     </section>
@@ -15,8 +17,14 @@ function PrivacySection({ title, children }) {
 }
 
 export default function PrivacyPolicy() {
+  const pageRef = useRef(null);
+  useEffect(() => {
+    if (window.location.hash === "#delete-account") {
+      pageRef.current?.querySelector("#delete-account")?.scrollIntoView({ block: "start" });
+    }
+  }, []);
   return (
-    <main className="privacyPage">
+    <main className="privacyPage" ref={pageRef}>
       <div className="privacyShell">
         <header className="privacyTop">
           <a className="privacyBrand" href="/" aria-label="Back to Attune">
@@ -32,7 +40,7 @@ export default function PrivacyPolicy() {
           <div className="privacyHero">
             <p className="privacyEyebrow">Privacy and data</p>
             <h1>Privacy Policy</h1>
-            <p className="privacyUpdated">Last updated: 16 May 2026</p>
+            <p className="privacyUpdated">Last updated: 4 October 2026</p>
             <p>
               Attune uses your information to help you check in, choose realistic steps, and notice
               weekly patterns. This page explains what is stored, why it is used, and how to contact
@@ -46,6 +54,27 @@ export default function PrivacyPolicy() {
                 Attune is responsible for the personal information processed through the app. For
                 privacy, support, access, correction, deletion, or objection requests, email{" "}
                 <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+              </p>
+            </PrivacySection>
+
+            <PrivacySection id="delete-account" title="Delete your Attune account">
+              <p>
+                To request deletion of your Attune account and associated data, email{" "}
+                <a href={ACCOUNT_DELETION_MAILTO}>{SUPPORT_EMAIL}</a> from the email address
+                used for your account. Include the subject "Delete my Attune account and associated data".
+                You do not need an active subscription or the installed app to make this request.
+              </p>
+              <p>
+                This covers your account, profile, check-ins, notes, activity history, saved and hidden
+                activities, and weekly summaries. We will verify account ownership and confirm the
+                request, expected completion time, and any records that must be retained for legal,
+                tax, fraud-prevention, or accounting reasons.
+              </p>
+              <p>
+                Sending a deletion request does not itself cancel a subscription. Manage a Google
+                Play subscription in Google Play, or a web subscription through billing management
+                in Profile. Contact support if you need help. Resetting local device data is not
+                account deletion.
               </p>
             </PrivacySection>
 

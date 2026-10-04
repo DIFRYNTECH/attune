@@ -1,6 +1,8 @@
-import { todayKey } from "./storage";
+import { todayKey } from "./storage.js";
+import { durablePreferenceEvents } from "./activityLearning.js";
 
 const DEFAULT_MAX_DAYS = 90;
+export const PREFERENCE_BUCKET = "_preferences";
 
 function safeObject(value) {
   return value && typeof value === "object" && !Array.isArray(value) ? value : {};
@@ -11,28 +13,26 @@ export function makeEvent(type, payload, nowMs) {
   const id = Math.random().toString(16).slice(2) + ts.toString(16);
   const safeType = typeof type === "string" ? type : "";
   const safePayload = safeObject(payload);
-  return { id, type: safeType, ts, ...safePayload };
+  return { ...safePayload, id, type: safeType, ts };
 }
 
-export function trimEventDays(eventsByDay, maxDays = DEFAULT_MAX_DAYS) {
+export function trimEventDays(eventsByDay, maxDays = DEFAULT_MAX_DAYS, nowMs = Date.now()) {
   const base = safeObject(eventsByDay);
   const limit =
     typeof maxDays === "number" && Number.isFinite(maxDays) && maxDays > 0
       ? Math.floor(maxDays)
       : DEFAULT_MAX_DAYS;
 
-  const keys = Object.keys(base).filter(Boolean).sort();
-  if (keys.length <= limit) return base;
-
-  const keepKeys = keys.slice(-limit);
-
+  const cutoff = nowMs - limit * 86400000;
   const next = {};
-  for (const k of keepKeys) {
-    const dayEvents = base[k];
-    next[k] = Array.isArray(dayEvents) ? dayEvents : [];
+  for (const [day, list] of Object.entries(base)) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(list)) continue;
+    const kept = list.filter(event => event && event.type !== "activityPreference" &&
+      Number.isFinite(event.ts) && event.ts > cutoff && event.ts <= nowMs + 300000);
+    if (kept.length) next[day] = kept;
   }
-
-  // Preserve insertion order of keepKeys (already sorted).
+  const preferences = durablePreferenceEvents(base).filter(event => event.ts <= nowMs + 300000);
+  if (preferences.length) next[PREFERENCE_BUCKET] = preferences;
   return next;
 }
 
@@ -46,7 +46,7 @@ export function appendEvent(eventsByDay, dayKey, event, maxDays = DEFAULT_MAX_DA
     [date]: [...prevList, event],
   };
 
-  return trimEventDays(next, maxDays);
+  return trimEventDays(next, maxDays, event?.ts || Date.now());
 }
 
 export function recordEventOnState(state, type, payload, opts) {

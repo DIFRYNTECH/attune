@@ -65,7 +65,7 @@ export function registerBillingRoutes({
       if (!authedUser) return;
 
       const initialEntitlement = await getUserEntitlementState({ supabaseAdmin, userId: authedUser.id });
-      if (getPaddleBillingConfig().configured) {
+      if (getPaddleBillingConfig().configured && initialEntitlement.source !== "play_store") {
         await reconcilePaddleBillingForUser({
           supabaseAdmin,
           userId: authedUser.id,
@@ -159,7 +159,7 @@ export function registerBillingRoutes({
         return;
       }
 
-      const verification = await verifyGooglePlaySubscriptionPurchase({
+      let verification = await verifyGooglePlaySubscriptionPurchase({
         packageName,
         purchaseToken,
       });
@@ -176,7 +176,7 @@ export function registerBillingRoutes({
         throw error;
       }
 
-      await persistVerifiedPlayPurchase({ supabaseAdmin, userId: authedUser.id, verification });
+      verification = await persistVerifiedPlayPurchase({ supabaseAdmin, userId: authedUser.id, verification });
 
       const entitlement = await getUserEntitlementState({ supabaseAdmin, userId: authedUser.id });
 

@@ -1,278 +1,91 @@
-const PACE_ORDER = ["rest", "gentle", "light", "steady", "capable", "brave"];
+import { activityKey, normalizeActivityText, isActivityEligible } from "./activityPolicy.js";
+import { activityEvents, learningPreferences, isActivitySuppressed } from "./activityLearning.js";
+import { activityContext, contextSimilarity } from "./activityContext.js";
 
-function paceIndex(key) {
-  const idx = PACE_ORDER.indexOf(key);
-  return idx === -1 ? 2 : idx; // default ~light
-}
+const DAY = 86400000;
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function safeObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-}
-
-function normText(text) {
-  const value = typeof text === "string" ? text : text?.text;
-  return String(value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .toLowerCase();
-}
-
-function weightedSampleWithoutReplacement(items, getWeight) {
-  const remaining = Array.isArray(items) ? items.slice() : [];
-  const out = [];
-
-  while (remaining.length) {
-    let total = 0;
-    const weights = new Array(remaining.length);
-
-    for (let i = 0; i < remaining.length; i++) {
-      const w = Math.max(0.001, Number(getWeight(remaining[i])) || 0);
-      weights[i] = w;
-      total += w;
-    }
-
-    let r = Math.random() * total;
-    let idx = 0;
-    for (let i = 0; i < weights.length; i++) {
-      r -= weights[i];
-      if (r <= 0) {
-        idx = i;
-        break;
+function indexLearning(events, nowMs, context) {
+  const byActivity = new Map();
+  const domainDays = new Map();
+  const families = new Map();
+  for (const event of activityEvents(events)) {
+    if (!Number.isFinite(event.ts) || event.ts > nowMs + 300000 || event.ts <= nowMs - 90 * DAY) continue;
+    const day = Math.floor(event.ts / DAY);
+    const weight = 2 ** (-Math.max(0, nowMs - event.ts) / (7 * DAY));
+    const exposure = ["activityViewed", "activityShown"].includes(event.type);
+    const items = exposure ? event.activities || [] : [event];
+    for (const item of items) {
+      const key = activityKey(item);
+      if (!key) continue;
+      if (!byActivity.has(key)) byActivity.set(key, { views: new Map(), positive: 0, effort: 0 });
+      const row = byActivity.get(key);
+      // Text aliases support pre-catalogue events while canonical IDs survive copy edits.
+      byActivity.set(normalizeActivityText(item), row);
+      if (exposure) row.views.set(day, Math.max(event.ts, row.views.get(day) || 0));
+      if (event.type === "activityFeedback" && event.feedback === "helped") row.positive = Math.max(row.positive, 2 * weight);
+      if (event.type === "activityFeedback" && event.feedback === "too_much") {
+        const penalty = 4 * weight * contextSimilarity(event.context, context);
+        row.effort = Math.min(8, row.effort + penalty);
+        if (item.repetitionFamily) families.set(item.repetitionFamily, Math.min(4, (families.get(item.repetitionFamily) || 0) + penalty * 0.4));
       }
-    }
-
-    out.push(remaining[idx]);
-    remaining.splice(idx, 1);
-  }
-
-  return out;
-}
-
-export function buildActivityStats(eventsByDay, nowMs = Date.now()) {
-  const events = safeObject(eventsByDay);
-  const stats = new Map();
-
-  const win7 = nowMs - 7 * 24 * 60 * 60 * 1000;
-  const win21 = nowMs - 21 * 24 * 60 * 60 * 1000;
-
-  const pacePicked21 = {
-    rest: 0,
-    gentle: 0,
-    light: 0,
-    steady: 0,
-    capable: 0,
-    brave: 0,
-  };
-
-  const ensure = (textKey) => {
-    const k = textKey;
-    if (!k) return null;
-    if (!stats.has(k)) {
-      stats.set(k, {
-        shown: 0,
-        shown7: 0,
-        picked: 0,
-        completed: 0,
-        removed: 0,
-        lastShownTs: 0,
-        lastPickedTs: 0,
-        lastCompletedTs: 0,
-        lastRemovedTs: 0,
-      });
-    }
-    return stats.get(k);
-  };
-
-  const days = Object.keys(events).filter(Boolean).sort();
-  for (const day of days) {
-    const list = Array.isArray(events[day]) ? events[day] : [];
-    for (const evt of list) {
-      const type = typeof evt?.type === "string" ? evt.type : "";
-      const ts = typeof evt?.ts === "number" ? evt.ts : 0;
-
-      if (type === "activityShown") {
-        const activities = Array.isArray(evt?.activities) ? evt.activities : [];
-        for (const a of activities) {
-          const key = normText(a);
-          const s = ensure(key);
-          if (!s) continue;
-          s.shown += 1;
-          if (ts >= win7) s.shown7 += 1;
-          if (ts > s.lastShownTs) s.lastShownTs = ts;
-        }
-        continue;
-      }
-
-      if (type === "activityPicked") {
-        const key = normText(evt?.text);
-        const s = ensure(key);
-        if (s) {
-          s.picked += 1;
-          if (ts > s.lastPickedTs) s.lastPickedTs = ts;
-        }
-
-        if (ts >= win21) {
-          const pace = typeof evt?.pace === "string" ? evt.pace : "";
-          if (pacePicked21[pace] !== undefined) pacePicked21[pace] += 1;
-        }
-        continue;
-      }
-
-      if (type === "activityCompleted") {
-        const key = normText(evt?.text);
-        const s = ensure(key);
-        if (!s) continue;
-        s.completed += 1;
-        if (ts > s.lastCompletedTs) s.lastCompletedTs = ts;
-        continue;
-      }
-
-      if (type === "activityRemoved") {
-        const key = normText(evt?.text);
-        const s = ensure(key);
-        if (!s) continue;
-        s.removed += 1;
-        if (ts > s.lastRemovedTs) s.lastRemovedTs = ts;
-        continue;
+      const interest = event.type === "activityFeedback" && event.feedback === "helped" ? 1
+        : event.type === "activityPicked" ? 0.15 : 0;
+      if (interest && item.domain) {
+        const domainKey = `${item.domain}:${day}`;
+        const previous = domainDays.get(domainKey);
+        if (!previous || previous.weight < interest * weight) domainDays.set(domainKey, { domain: item.domain, weight: interest * weight });
       }
     }
   }
-
-  return { stats, pacePicked21 };
+  const domains = new Map();
+  for (const { domain, weight } of domainDays.values()) domains.set(domain, (domains.get(domain) || 0) + weight);
+  const strongest = Math.max(0, ...domains.values());
+  return { byActivity, domains, strongest, families };
 }
 
-function computePaceBiasMultiplier(optionLevel, pacePicked21) {
-  const counts = pacePicked21 || {};
-  const total = Object.values(counts).reduce((a, b) => a + (Number(b) || 0), 0);
-  if (total <= 0) return 1;
+export function rankActivities(options, events, { checkin = {}, level, nowMs = Date.now() } = {}) {
+  const preferences = learningPreferences(events, nowMs);
+  const learning = indexLearning(events, nowMs, activityContext(checkin, level));
+  const favorites = new Set(preferences.favorites.flatMap(item => [activityKey(item), normalizeActivityText(item)]));
+  const helpfulKeys = new Set(preferences.helpful.flatMap(item => [activityKey(item), normalizeActivityText(item)]));
+  const seen = new Set();
+  const ranked = (options || []).filter(option => {
+    const key = activityKey(option);
+    if (!key || seen.has(key) || !isActivityEligible(option, checkin, level) || isActivitySuppressed(option, preferences)) return false;
+    seen.add(key);
+    return true;
+  }).map((option, index) => {
+    const stats = learning.byActivity.get(activityKey(option)) || learning.byActivity.get(normalizeActivityText(option));
+    const favorite = favorites.has(activityKey(option)) || favorites.has(normalizeActivityText(option));
+    const helpful = helpfulKeys.has(activityKey(option)) || helpfulKeys.has(normalizeActivityText(option));
+    const recentlyShown = [...(stats?.views.values() || [])].some(ts => ts > nowMs - 7 * DAY);
+    const fatigue = [...(stats?.views.values() || [])].reduce((sum, ts) => sum + 6 * 2 ** (-Math.max(0, nowMs - ts) / (3 * DAY)), 0);
+    const affinity = learning.strongest ? 6 * (learning.domains.get(option.domain) || 0) / learning.strongest : 0;
+    const score = (favorite ? 2 : 0) + (stats?.positive || 0) + affinity
+      - fatigue - (!favorite && !helpful && recentlyShown ? 100 : 0)
+      - (stats?.effort || 0) - (learning.families.get(option.repetitionFamily) || 0);
+    return { option, score, index, familiar: favorite || helpful };
+  }).sort((a, b) => b.score - a.score || a.index - b.index);
 
-  const low = (counts.rest || 0) + (counts.gentle || 0);
-  const mid = (counts.light || 0) + (counts.steady || 0);
-  const high = (counts.capable || 0) + (counts.brave || 0);
-
-  const lowRatio = low / total;
-  const highRatio = high / total;
-
-  const idx = paceIndex(optionLevel);
-
-  // If the user overwhelmingly picks Rest/Gentle lately, prefer lower friction.
-  if (lowRatio >= 0.6) {
-    if (idx >= paceIndex("brave")) return 0.45;
-    if (idx >= paceIndex("capable")) return 0.6;
-    if (idx >= paceIndex("steady")) return 0.8;
-    return 1.1;
+  // Keep the first three varied, with one discovery when familiar options dominate.
+  const front = [];
+  for (const row of ranked) {
+    if (front.length === 3) break;
+    if (front.filter(item => item.option.domain === row.option.domain).length >= 2) continue;
+    if (front.filter(item => item.familiar).length >= 2 && row.familiar && ranked.some(item => !item.familiar)) continue;
+    front.push(row);
   }
-
-  // If they’ve been leaning Capable/Brave, don’t over-protect.
-  if (highRatio >= 0.3) {
-    if (idx >= paceIndex("brave")) return 1.15;
-    if (idx >= paceIndex("capable")) return 1.1;
-    if (idx <= paceIndex("gentle")) return 0.9;
-    return 1;
+  for (const row of ranked) {
+    if (front.length === 3) break;
+    if (!front.includes(row)) front.push(row);
   }
-
-  // Otherwise, a mild preference for mid/steady.
-  if (mid / total >= 0.4) {
-    if (idx === paceIndex("steady") || idx === paceIndex("light")) return 1.08;
-  }
-
-  return 1;
+  return [...front, ...ranked.filter(row => !front.includes(row))].map(row => row.option);
 }
 
-function computeActivityWeight(option, activityStat, pacePicked21, nowMs) {
-  const baseLevel = typeof option?.level === "string" ? option.level : "light";
-  const s = activityStat;
-
-  // Default weight when we have no history.
-  let w = 1;
-
-  // Difficulty matching (based on what user actually picks lately).
-  w *= computePaceBiasMultiplier(baseLevel, pacePicked21);
-
-  if (!s) return clamp(w, 0.05, 4);
-
-  // Up-rank often-completed activities.
-  if (s.completed > 0) {
-    w *= 1 + Math.min(0.55, s.completed * 0.10);
-  }
-
-  // Down-rank repeatedly removed activities.
-  if (s.removed > 0) {
-    w *= 1 / (1 + Math.min(1.4, s.removed * 0.25));
-  }
-
-  // If they keep removing and never completing, strongly avoid.
-  if (s.removed >= 2 && s.completed === 0) {
-    w *= 0.35;
-  }
-
-  // If it’s been shown a lot and never completed, slowly down-rank.
-  if (s.shown >= 6 && s.completed === 0) {
-    w *= 0.75;
-  }
-
-  // Reduce repeats across days: penalize recently-shown options.
-  if (s.shown7 >= 1) w *= 0.78;
-  if (s.shown7 >= 2) w *= 0.60;
-  if (s.shown7 >= 4) w *= 0.40;
-
-  // Recency penalty: avoid re-surfacing something that was just shown.
-  const hoursSinceShown = s.lastShownTs ? (nowMs - s.lastShownTs) / (60 * 60 * 1000) : Infinity;
-  if (hoursSinceShown <= 36) w *= 0.55;
-  else if (hoursSinceShown <= 72) w *= 0.75;
-
-  // Mild exploration: if it’s never been picked, don’t bury it too hard.
-  if (s.picked === 0 && s.shown < 4) w *= 1.05;
-
-  return clamp(w, 0.05, 6);
+export function smartPickPool(options, events, context) {
+  return rankActivities(options, events, context);
 }
 
-export function smartPickPool(options, eventsByDay, ctx) {
-  const nowMs = typeof ctx?.nowMs === "number" ? ctx.nowMs : Date.now();
-  const { stats, pacePicked21 } = buildActivityStats(eventsByDay, nowMs);
-
-  const opts = Array.isArray(options) ? options.filter((o) => o && o.text) : [];
-  if (opts.length <= 1) return opts;
-
-  return weightedSampleWithoutReplacement(opts, (opt) => {
-    const key = normText(opt?.text);
-    const s = stats.get(key);
-    return computeActivityWeight(opt, s, pacePicked21, nowMs);
-  });
-}
-
-export function getAttuneRecommendedPicks(options, eventsByDay, ctx) {
-  const nowMs = typeof ctx?.nowMs === "number" ? ctx.nowMs : Date.now();
-  const limit = clamp(Number(ctx?.limit) || 3, 1, 6);
-  const { stats, pacePicked21 } = buildActivityStats(eventsByDay, nowMs);
-
-  const opts = Array.isArray(options) ? options.filter((opt) => opt && opt.text) : [];
-  if (!opts.length) return [];
-
-  return opts
-    .map((opt, idx) => {
-      const key = normText(opt?.text);
-      const stat = stats.get(key);
-      return {
-        opt,
-        idx,
-        weight: computeActivityWeight(opt, stat, pacePicked21, nowMs),
-        completed: Number(stat?.completed) || 0,
-        picked: Number(stat?.picked) || 0,
-        shown7: Number(stat?.shown7) || 0,
-      };
-    })
-    .sort((a, b) => {
-      if (b.weight !== a.weight) return b.weight - a.weight;
-      if (b.completed !== a.completed) return b.completed - a.completed;
-      if (b.picked !== a.picked) return b.picked - a.picked;
-      if (a.shown7 !== b.shown7) return a.shown7 - b.shown7;
-      return a.idx - b.idx;
-    })
-    .slice(0, limit)
-    .map((entry) => entry.opt);
+export function getAttuneRecommendedPicks(options, events, context = {}) {
+  return rankActivities(options, events, context).slice(0, context.limit || 3);
 }

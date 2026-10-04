@@ -31,6 +31,7 @@ test("getBillingPlanIdFromState defaults to free", () => {
 test("getBillingErrorMessage maps known billing errors", () => {
   assert.equal(getBillingErrorMessage("google_play_not_configured"), "Google Play billing is not configured yet.");
   assert.equal(getBillingErrorMessage("paddle_customer_missing"), "No web subscription was found for this account.");
+  assert.match(getBillingErrorMessage("billing_purchase_pending"), /not confirmed yet/);
   assert.equal(
     getBillingErrorMessage("google_play_missing_account_binding"),
     "This purchase is missing the required account binding. Start the upgrade again from this account.",

@@ -238,6 +238,7 @@ test("returned options preserve compatibility fields and task metadata", () => {
     assert.equal(typeof option.pace, "string");
     assert.equal(typeof option.canonicalKey, "string");
     assert.equal(typeof option.repetitionFamily, "string");
-    assert.equal(option.safetyReviewed, true);
+    assert.equal(option.safetyReviewed, false);
+    assert.ok(["legacy-inferred", "editorial-v1"].includes(option.metadataSource));
   }
 });

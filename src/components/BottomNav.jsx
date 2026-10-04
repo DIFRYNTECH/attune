@@ -1,15 +1,11 @@
-export default function BottomNav({ screen, setScreen }) {
-  const items = [
-    ["checkin", "Check-in"],
-    ["wheel", "Pick"],
-    ["today", "My Day"],
-    ["week", "Weekly"],
-    ["profile", "Profile"],
-  ];
+import { navigationItems } from "./navigation.js";
 
+export default function BottomNav({ screen, setScreen }) {
   return (
     <nav className="bottomNav" aria-label="Primary">
-      {items.map(([key, label]) => (
+      {navigationItems.map(({ key, label, Icon: icon }) => {
+        const Icon = icon;
+        return (
         <button
           key={key}
           type="button"
@@ -18,9 +14,11 @@ export default function BottomNav({ screen, setScreen }) {
           onClick={() => setScreen(key)}
           aria-current={screen === key ? "page" : undefined}
         >
+          <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
           <span className="bottomNavLabel">{label}</span>
         </button>
-      ))}
+        );
+      })}
     </nav>
   );
 }

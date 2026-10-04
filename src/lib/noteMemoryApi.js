@@ -72,7 +72,7 @@ export async function deleteAllNoteMemory(userId) {
   if (!userId) throw new Error("deleteAllNoteMemory: userId is required");
   const client = requireSupabase();
 
-  const { error } = await client.from("note_memory").delete().eq("user_id", userId);
+  const { error } = await client.rpc("delete_own_note_memory");
   if (error) throw error;
   return true;
 }

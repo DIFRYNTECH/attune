@@ -3,7 +3,8 @@ import {
   validateGeneratedAiTextSafety,
 } from "./aiPromptSecurity.js";
 
-const domains = ["body", "environment", "practical", "connection", "comfort", "regulation"];
+import { ACTIVITY_DOMAINS } from "../../src/lib/activityPolicy.js";
+const domains = ACTIVITY_DOMAINS;
 const paces = ["rest", "gentle", "light", "steady", "capable", "brave"];
 const modes = ["support", "stretch"];
 
@@ -34,39 +35,17 @@ const unsafeFragments = [
 export const BOARD_CANDIDATE_RESPONSE_FORMAT = {
   type: "json_schema",
   json_schema: {
-    name: "attune_board_task_candidates",
+    name: "attune_activity_selection",
     strict: true,
     schema: {
-      type: "object",
-      additionalProperties: false,
+      type: "object", additionalProperties: false,
       properties: {
         tasks: {
-          type: "array",
-          minItems: 40,
-          maxItems: 60,
+          type: "array", minItems: 1, maxItems: 60,
           items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              text: { type: "string", minLength: 1, maxLength: 120 },
-              mode: { type: "string", enum: modes },
-              domain: { type: "string", enum: domains },
-              effort: { type: "integer", minimum: 1, maximum: 5 },
-              friction: { type: "integer", minimum: 1, maximum: 5 },
-              pace: { type: "string", enum: paces },
-              canonicalKey: { type: "string", minLength: 1, maxLength: 80 },
-              repetitionFamily: { type: "string", minLength: 1, maxLength: 80 },
-            },
-            required: [
-              "text",
-              "mode",
-              "domain",
-              "effort",
-              "friction",
-              "pace",
-              "canonicalKey",
-              "repetitionFamily",
-            ],
+            type: "object", additionalProperties: false,
+            properties: { canonicalKey: { type: "string", minLength: 1, maxLength: 80 } },
+            required: ["canonicalKey"],
           },
         },
       },
@@ -176,5 +155,8 @@ export function sanitizeBoardHistoryForQuality(value) {
     recentPicked: cleanList(input.recentPicked, 30),
     recentCompleted: cleanList(input.recentCompleted, 30),
     recentRemoved: cleanList(input.recentRemoved, 30),
+    recentHelpful: cleanList(input.recentHelpful, 30),
+    favorites: cleanList(input.favorites, 200),
+    excluded: cleanList(input.excluded, 200),
   };
 }

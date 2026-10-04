@@ -10,9 +10,18 @@ test("normalizePlanId only treats plus as plus", () => {
   assert.equal(normalizePlanId(null), "free");
 });
 
-test("hasPlusEntitlement accepts active and grace plus entitlements", () => {
-  assert.equal(hasPlusEntitlement({ plan_id: "plus", status: "active" }), true);
-  assert.equal(hasPlusEntitlement({ plan_id: "plus", status: "grace" }), true);
+test("hasPlusEntitlement requires a current period for provider subscriptions", () => {
+  const future = new Date(Date.now() + 60_000).toISOString();
+  for (const source of ["play_store", "paddle", "stripe"]) {
+    for (const status of ["active", "grace", "canceled"]) {
+      assert.equal(hasPlusEntitlement({ plan_id: "plus", source, status, current_period_end: future }), true);
+      assert.equal(hasPlusEntitlement({ plan_id: "plus", source, status, current_period_end: "2020-01-01" }), false);
+      assert.equal(hasPlusEntitlement({ plan_id: "plus", source, status }), false);
+    }
+  }
+  assert.equal(hasPlusEntitlement({ plan_id: "plus", status: "active", source: "manual" }), true);
+  assert.equal(hasPlusEntitlement({ plan_id: "plus", status: "active", source: "promo" }), true);
+  assert.equal(hasPlusEntitlement({ plan_id: "plus", status: "active" }), false);
 });
 
 test("hasPlusEntitlement keeps canceled plus access until the period ends", () => {

@@ -12,6 +12,8 @@ export default function ActivityPicker({ state, actions }) {
     moodWords: Array.isArray(state?.checkin?.moodWords) ? state.checkin.moodWords.slice(0, 2) : [],
     energy: state?.checkin?.energy || "",
     body: state?.checkin?.body || "",
+    boardStyle: state?.checkin?.boardStyle || "steady",
+    activityConstraints: state?.checkin?.activityConstraints || {},
     note: state?.profile?.useNoteForAi !== false ? (state?.checkin?.note || "").slice(0, 200) : "",
   });
 
@@ -37,10 +39,10 @@ export default function ActivityPicker({ state, actions }) {
 
   return (
     <>
-      <div className="card">
+      <div className="pickScreen">
         <h2 className="activityPickerTitle">Pick an activity</h2>
         <div className="sub">
-          A small, doable option, based on how you feel today.
+          Something that fits today.
           {statusLine ? ` ${statusLine}` : ""}
         </div>
         <ActivityBoard state={state} actions={actions} loading={boardLoading} />

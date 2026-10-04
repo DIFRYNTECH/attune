@@ -1,4 +1,5 @@
 import { validateGeneratedAiTextSafety } from "./aiPromptSecurity.js";
+import { ACTIVITY_DOMAINS, activityCapacity, isActivityEligible } from "../../src/lib/activityPolicy.js";
 
 const commonWords = new Set([
   "a",
@@ -158,6 +159,14 @@ const actionVerbs = [
   "name",
   "soften",
   "update",
+  "draw",
+  "give",
+  "hum",
+  "recall",
+  "imagine",
+  "think",
+  "invent",
+  "adjust",
 ];
 
 function clampString(value, maxLen) {
@@ -226,7 +235,7 @@ function normalizeMode(value) {
 
 function normalizeDomain(value, text) {
   const domain = String(value || "").trim().toLowerCase();
-  if (["body", "environment", "practical", "connection", "comfort", "regulation"].includes(domain)) return domain;
+  if (ACTIVITY_DOMAINS.includes(domain)) return domain;
   return categoryForTask(text);
 }
 
@@ -246,7 +255,7 @@ function inferEffortFromText(text) {
   return clampNumber(effort, 1, 5, 2);
 }
 
-function normalizeCandidateMetadata(item, text, quality) {
+function normalizeCandidateMetadata(item, text) {
   const effort = clampNumber(item?.effort, 1, 5, inferEffortFromText(text));
   const friction = clampNumber(item?.friction, 1, 5, effort);
   const mode = normalizeMode(item?.mode || item?.boardStyle || item?.style) || (effort >= 3 ? "stretch" : "support");
@@ -263,7 +272,7 @@ function normalizeCandidateMetadata(item, text, quality) {
     ...(pace ? { pace } : {}),
     ...(canonicalKey ? { canonicalKey } : {}),
     ...(repetitionFamily ? { repetitionFamily } : {}),
-    familyKey: normalizeKey(repetitionFamily || canonicalKey || quality?.category || text),
+    familyKey: normalizeKey(repetitionFamily || canonicalKey || text),
     canonicalKeyNormalized: normalizeKey(canonicalKey),
   };
 }
@@ -384,13 +393,16 @@ export function evaluateTaskQuality(textOrTask, ctx = {}) {
   const completedMatch = historyMatches(recentCompleted, text, metadata);
   const removedMatch = historyMatches(recentRemoved, text, metadata);
 
-  if (shownMatch.exact) score -= 28;
-  else if (shownMatch.canonical || shownMatch.family) score -= 18;
+  const helpfulMatch = historyMatches(makeHistoryIndex([...(history.recentHelpful || []), ...(history.favorites || [])]), text, metadata);
+  const familiar = completedMatch.exact || completedMatch.canonical || helpfulMatch.exact || helpfulMatch.canonical;
+  if (helpfulMatch.exact || helpfulMatch.canonical) score += 24;
+  if (!familiar && shownMatch.exact) score -= 28;
+  else if (!familiar && (shownMatch.canonical || shownMatch.family)) score -= 18;
 
-  if (pickedMatch.exact) score -= 22;
-  else if (pickedMatch.canonical || pickedMatch.family) score -= 14;
+  if (!familiar && pickedMatch.exact) score -= 22;
+  else if (!familiar && (pickedMatch.canonical || pickedMatch.family)) score -= 14;
 
-  if (completedMatch.exact) score -= 8;
+  if (completedMatch.exact) score += 8;
   else if (completedMatch.canonical || completedMatch.family) score += 5;
 
   if (removedMatch.exact) score -= 44;
@@ -418,16 +430,7 @@ function sourceText(item) {
 }
 
 function effortCapForCheckin(checkin) {
-  const c = checkin && typeof checkin === "object" ? checkin : {};
-  const pace = String(c.pace || c.level || "").toLowerCase();
-  const energy = String(c.energy || "").toLowerCase();
-  const body = String(c.body || "").toLowerCase();
-  const state = `${pace} ${energy} ${body} ${(Array.isArray(c.moodWords) ? c.moodWords : []).join(" ")}`.toLowerCase();
-
-  if (pace === "rest" || energy === "verylow" || body === "tender" || /\bworn|exhausted|overwhelmed\b/.test(state)) return 2;
-  if (pace === "gentle" || energy === "low" || /\btired|irritable|restless\b/.test(state)) return 3;
-  if (pace === "capable" || pace === "brave" || energy === "high") return 4;
-  return 3;
+  return activityCapacity(checkin);
 }
 
 function desiredModeMix(target, checkin) {
@@ -449,8 +452,8 @@ function desiredModeMix(target, checkin) {
 
 function selectedTaskForEntry(entry) {
   const out = { text: entry.text };
-  for (const key of ["level", "mode", "domain", "effort", "friction", "pace", "canonicalKey", "repetitionFamily"]) {
-    if (entry[key] !== undefined && entry[key] !== "") out[key] = entry[key];
+  for (const key of ["level", "mode", "domain", "effort", "friction", "pace", "canonicalKey", "repetitionFamily", "durationMinutes", "setup", "metadataSource", "canDoSeated", "location", "physicalEffort", "requirementsSource", "durationKind"]) {
+    if (entry[key] !== undefined && (entry[key] !== "" || key === "setup")) out[key] = entry[key];
   }
   return out;
 }
@@ -482,6 +485,12 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
       continue;
     }
     const metadata = normalizeCandidateMetadata(item, text, quality);
+    const excluded = makeHistoryIndex([...(boardHistory?.excluded || []), ...(boardHistory?.recentRemoved || [])]);
+    const excludedMatch = historyMatches(excluded, text, metadata);
+    if (!isActivityEligible({ ...item, ...metadata, text }, checkin) || excludedMatch.exact || excludedMatch.canonical) {
+      if (source === "ai") rejectedCount += 1;
+      continue;
+    }
     const effortCap = effortCapForCheckin(checkin);
     const overCap = Math.max(0, metadata.effort - effortCap) + Math.max(0, metadata.friction - (effortCap + 1));
     const supportBias = metadata.mode === "support" && effortCap <= 3 ? 4 : 0;
@@ -492,6 +501,14 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
       index: i,
       text,
       level: typeof item?.level === "string" ? item.level : undefined,
+      durationMinutes: item?.durationMinutes,
+      setup: item?.setup,
+      metadataSource: item?.metadataSource,
+      canDoSeated: item?.canDoSeated,
+      location: item?.location,
+      physicalEffort: item?.physicalEffort,
+      requirementsSource: item?.requirementsSource,
+      durationKind: item?.durationKind,
       mode: metadata.mode,
       domain: metadata.domain,
       effort: metadata.effort,
@@ -501,7 +518,7 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
       repetitionFamily: metadata.repetitionFamily,
       familyKey: metadata.familyKey,
       quality,
-      score: quality.score + supportBias + stretchBias - (overCap * 32),
+      score: quality.score + supportBias + stretchBias + (source === "ai" ? Math.max(2, 12 - i * 0.2) : 0) - (overCap * 32),
     });
   }
 
@@ -556,7 +573,8 @@ export function selectQualityBoard({ candidates, fallbackTasks, checkin, boardHi
   }
 
   for (const domain of availableDomains) {
-    if (selected.length >= minDomains) break;
+    if (domainCounts.size >= minDomains) break;
+    if (domainCounts.has(domain)) continue;
     const entry = evaluated.find((candidate) => candidate.domain === domain && canSelect(candidate));
     if (entry) addEntry(entry);
   }

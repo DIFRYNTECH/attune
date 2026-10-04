@@ -2,12 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  ACCOUNT_DELETION_MAILTO,
+  ACCOUNT_DELETION_PATH,
   DATA_SUBJECT_RIGHTS,
   MINIMUM_TESTER_AGE,
   PRIVACY_PROCESSORS,
   SUPPORT_EMAIL,
   SUPPORT_MAILTO,
 } from "./privacy.js";
+
+test("account deletion has a public anchor and an explicit request subject", () => {
+  assert.equal(ACCOUNT_DELETION_PATH, "/privacy#delete-account");
+  const request = new URL(ACCOUNT_DELETION_MAILTO);
+  assert.equal(request.pathname, SUPPORT_EMAIL);
+  assert.equal(request.searchParams.get("subject"), "Delete my Attune account and associated data");
+});
 
 test("privacy content exposes a professional support mailbox", () => {
   assert.equal(SUPPORT_EMAIL, "support@useattune.co");

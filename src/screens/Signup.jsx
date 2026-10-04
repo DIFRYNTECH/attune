@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { PRIVACY_PATH } from "../content/privacy";
 import { validateDisplayName, validateEmail } from "../lib/authValidation";
 
@@ -8,6 +9,7 @@ export default function Signup({ state, actions }) {
   const [username, setUsername] = useState(() => String(state?.auth?.username || ""));
   const [otpCode, setOtpCode] = useState(() => String(state?.auth?.otpCode || ""));
   const [rememberMe, setRememberMe] = useState(() => state?.auth?.rememberMe !== false);
+  const [touched, setTouched] = useState({ name: false, email: false });
   const nameRef = useRef(null);
   const codeRef = useRef(null);
   const authStep = state?.auth?.step === "verify" ? "verify" : "request";
@@ -82,9 +84,9 @@ export default function Signup({ state, actions }) {
             <div className="brandMark" />
           </div>
 
-          <h1 className="loginTitle">Start with a gentler plan</h1>
+          <h1 className="loginTitle">Join Attune</h1>
           <div className="loginLead">
-            Attune helps you shape days that still work when energy is low.
+            Make a little room for yourself, whatever today brings.
           </div>
           <div className="sub loginSub">
             Create your account to save your pace, notes, and weekly progress across devices.
@@ -102,14 +104,17 @@ export default function Signup({ state, actions }) {
                   className="input"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
+                  onBlur={() => setTouched(current => ({ ...current, name: true }))}
                   placeholder="Enter your name"
                   autoComplete="name"
+                  aria-label="Name"
                   autoCapitalize="words"
                   maxLength={40}
                   required
-                  aria-invalid={nameError ? "true" : undefined}
+                  aria-invalid={touched.name && nameError ? "true" : undefined}
+                  aria-describedby={touched.name && nameError ? "signup-name-error" : undefined}
                 />
-                {nameError ? <div className="fieldError">{nameError}</div> : null}
+                {touched.name && nameError ? <div id="signup-name-error" className="fieldError">{nameError}</div> : null}
               </label>
 
               <label className="field">
@@ -119,14 +124,17 @@ export default function Signup({ state, actions }) {
                   className="input"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
+                  onBlur={() => setTouched(current => ({ ...current, email: true }))}
                   placeholder="you@example.com"
                   autoComplete="username"
                   inputMode="email"
+                  aria-label="Email"
                   maxLength={120}
                   spellCheck={false}
-                  aria-invalid={emailError ? "true" : undefined}
+                  aria-invalid={touched.email && emailError ? "true" : undefined}
+                  aria-describedby={touched.email && emailError ? "signup-email-error" : undefined}
                 />
-                {emailError ? <div className="fieldError">{emailError}</div> : null}
+                {touched.email && emailError ? <div id="signup-email-error" className="fieldError">{emailError}</div> : null}
               </label>
 
               <div className="loginRow">
@@ -154,6 +162,7 @@ export default function Signup({ state, actions }) {
                 <div className="fieldMeta">We sent an {OTP_LENGTH}-digit code to {sentTo || username}.</div>
                 <input
                   ref={codeRef}
+                  aria-label="Email code"
                   className="input"
                   value={otpCode}
                   onChange={(e) => setOtpCode(e.target.value.replace(/\D+/g, "").slice(0, OTP_LENGTH))}
@@ -201,7 +210,7 @@ export default function Signup({ state, actions }) {
           ) : null}
 
           <button type="submit" className="btn primary loginSubmit" disabled={!canSubmit}>
-            {submitLabel}
+            {submitLabel}<ArrowRight size={18} aria-hidden="true" />
           </button>
 
           <div className="loginFooterRail">

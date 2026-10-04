@@ -7,6 +7,11 @@ import { ENCOURAGE_DONE, ENCOURAGE_EMPTY } from "../data/messages";
 import { getEntitlements } from "../lib/entitlements";
 import { recordEventOnState, trimEventDays } from "../lib/events";
 import { buildBoardHistoryForAi } from "../lib/boardHistory";
+import { activitySnapshot, preparePickBoard } from "../lib/activityState.js";
+import { mergeActivityEvents, sanitizeEventsForSync } from "../lib/activitySync.js";
+import { activityContext } from "../lib/activityContext.js";
+import { activityConstraints, sameActivity } from "../lib/activityPolicy.js";
+import { ACTIVITY_FEEDBACK } from "../lib/activityLearning.js";
 import { addNoteToMemory, applyThemesToRememberedNote, clearNoteMemory as clearNoteMemoryObj, extractThemes } from "../lib/noteMemory";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, upsertWeeklySummary, weekStartMondayKey } from "../lib/weeklyHistory";
 import { ensureProfile, updateProfile } from "../lib/profileApi";
@@ -328,7 +333,8 @@ function applyBillingStateToLocalState(baseState, billingPatch){
     noteMemory: planId === "plus" ? baseState.noteMemory : clearNoteMemoryObj(baseState.noteMemory),
   };
 
-  return planId === "plus" ? nextState : toFreeLocalBoardState(nextState);
+  const needsFreeBoard = planId !== "plus" && (getBillingPlanIdFromState(baseState) === "plus" || baseState.optionsSource === "ai");
+  return needsFreeBoard ? toFreeLocalBoardState(nextState) : nextState;
 }
 
 function clamp(n, min, max){
@@ -424,18 +430,7 @@ function mergeRemoteDeviceState(local, remote){
   const remoteDate = typeof remote.date === "string" ? remote.date : "";
 
   // Always merge events (90-day history is always useful).
-  let mergedEvents = local.events && typeof local.events === "object" ? { ...local.events } : {};
-  if(remote.events && typeof remote.events === "object"){
-    for(const [day, arr] of Object.entries(remote.events)){
-      if(!Array.isArray(arr)) continue;
-      const existing = Array.isArray(mergedEvents[day]) ? mergedEvents[day] : [];
-      const combined = [...existing];
-      for(const ev of arr){
-        if(!combined.some((e) => e.id === ev.id)) combined.push(ev);
-      }
-      mergedEvents[day] = combined;
-    }
-  }
+  const mergedEvents = mergeActivityEvents(local.events, remote.events);
 
   // Today-specific fields: only apply if remote snapshot is also from today.
   if(remoteDate !== localToday){
@@ -659,15 +654,18 @@ function sanitizeCheckinForSync(checkin){
     body: clampText(source.body, 24) || DEFAULT_CHECKIN.body,
     boardStyle: normalizeBoardStyle(source.boardStyle),
     note: clampText(source.note, 200),
+    activityConstraints: activityConstraints(source.activityConstraints),
   };
 }
 
 function sanitizeTaskForSync(item, { includeDone = true } = {}){
   const out = {
+    ...activitySnapshot(item),
     text: clampText(item.text, 140),
     level: clampText(item.level, 24),
   };
   if (includeDone) out.done = item.done === true;
+  else delete out.done;
   for (const key of ["mode", "domain", "pace", "canonicalKey", "repetitionFamily"]) {
     const value = clampText(item[key], key === "canonicalKey" || key === "repetitionFamily" ? 80 : 32);
     if (value) out[key] = value;
@@ -691,33 +689,6 @@ function sanitizeOptionsForSync(list){
     .map((item) => sanitizeTaskForSync(item, { includeDone: false }))
     .filter((item) => item?.text)
     .slice(0, BOARD_TILE_COUNT);
-}
-
-function sanitizeEventsForSync(events){
-  const source = events && typeof events === "object" && !Array.isArray(events) ? events : {};
-  const trimmed = trimEventDays(source, EVENT_DAYS_TO_KEEP);
-  const next = {};
-
-  for(const [day, list] of Object.entries(trimmed)){
-    if(!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Array.isArray(list)) continue;
-    next[day] = list
-      .filter((event) => event && typeof event === "object" && !Array.isArray(event))
-      .map((event) => ({
-        id: clampText(event.id, 80),
-        type: clampText(event.type, 40),
-        at: Number.isFinite(Number(event.at)) ? Number(event.at) : 0,
-        payload: event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
-          ? {
-              text: clampText(event.payload.text, 140),
-              level: clampText(event.payload.level, 24),
-            }
-          : {},
-      }))
-      .filter((event) => event.id && event.type)
-      .slice(-50);
-  }
-
-  return next;
 }
 
 function buildDeviceStateSyncPayload(state){
@@ -808,7 +779,7 @@ function checkinSignature(checkin, level, useNoteForAi){
   const includeNote = useNoteForAi !== false;
   const note = includeNote && typeof checkin?.note === "string" ? checkin.note.slice(0,200) : "";
   const lvl = typeof level === "string" ? level : "";
-  return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, boardStyle, note, lvl });
+  return JSON.stringify({ v: AI_BOARD_VERSION, mood, moodWords, energy, body, boardStyle, note, lvl, constraints: activityConstraints(checkin?.activityConstraints) });
 }
 
 function getLocalOptionsRefreshKey(today){
@@ -834,6 +805,7 @@ function getDefaultOptions(checkin, level, today, planId, eventsByDay){
 function taskEventPayload(task, fallback = {}) {
   const text = typeof task?.text === "string" ? task.text.trim() : "";
   const out = {
+    ...activitySnapshot(task),
     ...(fallback && typeof fallback === "object" ? fallback : {}),
     ...(text ? { text } : {}),
   };
@@ -1107,6 +1079,7 @@ function normalizeLoadedState(loaded){
     next.checkin?.body === DEFAULT_CHECKIN.body &&
     normalizeBoardStyle(next.checkin?.boardStyle) === DEFAULT_CHECKIN.boardStyle &&
     (!next.checkin?.note || next.checkin.note.trim() === "") &&
+    Object.values(activityConstraints(next.checkin?.activityConstraints)).every(value => !value) &&
     (next.level === "gentle" || next.level === DEFAULT_CHECKIN.level);
 
   if(next.today === todayKey() && next.screen === "checkin" && checkinIsDefault){
@@ -1330,15 +1303,38 @@ export function useAttuneStore(){
 
   // Debounced push of board / check-in / events to Supabase for cross-device sync.
   const devicePushTimerRef = useRef(null);
+  const deviceSyncFailureRef = useRef(false);
   useEffect(() => {
     const userId = state?.auth?.userId;
     if(!userId) return;
-    if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
-    devicePushTimerRef.current = setTimeout(() => {
-      upsertDeviceState(userId, buildDeviceStateSyncPayload(state)).catch(() => {});
-    }, 2000);
+    const push = async () => {
+      if(stateRef.current?.auth?.userId !== userId) return;
+      try {
+        const remote = await upsertDeviceState(userId, buildDeviceStateSyncPayload(stateRef.current));
+        deviceSyncFailureRef.current = false;
+        setState(current => {
+          if(current.auth?.userId !== userId) return current;
+          const events = mergeActivityEvents(current.events, remote?.events);
+          if(JSON.stringify(events) === JSON.stringify(current.events)) return current;
+          return preparePickBoard({ ...current, events });
+        });
+      } catch {
+        if(stateRef.current?.auth?.userId !== userId || deviceSyncFailureRef.current) return;
+        deviceSyncFailureRef.current = true;
+        setState(current => current.auth?.userId === userId ? { ...current,
+          toast: { text: "Account sync is unavailable. Your current activities are still on this device.", good: false, screen: current.screen },
+        } : current);
+      }
+    };
+    const schedule = () => {
+      if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
+      devicePushTimerRef.current = setTimeout(push, 2000);
+    };
+    schedule();
+    window.addEventListener("online", schedule);
     return () => {
       if(devicePushTimerRef.current) clearTimeout(devicePushTimerRef.current);
+      window.removeEventListener("online", schedule);
     };
   }, [state]);
 
@@ -1546,6 +1542,41 @@ export function useAttuneStore(){
   const actions = useMemo(() => ({
     trackEvent: (type, payload) =>
       setState(s => recordEventOnState(s, type, payload, { maxDays: EVENT_DAYS_TO_KEEP })),
+
+    preparePickBoard: () => setState(s => {
+      const next = preparePickBoard(s);
+      return JSON.stringify(next.boardAssigned) === JSON.stringify(s.boardAssigned) ? s : next;
+    }),
+
+    recordActivityViewed: (task) => setState(s => {
+      const alreadySeen = (s.events?.[s.today] || []).some(event => event.type === "activityViewed" &&
+        (event.activities || []).some(item => sameActivity(item, task)));
+      if (alreadySeen || !task?.text) return s;
+      return recordEventOnState(s, "activityViewed", { visibility: "observed", activities: [activitySnapshot(task)] });
+    }),
+
+    setActivityConstraints: (patch) => setState(s => {
+      const checkin = { ...s.checkin, activityConstraints: activityConstraints({ ...s.checkin.activityConstraints, ...patch }) };
+      return preparePickBoard({ ...s, checkin, boardAssigned: [], optionsSource: "default",
+        options: getDefaultOptions(checkin, s.level, s.today, getBillingPlanIdFromState(s), s.events) });
+    }),
+
+    setActivityPreference: (task, preference, value) => setState(s => {
+      if (!task?.text || !["favorite", "hidden"].includes(preference)) return s;
+      const next = recordEventOnState(s, "activityPreference", { ...activitySnapshot(task), preference, value: value === true });
+      return preference === "hidden" ? preparePickBoard(next, value ? { replace: task } : {}) : next;
+    }),
+
+    recordActivityFeedback: (task, feedback, replace = false) => setState(s => {
+      if (!task?.text || !ACTIVITY_FEEDBACK.includes(feedback)) return s;
+      let next = recordEventOnState(s, "activityFeedback", { ...activitySnapshot(task), taskId: task.id || "", feedback,
+        context: activityContext(s.checkin, s.level) });
+      if (feedback === "not_for_me") next = recordEventOnState(next, "activityPreference", {
+        ...activitySnapshot(task), preference: "hidden", value: true,
+      });
+      if (replace) next = preparePickBoard(next, { replace: task });
+      return { ...next, toast: { text: feedback === "helped" ? "Noted. We will keep this in mind." : "Noted. Your day is still yours.", good: true, screen: s.screen } };
+    }),
 
     setAuthView: (view) =>
       setState(s => {
@@ -1857,13 +1888,13 @@ export function useAttuneStore(){
         const source = shouldResuggestLevel ? "auto" : (s.levelSource === "manual" ? "manual" : "auto");
         const level = source === "manual" ? s.level : suggestLevelFromCheckin(checkin);
         const options = getDefaultOptions(checkin, level, s.today, getBillingPlanIdFromState(s), s.events);
-        return { ...s, checkin, level, levelSource: source, options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
+        return { ...s, checkin, level, levelSource: source, options, boardAssigned: [], optionsSource: "default", dailyMessage: dailyMessageFromCheckin(checkin, level) };
       }),
 
     setLevel: (level) =>
       setState(s => {
         const options = getDefaultOptions(s.checkin, level, s.today, getBillingPlanIdFromState(s), s.events);
-        return {...s, level, levelSource: "manual", options, optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
+        return {...s, level, levelSource: "manual", options, boardAssigned: [], optionsSource: "default", dailyMessage: dailyMessageFromCheckin(s.checkin, level) }
       }),
 
     suggestLevel: () =>
@@ -1875,6 +1906,7 @@ export function useAttuneStore(){
           level: suggested,
           levelSource: "auto",
           options,
+          boardAssigned: [],
           optionsSource: "default",
           dailyMessage: dailyMessageFromCheckin(s.checkin, suggested)
         };
@@ -1909,7 +1941,7 @@ export function useAttuneStore(){
         current.ai.today === t &&
         current.ai.sig === sig &&
         Array.isArray(current.ai.tasks) &&
-        current.ai.tasks.length === 15;
+        current.ai.tasks.length > 0 && current.ai.tasks.length <= BOARD_TILE_COUNT;
 
       if(alreadyReady) return;
       if(current?.ai?.status === "loading" && current.ai?.today === t && current.ai?.sig === sig) return;
@@ -1951,7 +1983,7 @@ export function useAttuneStore(){
 
         const data = await resp.json();
         const tasks = Array.isArray(data?.tasks) ? data.tasks : null;
-        if(!tasks || tasks.length !== BOARD_TILE_COUNT) throw new Error("invalid_tasks");
+        if(!tasks || tasks.length === 0 || tasks.length > BOARD_TILE_COUNT) throw new Error("invalid_tasks");
 
         const uniqueTasks = [];
         const seenTexts = new Set();
@@ -1970,7 +2002,7 @@ export function useAttuneStore(){
         const nextOptions = uniqueTasks.slice(0, BOARD_TILE_COUNT);
         const nextTasks = nextOptions.map((option) => ({ ...option }));
 
-        if(nextOptions.length !== BOARD_TILE_COUNT) throw new Error("invalid_texts");
+        if(nextOptions.length === 0) throw new Error("invalid_texts");
 
         // Ignore stale responses.
         if(requestId !== aiReqRef.current.requestId) return;
@@ -2159,7 +2191,7 @@ export function useAttuneStore(){
         const pickToast = getNextPickToast(s.checkin, s.currentSpin?.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
-          myDay: [...s.myDay, { id, ...pickedTask, text: s.currentSpin.text, done:false }],
+          myDay: [...s.myDay, { ...pickedTask, id, text: s.currentSpin.text, done:false }],
           pickToastCycle: pickToast.nextCycle,
           currentSpin: null,
           toast: {
@@ -2188,10 +2220,11 @@ export function useAttuneStore(){
         }
         const id = Math.random().toString(16).slice(2) + Date.now().toString(16);
         const pickedTask = taskEventPayload(opt, { pace: opt.level || s.level, source: "board" });
+        if ((s.myDay || []).some(task => sameActivity(task, opt))) return s;
         const pickToast = getNextPickToast(s.checkin, opt.level || s.level, s.pickToastCycle);
         const next = {
           ...s,
-          myDay: [...s.myDay, { id, ...pickedTask, text: opt.text, done:false }],
+          myDay: [...s.myDay, { ...pickedTask, id, text: opt.text, done:false }],
           pickToastCycle: pickToast.nextCycle,
           toast: {
             text: pickToast.text,
@@ -2373,7 +2406,8 @@ export function useAttuneStore(){
           }
         }
 
-        await syncBillingState(userId);
+        const billingState = await syncBillingState(userId);
+        if(billingState.planId !== "plus") throw new Error("billing_purchase_pending");
         setState((s) => ({
           ...s,
           paywall: null,
@@ -2698,7 +2732,7 @@ export function useAttuneStore(){
           return recordEventOnState(
             next,
             "activityCompleted",
-            taskEventPayload(prevTask, { id, pace: s.level }),
+            taskEventPayload(prevTask, { taskId: id, pace: s.level }),
             { maxDays: EVENT_DAYS_TO_KEEP }
           );
         }
@@ -2747,7 +2781,7 @@ export function useAttuneStore(){
         return recordEventOnState(
           next,
           "activityRemoved",
-          taskEventPayload(prevTask, { id, done: !!prevTask?.done, pace: s.level }),
+          taskEventPayload(prevTask, { taskId: id, done: !!prevTask?.done, pace: s.level }),
           { maxDays: EVENT_DAYS_TO_KEEP }
         );
       }),

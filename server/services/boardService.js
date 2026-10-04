@@ -5,6 +5,9 @@ import {
   sanitizeGeneratedTaskCandidates,
 } from "../lib/boardCandidates.js";
 import { selectQualityBoard } from "../lib/boardQuality.js";
+import { TASK_CATALOG } from "../../src/data/tasks.js";
+import { createAiUsageTracker } from "../lib/aiUsage.js";
+import { activityConstraints, activityKey, isActivityEligible } from "../../src/lib/activityPolicy.js";
 import {
   clampInt,
   clampString,
@@ -51,10 +54,15 @@ export function buildCuratedFallbackTasks({ tasksByLevel, level, boardStyle = "s
       const key = clean.toLowerCase();
       if (!clean || seen.has(key)) continue;
       seen.add(key);
-      out.push({ text: clean, level: taskLevel });
+      const metadata = TASK_CATALOG.find(task => task.text === clean && task.level === taskLevel);
+      out.push(metadata ? { ...metadata } : { text: clean, level: taskLevel });
     }
   }
 
+  for (const task of TASK_CATALOG) {
+    if (!seen.has(task.text.toLowerCase())) out.push({ ...task });
+    seen.add(task.text.toLowerCase());
+  }
   return out;
 }
 
@@ -187,6 +195,7 @@ export function buildBoardRequest({
   const energy = clampString(checkin.energy, 12) || "okay";
   const body = clampString(checkin.body, 16) || "manageable";
   const boardStyle = normalizeBoardStyle(checkin.boardStyle);
+  const constraints = activityConstraints(checkin.activityConstraints);
   const noteGuard = useNoteForAi
     ? sanitizeUntrustedAiText(checkin.note, { maxLength: 200 })
     : { text: "", omitted: false, flags: [] };
@@ -194,7 +203,7 @@ export function buildBoardRequest({
   const sanitizedBoardHistory = sanitizeBoardHistoryForQuality(boardHistory);
 
   const cacheKey = JSON.stringify({
-    kind: "board",
+    kind: "board-catalog-v2",
     userId,
     level,
     moodWords,
@@ -204,6 +213,7 @@ export function buildBoardRequest({
     boardStyle,
     note,
     noteOmitted: !!noteGuard.omitted,
+    activityConstraints: constraints,
     boardHistory: sanitizedBoardHistory,
   });
 
@@ -222,40 +232,22 @@ export function buildBoardRequest({
   groundingFragments.push(...noteTokens);
   const fallbackTasks = buildCuratedFallbackTasks({ tasksByLevel, level, boardStyle });
 
+  const approvedActivities = fallbackTasks
+    .filter(task => task.canonicalKey && isActivityEligible(task, { moodWords, mood, energy, body, pace: level, activityConstraints: constraints }, level))
+    .map(({ text, canonicalKey, repetitionFamily, mode, domain, effort, friction, durationMinutes }) =>
+      ({ text, canonicalKey, repetitionFamily, mode, domain, effort, friction, durationMinutes }));
   const system =
-    "You generate a calm, emotionally-safe list of micro-activities for a wellbeing app. " +
+    "Select useful everyday activities for a calm wellbeing app. " +
     UNTRUSTED_CONTEXT_INSTRUCTION + " " +
-    "Return ONLY valid JSON. No markdown. No extra keys. " +
-    "Do NOT suggest anything harmful, illegal, or risky. " +
-    "Do NOT mention self-harm. " +
-    "Do NOT suggest medications, supplements, diagnoses, or treatment plans. " +
-    "Do NOT infer emotions or problems the user did not state. " +
-    "The board MUST match the user's check-in (pace, energy, body, moodWords, and optional note). Avoid generic wellness lists. " +
-    "The user also chooses a boardStyle. If boardStyle is steady, keep suggestions grounded and follow-through focused. If boardStyle is challenge, include more active progress-oriented steps, but still respect energy, body, and pace so the board never becomes hustle-coded or overwhelming. " +
-    "Return a broad candidate pool only; the Attune server will compose the final 12-task board. " +
-    "Each candidate must include metadata: text, mode, domain, effort, friction, pace, canonicalKey, and repetitionFamily. " +
-    "Use mode=support for stabilizing, reducing friction, recovering, regulating, or making the day easier. " +
-    "Use mode=stretch for gently moving something forward without shame, pressure, productivity theater, or hustle language. " +
-    "Stretch candidates must still obey the user's energy, body, and pace caps. " +
-    "Use domains from body, environment, practical, connection, comfort, and regulation. " +
-    "Use effort and friction from 1 to 5, where 1 is tiny/low-friction and 5 is demanding; avoid 5 unless the check-in clearly supports it. " +
-    "Keep tasks small, doable, varied, and non-punitive. " +
-      "Each task must be a single short line written as a direct action or invitation. " +
-      "Use the check-in as hidden context for choosing the task, not as a required opening clause. " +
-      "Only mention pace, energy, body, mood, or note details when they materially sharpen the task, and weave them in naturally. " +
-    "Make the board feel bespoke: at least a third of the tasks should visibly reflect a concrete signal from the user's body state, mood words, pace, energy, or note. " +
-      "Avoid formulaic lead-ins like 'With low energy, ...', 'With a gentle pace, ...', 'If your body feels tight, ...', or 'If you're feeling {moodWord}, ...'. " +
-      "Do NOT add grounding that introduces new emotional assumptions. " +
-      "Aim for concise, editorial phrasing that sounds written by a thoughtful coach, not assembled from placeholders. " +
-    "Use recent board history to keep the board valuable day after day: avoid repeating recentShown or recentPicked items unless the idea is clearly one the user completes often. " +
-    "Treat recentRemoved as a strong signal to avoid that kind of task today. " +
-    "Favor specific verbs and concrete details over generic productivity language. " +
-    "Do not lean on filler tasks like drinking water, closing tabs, clearing a surface, taking a walk, or setting a timer unless the check-in clearly supports them. " +
-    "Vary the mix across body reset, environment reset, emotional regulation, and practical next-step tasks so the board does not collapse into one pattern. " +
-    "Keep task text concise and within maxTextChars. " +
-    "Avoid shaming language. Avoid extreme exercise. Avoid dieting instructions. Avoid near-duplicate tasks. " +
-    "Do NOT include week-level journaling/reflection (the app has a Weekly screen for that). Focus on today. " +
-    "Return only the JSON candidate pool. No explanations, labels outside the schema, markdown, or extra keys.";
+    "Return ONLY JSON containing tasks with canonicalKey values from approvedActivities. " +
+    "Do not generate or rewrite activities, identities, metadata, advice, or explanations. " +
+    "Choose distinct options using today's pace, energy, body, mood words and optional note. " +
+    "Respect all time, indoor and seated constraints. Never infer diagnoses or medical restrictions. " +
+    "For steady boards favor support; for challenge boards include small achievable progress without exceeding capacity. " +
+    "Balance comfort, regulation, creativity, play, connection and practical steps. " +
+    "Avoid recent repeats and excluded activities. Keep a few favorites or previously helpful choices, with room for discovery. " +
+    "No shame, pressure, risky suggestions, treatment advice, or weekly reflection. " +
+    "Order the choices by fit. Fewer genuinely suitable options are better than filler.";
 
   const userPayload = {
     checkin: {
@@ -266,6 +258,7 @@ export function buildBoardRequest({
       boardStyle,
       pace: level,
       note,
+      activityConstraints: constraints,
     },
     contextSafety: {
       optionalNoteIncluded: !!note,
@@ -277,15 +270,15 @@ export function buildBoardRequest({
       fragments: groundingFragments,
     },
     recentBoardHistory: sanitizedBoardHistory,
+    approvedActivities,
     taskRequirements: {
-      count: aiCandidateCount,
+      count: Math.min(aiCandidateCount || 50, approvedActivities.length),
       finalBoardCountAfterServerCuration: totalTaskCount,
-      style: "40-60 metadata-rich candidates; short, actionable, editorial, grounded in today's check-in",
-      maxTextChars: 120,
+      style: "Distinct approved activity IDs, ordered by fit for today's check-in",
       avoidAssumptions: true,
       avoidNearDuplicates: true,
       avoidRecentRepeats: true,
-      includeMetadata: ["mode", "domain", "effort", "friction", "pace", "canonicalKey", "repetitionFamily"],
+      includeMetadata: ["canonicalKey"],
       supportDefinition: "stabilize, reduce friction, recover, regulate, or make today easier",
       stretchDefinition: "gently move something forward while respecting energy, body, and pace",
       boardStyle,
@@ -293,13 +286,8 @@ export function buildBoardRequest({
         ? "more active, progress-oriented, and still realistic for this check-in"
         : "grounded, steady, realistic steps the user can follow through on",
       pacingHint: preferences,
-      examples: [
-        "Drop your shoulders and lengthen the back of your neck.",
-        "Turn the next task into a one-line starting point.",
-        "Reset the space directly around you.",
-      ],
     },
-    outputSchema: "{\"tasks\":[{\"text\":string,\"mode\":\"support|stretch\",\"domain\":\"body|environment|practical|connection|comfort|regulation\",\"effort\":1-5,\"friction\":1-5,\"pace\":\"rest|gentle|light|steady|capable|brave\",\"canonicalKey\":string,\"repetitionFamily\":string}]}"
+    outputSchema: "{\"tasks\":[{\"canonicalKey\":string}]}"
   };
 
   return {
@@ -337,6 +325,9 @@ export async function generateBoardWithRetries(client, {
   );
   const attemptedModels = [];
   const modelErrors = [];
+  const usageTracker = createAiUsageTracker();
+  const responseFormat = structuredClone(BOARD_CANDIDATE_RESPONSE_FORMAT);
+  responseFormat.json_schema.schema.properties.tasks.maxItems = Math.min(60, desiredCandidateCount);
 
   for (const model of modelList) {
     attemptedModels.push(model);
@@ -344,7 +335,7 @@ export async function generateBoardWithRetries(client, {
 
     let content = "";
     try {
-      const completion = await client.chat.completions.create({
+      const completion = await usageTracker.complete(client, {
         model,
         temperature: 0.3,
         max_completion_tokens: Math.max(1, Number(maxCompletionTokens) || 3200),
@@ -352,7 +343,7 @@ export async function generateBoardWithRetries(client, {
           { role: "system", content: system },
           { role: "user", content: JSON.stringify(userPayload) },
         ],
-        response_format: BOARD_CANDIDATE_RESPONSE_FORMAT,
+        response_format: responseFormat,
       });
       content = completion.choices?.[0]?.message?.content || "";
     } catch (error) {
@@ -392,7 +383,21 @@ export async function generateBoardWithRetries(client, {
       ? userPayload.grounding.fragments
       : [];
 
-    const sanitizedTasks = sanitizeGeneratedTaskCandidates(parsed?.tasks, { targetCount: desiredCandidateCount });
+    let sanitizedTasks = sanitizeGeneratedTaskCandidates(parsed?.tasks, { targetCount: desiredCandidateCount });
+    if (Array.isArray(userPayload.approvedActivities)) {
+      const approvedKeys = new Set(userPayload.approvedActivities.map(activityKey));
+      const catalogue = new Map(fallbackTasks.map(task => [activityKey(task), task]));
+      const seen = new Set();
+      sanitizedTasks = (Array.isArray(parsed?.tasks) ? parsed.tasks : [])
+        .filter(task => {
+          const key = activityKey(task);
+          if (!approvedKeys.has(key) || !catalogue.has(key) || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        })
+        .slice(0, desiredCandidateCount)
+        .map(task => ({ ...catalogue.get(activityKey(task)) }));
+    }
 
     const sanitizedPayload = { ...parsed, tasks: sanitizedTasks };
 
@@ -401,7 +406,7 @@ export async function generateBoardWithRetries(client, {
       allowedContextLower,
       groundingFragments,
       desiredCandidateCount,
-      { minCount: desiredFinalCount, totalTaskCount },
+      { minCount: 1, totalTaskCount },
     );
     if (!validated.ok) {
       lastError = validated.error || "Invalid board";
@@ -410,21 +415,26 @@ export async function generateBoardWithRetries(client, {
     }
 
     lastWarnings = Array.isArray(validated.warnings) ? validated.warnings : [];
+    // With an explicit note, fill gaps within the topics the model selected.
+    // Generic fallback quotas must not undo a specific request such as no chores.
+    const selectedDomains = new Set(sanitizedTasks.map(task => task.domain));
+    const selectionFallback = checkin.note && sanitizedTasks.length >= 3 && selectedDomains.size >= 2
+      ? fallbackTasks.filter(task => selectedDomains.has(task.domain)) : fallbackTasks;
     const selected = selectQualityBoard({
       candidates: sanitizedTasks,
-      fallbackTasks,
+      fallbackTasks: selectionFallback,
       checkin: userPayload?.checkin,
       boardHistory,
       targetCount: desiredFinalCount,
     });
-    if (!Array.isArray(selected.tasks) || selected.tasks.length !== desiredFinalCount) {
+    if (!Array.isArray(selected.tasks) || selected.tasks.length === 0) {
       lastError = "Quality layer could not select enough tasks";
       modelErrors.push({ model, error: lastError });
       continue;
     }
 
     const removed = Array.isArray(parsed?.tasks) ? parsed.tasks.length - sanitizedTasks.length : 0;
-    if (removed > 0) lastWarnings = [...lastWarnings, "Removed week-level reflection tasks from today's board."];
+    if (removed > 0) lastWarnings = [...lastWarnings, "Removed invalid, repeated or excess activity candidates."];
     if (selected.meta?.fallbackCount > 0) lastWarnings = [...lastWarnings, "Filled weaker AI candidates with curated fallback tasks."];
     if (selected.meta?.rejectedCount > 0) lastWarnings = [...lastWarnings, "Rejected low-quality AI candidates before showing the board."];
     return {
@@ -435,6 +445,7 @@ export async function generateBoardWithRetries(client, {
       model,
       attemptedModels,
       modelErrors,
+      providerUsage: usageTracker.snapshot(),
     };
   }
 
@@ -444,5 +455,6 @@ export async function generateBoardWithRetries(client, {
     warnings: lastWarnings,
     attemptedModels,
     modelErrors,
+    providerUsage: usageTracker.snapshot(),
   };
 }

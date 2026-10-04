@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ArrowRight, ChevronDown } from "lucide-react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
 import InfoTip from "../components/InfoTip";
@@ -51,85 +52,6 @@ const BOARD_STYLE_OPTIONS = [
   },
 ];
 
-const PACE_TRACE_PATH = "M80 1.5 H137 C148.874 1.5 158.5 11.126 158.5 23 C158.5 34.874 148.874 44.5 137 44.5 H23 C11.126 44.5 1.5 34.874 1.5 23 C1.5 11.126 11.126 1.5 23 1.5 H80";
-const PACE_TRACE_DURATION_MS = 2800;
-const PACE_TRACE_DURATION = `${PACE_TRACE_DURATION_MS}ms`;
-
-function PaceSelectionTrace({ idSuffix }) {
-  const strokeId = `pace-trace-stroke-${idSuffix}`;
-  const dotId = `pace-trace-dot-${idSuffix}`;
-  const glowId = `pace-trace-glow-${idSuffix}`;
-
-  return (
-    <svg
-      className="paceTraceSvg"
-      viewBox="0 0 160 46"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id={strokeId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="rgba(196,188,255,0.84)" />
-          <stop offset="42%" stopColor="rgba(170,154,255,0.96)" />
-          <stop offset="74%" stopColor="rgba(143,124,255,0.98)" />
-          <stop offset="100%" stopColor="rgba(107,89,247,0.88)" />
-        </linearGradient>
-        <radialGradient id={dotId} cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor="rgba(255,255,255,1)" />
-          <stop offset="52%" stopColor="rgba(223,214,255,0.98)" />
-          <stop offset="100%" stopColor="rgba(143,124,255,0.9)" />
-        </radialGradient>
-        <filter id={glowId} x="-180%" y="-180%" width="460%" height="460%">
-          <feGaussianBlur stdDeviation="1.3" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      <path className="paceTraceBase" d={PACE_TRACE_PATH} />
-      <path className="paceTraceReveal" d={PACE_TRACE_PATH} pathLength="100" stroke={`url(#${strokeId})`}>
-        <animate
-          attributeName="stroke-dasharray"
-          values="0 100; 100 0"
-          dur={PACE_TRACE_DURATION}
-          repeatCount="1"
-          fill="freeze"
-        />
-      </path>
-
-      <circle className="paceTraceDot" r="2.15" fill={`url(#${dotId})`} filter={`url(#${glowId})`}>
-        <animateMotion dur={PACE_TRACE_DURATION} repeatCount="1" fill="freeze" path={PACE_TRACE_PATH} />
-      </circle>
-
-      <g className="paceTraceSparkleAnchor" transform="translate(80 2.5)">
-        <g className="paceTraceSparkle">
-          <path d="M0 -4.5 L0 4.5 M-4.5 0 L4.5 0 M-3.1 -3.1 L3.1 3.1 M-3.1 3.1 L3.1 -3.1" />
-          <animate
-            attributeName="opacity"
-            values="0;0;0.78;0"
-            keyTimes="0;0.9;0.965;1"
-            dur={PACE_TRACE_DURATION}
-            repeatCount="1"
-            fill="freeze"
-          />
-          <animateTransform
-            attributeName="transform"
-            type="scale"
-            values="0.55;0.55;1;0.68"
-            keyTimes="0;0.9;0.965;1"
-            dur={PACE_TRACE_DURATION}
-            repeatCount="1"
-            fill="freeze"
-          />
-        </g>
-      </g>
-    </svg>
-  );
-}
-
 function normalizeMoodWord(word) {
   return MOOD_WORD_ALIASES[word] || word;
 }
@@ -167,7 +89,7 @@ function moodCategoryFromWords(words) {
 }
 
 export default function CheckIn({ state, actions }) {
-  const { checkin, level, checkedInToday, levelSource } = state;
+  const { checkin, level, checkedInToday } = state;
   const DEFAULT_ENERGY = "okay";
   const DEFAULT_BODY = "manageable";
   const DEFAULT_LEVEL = "gentle";
@@ -175,14 +97,9 @@ export default function CheckIn({ state, actions }) {
   const boardStyle = checkin.boardStyle === "challenge" ? "challenge" : "steady";
   const note = (checkin.note || "").slice(0, 200);
   const noteRef = useRef(null);
-  const previousLevelRef = useRef(level);
-  const paceTraceTimeoutRef = useRef(null);
   const checkInHeading = getCheckInHeading(state?.profile?.name);
   const compactHeading = checkInHeading.length > 32;
   const [isNoteExpanded, setIsNoteExpanded] = useState(() => Boolean((checkin.note || "").trim()));
-  const [paceSuggestionFlash, setPaceSuggestionFlash] = useState(false);
-  const [paceTraceLevel, setPaceTraceLevel] = useState(null);
-  const [paceSettledLevel, setPaceSettledLevel] = useState(level);
   const trimmedNote = note.trim();
   const showNoteCount = note.length >= 150;
   const notePreview = trimmedNote
@@ -200,12 +117,6 @@ export default function CheckIn({ state, actions }) {
     if(!isNoteExpanded) return;
     autosizeNote();
   }, [note, autosizeNote, isNoteExpanded]);
-
-  useEffect(() => () => {
-    if (paceTraceTimeoutRef.current) {
-      clearTimeout(paceTraceTimeoutRef.current);
-    }
-  }, []);
 
   const toggleNote = () => {
     const nextExpanded = !isNoteExpanded;
@@ -235,7 +146,6 @@ export default function CheckIn({ state, actions }) {
     level !== DEFAULT_LEVEL ||
     !(selectedMoodWords.length === 1 && selectedMoodWords[0] === "Okay" && checkin.mood === "okay")
   );
-  const paceStepRevealedRef = useRef(hasInitialProgress);
   const [stepState, setStepState] = useState(() => ({
     mood: hasInitialProgress,
     energy: hasInitialProgress,
@@ -251,67 +161,6 @@ export default function CheckIn({ state, actions }) {
   const visibleEnergyValue = hasInitialProgress || stepState.energy ? checkin.energy : "";
   const visibleBodyValue = hasInitialProgress || stepState.body ? checkin.body : "";
   const visibleLevel = showPaceStep ? level : "";
-
-  useEffect(() => {
-    const previousLevel = previousLevelRef.current;
-    const didLevelChange = previousLevel !== level;
-    previousLevelRef.current = level;
-
-    const isFirstReveal = !paceStepRevealedRef.current;
-    if (showPaceStep) paceStepRevealedRef.current = true;
-
-    if (paceTraceTimeoutRef.current) {
-      clearTimeout(paceTraceTimeoutRef.current);
-      paceTraceTimeoutRef.current = null;
-    }
-
-    if (!showPaceStep) {
-      setPaceTraceLevel(null);
-      setPaceSettledLevel(level);
-      return undefined;
-    }
-
-    if (didLevelChange || isFirstReveal) {
-      const prefersReducedMotion = typeof window !== "undefined"
-        && typeof window.matchMedia === "function"
-        && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-      if (prefersReducedMotion) {
-        setPaceTraceLevel(null);
-        setPaceSettledLevel(level);
-      } else {
-        setPaceTraceLevel(level);
-        setPaceSettledLevel("");
-        paceTraceTimeoutRef.current = setTimeout(() => {
-          setPaceTraceLevel((current) => (current === level ? null : current));
-          setPaceSettledLevel(level);
-          paceTraceTimeoutRef.current = null;
-        }, PACE_TRACE_DURATION_MS);
-      }
-      } else {
-        setPaceTraceLevel(null);
-      setPaceSettledLevel(level);
-    }
-
-    if (levelSource !== "auto" || !didLevelChange) {
-      return () => {
-        if (paceTraceTimeoutRef.current) {
-          clearTimeout(paceTraceTimeoutRef.current);
-          paceTraceTimeoutRef.current = null;
-        }
-      };
-    }
-
-    setPaceSuggestionFlash(true);
-    const timeoutId = setTimeout(() => setPaceSuggestionFlash(false), 950);
-    return () => {
-      clearTimeout(timeoutId);
-      if (paceTraceTimeoutRef.current) {
-        clearTimeout(paceTraceTimeoutRef.current);
-        paceTraceTimeoutRef.current = null;
-      }
-    };
-  }, [level, levelSource, showPaceStep]);
 
   const toggleMoodWord = (word) => {
     const already = visibleMoodWords.includes(word);
@@ -422,11 +271,10 @@ export default function CheckIn({ state, actions }) {
         ) : null}
 
         {showPaceStep ? (
-          <div className={"checkinStep checkinPaceStep" + (paceSuggestionFlash ? " paceAutoUpdated" : "")} data-step="pace">
+          <div className="checkinStep checkinPaceStep" data-step="pace">
             <div className="checkinPaceHead">
               <label>
                 Pace for today
-                <span className="checkinPaceHint">(defaulted, but adjustable)</span>
               </label>
             </div>
             <div className="pillrow" role="group" aria-label="Pace">
@@ -434,17 +282,13 @@ export default function CheckIn({ state, actions }) {
                 <button
                   key={l.key}
                   type="button"
-                  className={
-                    "pill"
-                    + (visibleLevel === l.key && paceSettledLevel === l.key ? " active" : "")
-                    + (visibleLevel === l.key && paceTraceLevel === l.key ? " tracing" : "")
-                  }
+                  aria-pressed={visibleLevel === l.key}
+                  className={"pill" + (visibleLevel === l.key ? " active" : "")}
                   onClick={() => {
                     setStepState((current) => (current.pace ? current : { ...current, pace: true }));
                     actions.setLevel(l.key);
                   }}
                 >
-                  {visibleLevel === l.key && paceTraceLevel === l.key ? <PaceSelectionTrace idSuffix={l.key} /> : null}
                   <span className="pillIcon" aria-hidden="true">
                     <EmojiIcon
                       id={l.icon}
@@ -509,7 +353,7 @@ export default function CheckIn({ state, actions }) {
                 >
                   <span className="checkinNoteMeta">
                     {showNoteCount ? <span className="charCount">{note.length}/200</span> : null}
-                    <span className={"checkinNoteChevron" + (isNoteExpanded ? " open" : "")} aria-hidden="true"></span>
+                    <ChevronDown size={18} className={"disclosureIcon" + (isNoteExpanded ? " open" : "")} aria-hidden="true" />
                   </span>
                 </button>
               </div>
@@ -536,6 +380,9 @@ export default function CheckIn({ state, actions }) {
       </div>
 
       <div className="checkinBottom">
+        {showPaceStep ? <button type="button" className="btn primary checkinContinue" onClick={() => actions.go("wheel")}>
+          Find my activities <ArrowRight size={18} aria-hidden="true" />
+        </button> : null}
         {checkedInToday ? <div className="footerNote" style={{ marginTop: 12 }}>Your check-in is saved. You can update it anytime today.</div> : null}
       </div>
     </div>

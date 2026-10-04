@@ -1,25 +1,31 @@
+import { reconcileGooglePlayEntitlement } from "./googlePlayService.js";
+
 export function normalizePlanId(planId) {
   return planId === "plus" ? "plus" : "free";
 }
 
-export function hasPlusEntitlement(entitlement) {
+export function hasPlusEntitlement(entitlement, nowMs = Date.now()) {
   if (normalizePlanId(entitlement?.plan_id) !== "plus") return false;
 
   const status = String(entitlement?.status || "").toLowerCase();
-  if (status === "active" || status === "grace") return true;
-  if (status !== "canceled") return false;
-
+  if (!["active", "grace", "canceled"].includes(status)) return false;
   const currentPeriodEndMs = Date.parse(String(entitlement?.current_period_end || ""));
-  return Number.isFinite(currentPeriodEndMs) && currentPeriodEndMs >= Date.now();
+  // Play can report ACTIVE during silent grace. Only a recent provider refresh
+  // can extend access beyond the cached expiry, never a stale active flag.
+  const verifiedAt = Date.parse(entitlement?.provider_verified_at || "");
+  if (entitlement?.source === "play_store" && ["active", "grace"].includes(status) &&
+    verifiedAt <= nowMs && verifiedAt > nowMs - 5 * 60000) return true;
+  if (Number.isFinite(currentPeriodEndMs)) return currentPeriodEndMs > nowMs;
+  return status === "active" && ["manual", "promo"].includes(entitlement?.source) && !entitlement?.current_period_end;
 }
 
-export async function getUserEntitlementState({ supabaseAdmin, userId }) {
+export async function getUserEntitlementState({ supabaseAdmin, userId, reconcile = reconcileGooglePlayEntitlement }) {
   if (!supabaseAdmin) throw new Error("supabase_admin_not_configured");
 
   const [entitlementResult, purchaseResult] = await Promise.all([
     supabaseAdmin
       .from("user_entitlements")
-      .select("plan_id, status, source, current_period_start, current_period_end, provider_subscription_id, provider_customer_id")
+      .select("plan_id, status, source, current_period_start, current_period_end, provider_subscription_id, provider_customer_id, provider_verified_at")
       .eq("user_id", userId)
       .maybeSingle(),
     supabaseAdmin
@@ -34,7 +40,7 @@ export async function getUserEntitlementState({ supabaseAdmin, userId }) {
   if (entitlementResult.error) throw new Error("entitlement_lookup_failed");
   if (purchaseResult.error) throw new Error("purchase_lookup_failed");
 
-  const entitlement = entitlementResult.data || {
+  let entitlement = entitlementResult.data || {
     plan_id: "free",
     status: "active",
     source: "manual",
@@ -43,6 +49,13 @@ export async function getUserEntitlementState({ supabaseAdmin, userId }) {
     provider_subscription_id: null,
   };
 
+  if (await reconcile({ supabaseAdmin, userId, entitlement })) {
+    const refreshed = await supabaseAdmin.from("user_entitlements")
+      .select("plan_id, status, source, current_period_start, current_period_end, provider_subscription_id, provider_customer_id, provider_verified_at")
+      .eq("user_id", userId).maybeSingle();
+    if (refreshed.error || !refreshed.data) throw new Error("entitlement_lookup_failed");
+    entitlement = refreshed.data;
+  }
   const planId = hasPlusEntitlement(entitlement) ? "plus" : "free";
 
   return {

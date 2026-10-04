@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { ArrowRight, ChevronDown, Plus, X } from "lucide-react";
 import InfoTip from "../components/InfoTip";
-import { getTodayEmptyStateCopy } from "../lib/personalization";
+import { latestTaskFeedback } from "../lib/activityLearning.js";
+import "../components/ActivityBoard.css";
 
 export default function Today({ state, actions }) {
 	const { dailyMessage, myDay } = state;
@@ -10,7 +12,9 @@ export default function Today({ state, actions }) {
 	const [customInput, setCustomInput] = useState("");
 	const [showCustomInput, setShowCustomInput] = useState(false);
 	const customInputRef = useRef(null);
-	const emptyStateCopy = getTodayEmptyStateCopy(state?.profile?.name);
+	const customTriggerRef = useRef(null);
+	const customWasOpenRef = useRef(false);
+	const completed = myDay.filter(task => task.done).length;
 
 	useEffect(() => {
 		if (!isPlus) return;
@@ -19,9 +23,14 @@ export default function Today({ state, actions }) {
 	}, [isPlus]);
 
 	useEffect(() => {
-		if (showCustomInput) {
-			setTimeout(() => customInputRef.current?.focus(), 50);
+		if (!showCustomInput) {
+			if (customWasOpenRef.current) customTriggerRef.current?.focus();
+			customWasOpenRef.current = false;
+			return;
 		}
+		customWasOpenRef.current = true;
+		const timer = setTimeout(() => customInputRef.current?.focus(), 50);
+		return () => clearTimeout(timer);
 	}, [showCustomInput]);
 
 	const noteIsAi = isPlus && aiNote?.status === "ready";
@@ -46,8 +55,12 @@ export default function Today({ state, actions }) {
 
 	return (
 		<div className="card myDayCard">
-			<h2 className="myDayHeading">🧭 My Day</h2>
-			<div className="sub">Aim for 2-5 tasks. You can add up to 10 if you’d like.</div>
+			<h2 className="myDayHeading">My Day</h2>
+			<div className="sub">A little space for what matters today.</div>
+			{myDay.length > 0 && <div className="daySummary">
+				<progress value={completed} max={myDay.length} aria-label="Activities completed" />
+				<span>{completed} of {myDay.length} complete</span>
+			</div>}
 
 			<div
 				className={"result personalNote" + (canToggleNote ? " tappable" : "")}
@@ -90,7 +103,7 @@ export default function Today({ state, actions }) {
 						</span>
 						{canToggleNote ? (
 							<span className={"personalNoteExpandCue" + (noteExpanded ? " open" : "")} aria-hidden="true">
-								<span className={"checkinNoteChevron" + (noteExpanded ? " open" : "")} aria-hidden="true" />
+								<ChevronDown size={18} className={"disclosureIcon" + (noteExpanded ? " open" : "")} aria-hidden="true" />
 							</span>
 						) : null}
 					</div>
@@ -103,17 +116,17 @@ export default function Today({ state, actions }) {
 			</div>
 
 			{myDay.length === 0 && (
-				<div className="hint">
-					{emptyStateCopy.beforeCta}
+				<div className="dayEmpty">
+					<h3>Your day, at your pace.</h3>
+					<p>One small activity is a good place to start.</p>
 					<button
 						type="button"
-						className="linkBtn"
+						className="btn primary"
 						onClick={() => actions?.go?.("wheel")}
 						aria-label="Open Pick (Activity Picker)"
 					>
-						Pick
+						Find an activity <ArrowRight size={17} aria-hidden="true" />
 					</button>
-					{emptyStateCopy.afterCta}
 				</div>
 			)}
 
@@ -127,19 +140,26 @@ export default function Today({ state, actions }) {
 										type="checkbox"
 										checked={!!t.done}
 										onChange={(e) => actions.toggleDone(t.id, e.target.checked)}
-										aria-label={t.done ? "Mark not done" : "Mark done"}
+										aria-label={`${t.done ? "Mark not done" : "Mark done"}: ${t.text}`}
 									/>
 									<span className="itemTextWrap">
 										<span className="txt">{t.text}</span>
 									</span>
 								</label>
+								{t.done && <label className="activityOutcome">How was it?
+									<select aria-label={`Feedback for ${t.text}`} value={latestTaskFeedback(state.events, t) || ""}
+										onChange={event => { if (event.target.value) actions.recordActivityFeedback(t, event.target.value); }}>
+										<option value="">Optional</option><option value="helped">It helped</option><option value="too_much">Too much today</option><option value="not_for_me">Not for me</option>
+									</select>
+								</label>}
 								<button
 									type="button"
-									className="btn small quiet"
+									className="pickIcon"
 									onClick={() => actions.removeTask(t.id)}
-									aria-label="Remove"
+									aria-label={`Remove ${t.text}`}
+									title="Remove activity"
 								>
-									Remove
+									<X size={18} aria-hidden="true" />
 								</button>
 							</li>
 						))}
@@ -171,26 +191,29 @@ export default function Today({ state, actions }) {
 								onClick={submitCustomTask}
 								disabled={!customInput.trim()}
 								aria-label="Add task"
+								title="Add task"
 							>
-								Add
+								<Plus size={18} aria-hidden="true" />
 							</button>
 							<button
 								type="button"
 								className="btn small quiet customTaskCancel"
 								onClick={() => { setShowCustomInput(false); setCustomInput(""); }}
 								aria-label="Cancel"
+								title="Cancel"
 							>
-								Cancel
+								<X size={18} aria-hidden="true" />
 							</button>
 						</div>
 					) : (
 						<button
 							type="button"
 							className="customTaskTrigger"
+							ref={customTriggerRef}
 							onClick={() => setShowCustomInput(true)}
 							aria-label="Add your own task"
 						>
-							<span className="customTaskTriggerIcon" aria-hidden="true">+</span>
+							<Plus size={18} aria-hidden="true" />
 							Add your own
 						</button>
 					)}

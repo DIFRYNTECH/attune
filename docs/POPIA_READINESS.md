@@ -1,6 +1,6 @@
 # Attune POPIA Readiness Notes
 
-Last updated: 16 May 2026
+Last updated: 4 October 2026
 
 This is an operational checklist for Attune privacy handling. It is not legal advice, but it records the practical controls Attune needs before wider public launch.
 
@@ -32,7 +32,9 @@ This is an operational checklist for Attune privacy handling. It is not legal ad
 ## Deletion Notes
 
 - "Reset local Attune data" only clears data on the current device.
-- Account-level deletion must include synced database records and should be handled through a verified support request until an in-app delete-account flow exists.
+- Profile links to the public `/privacy#delete-account` request section. It offers a deletion-specific email request; it is not automated deletion.
+- Account-level deletion must include authentication and synced database records. Verify ownership before fulfilling the request, confirm the completion time, and document any legally required retention.
+- Explain subscription cancellation separately. Receiving a deletion email does not cancel Google Play or web billing automatically.
 - Billing providers may retain transaction records as required for legal, tax, fraud-prevention, and accounting reasons.
 
 ## Security Incident Process
@@ -60,7 +62,8 @@ Some processing may happen outside South Africa. The privacy policy must keep th
 
 - Confirm support@useattune.co receives mail reliably.
 - Confirm the Privacy Policy URL is live on the production domain.
-- Add an in-app delete-account/data flow when practical.
+- Publish and test the public deletion anchor and the Profile link, including without an account or installed app. Set the Play Console account-deletion URL to the deployed public resource.
+- Assign a deletion-request owner, response target, and documented retention periods; exercise the full request on a disposable test account before charging users.
 - Keep privacy policy copy aligned with actual product features and vendors.
 - Review POPIA posture with a qualified privacy/legal professional before a broad public launch.
 

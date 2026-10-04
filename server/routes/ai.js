@@ -147,6 +147,12 @@ export function registerAiRoutes({
       const attemptedBoardModels = Array.isArray(generated.attemptedModels) ? generated.attemptedModels : boardModelCandidates;
       const boardModelErrors = Array.isArray(generated.modelErrors) ? generated.modelErrors : [];
       const boardFallbackUsed = resolvedBoardModel !== boardModel;
+      logEvent("info", "ai_provider_usage", {
+        requestId: getRequestLogContext(req).requestId,
+        usageId: quotaReservation.usageId,
+        kind: "generate_board",
+        providerUsage: generated.providerUsage,
+      });
 
       if (!generated.ok) {
         setRequestErrorCode(req, generated.error || "invalid_board");
@@ -177,6 +183,7 @@ export function registerAiRoutes({
             fallbackModel: boardFallbackModel,
             attemptedModels: attemptedBoardModels,
             modelErrors: boardModelErrors,
+            providerUsage: generated.providerUsage,
           },
         });
         res.status(502).json({ error: generated.error || "Invalid board" });
@@ -218,6 +225,7 @@ export function registerAiRoutes({
           fallbackUsed: boardFallbackUsed,
           strategy: "ai",
           quality: generated.quality || null,
+          providerUsage: generated.providerUsage,
         },
       });
 
@@ -365,6 +373,12 @@ export function registerAiRoutes({
         userPayload: dailyNoteRequest.userPayload,
         model: defaultModel,
       });
+      logEvent("info", "ai_provider_usage", {
+        requestId: getRequestLogContext(req).requestId,
+        usageId: quotaReservation.usageId,
+        kind: "daily_note",
+        providerUsage: generated.providerUsage,
+      });
 
       if (!generated.ok) {
         setRequestErrorCode(req, generated.error || "invalid_note");
@@ -379,7 +393,7 @@ export function registerAiRoutes({
           usageId: quotaReservation.usageId,
           success: false,
           errorCode: generated.error || "invalid_note",
-          meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+          meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi, providerUsage: generated.providerUsage },
         });
         res.status(502).json({ error: generated.error || "Invalid note" });
         return;
@@ -398,7 +412,7 @@ export function registerAiRoutes({
       await finalizeReservedAiUsage({
         usageId: quotaReservation.usageId,
         success: true,
-        meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi },
+        meta: { planId: aiContext.planId, useNoteForAi: aiContext.useNoteForAi, providerUsage: generated.providerUsage },
       });
 
       noteCache.set(dailyNoteRequest.cacheKey, { ...payload, meta: { ...payload.meta, cached: true } });

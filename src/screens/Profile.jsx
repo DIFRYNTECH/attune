@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { createPortal } from "react-dom";
+import { ChevronDown } from "lucide-react";
+import Dialog from "../components/Dialog.jsx";
 import InfoTip from "../components/InfoTip";
-import { PRIVACY_PATH, SUPPORT_EMAIL, SUPPORT_MAILTO } from "../content/privacy";
+import { ACCOUNT_DELETION_PATH, PRIVACY_PATH, SUPPORT_EMAIL, SUPPORT_MAILTO } from "../content/privacy";
 import { buildBackupExport, buildUserDataExport } from "../lib/exportData";
 import { isNativePlatform } from "../lib/platform";
 
@@ -175,43 +176,30 @@ function ProfileIdentitySection({ profileName, profileEmail, actions }) {
 function ConfirmDialog({ open, label, title, body, confirmText, onCancel, onConfirm, secondaryText, onSecondary }) {
   if (!open || typeof document === "undefined") return null;
 
-  return createPortal(
-    <div
-      className="modalOverlay modalOverlayCentered confirmModalOverlay"
-      role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel?.();
-      }}
-    >
-      <div className="modalCard confirmModalCard" role="dialog" aria-modal="true" aria-label={label}>
-        <div className="modalTitle">{title}</div>
-        <div className="modalBody">{body}</div>
-        <div className="modalActions">
+  return (
+    <Dialog title={title} label={label} onClose={onCancel} footer={<>
           <button type="button" className="btn small ghost" onClick={onCancel}>
             Cancel
           </button>
           {secondaryText ? (
             <button
               type="button"
-              className="btn small ghost"
+              className="btn small ghost dangerGhost"
               onClick={onSecondary}
-              style={{ borderColor: "rgba(239,68,68,.18)", color: "#7f1d1d", fontWeight: 900 }}
             >
               {secondaryText}
             </button>
           ) : null}
           <button
             type="button"
-            className="btn small"
+            className="btn small dangerGhost"
             onClick={onConfirm}
-            style={{ borderColor: "rgba(239,68,68,.25)", color: "#7f1d1d", fontWeight: 900 }}
           >
             {confirmText}
           </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
+    </>}>
+      <div className="modalBody">{body}</div>
+    </Dialog>
   );
 }
 
@@ -242,7 +230,7 @@ export default function Profile({ state, actions }) {
   const showUpgradeButton = !isPlus && canUpgrade;
   const billingSummary = (() => {
     if (isPlus && billingPeriod.formatted && billingPeriod.isFuture) {
-      return `Renews ${billingPeriod.formatted}.`;
+      return `${billing.status === "canceled" ? "Access until" : "Renews"} ${billingPeriod.formatted}.`;
     }
     if (!isPlus && billingPeriod.formatted) {
       return `Access ends ${billingPeriod.formatted}.`;
@@ -398,6 +386,9 @@ export default function Profile({ state, actions }) {
               <a className="btn ghost settingsLinkButton" href={SUPPORT_MAILTO}>
                 Email support
               </a>
+              <a className="btn ghost settingsLinkButton" href={ACCOUNT_DELETION_PATH}>
+                Delete account
+              </a>
             </div>
           </div>
         </SettingsSection>
@@ -493,7 +484,7 @@ export default function Profile({ state, actions }) {
               </span>
               <span className="settingsFeatureSummaryMeta">
                 <span>{billingSummary}</span>
-                <span className={"checkinNoteChevron" + (plusOpen ? " open" : "")} aria-hidden="true" />
+                <ChevronDown size={18} className={"disclosureIcon" + (plusOpen ? " open" : "")} aria-hidden="true" />
               </span>
             </button>
 

@@ -1,3 +1,6 @@
+import { activityDetails } from "../lib/activityPolicy.js";
+import { ACTIVITY_REQUIREMENTS } from "./activityRequirements.js";
+
 export const TASKS = {
   rest: [
     "Sit quietly and take 5 slow breaths",
@@ -398,7 +401,8 @@ function inferEffort(text, pace) {
   }[pace] || 2;
 
   const duration = normalized.match(/\b(\d+)\s*(minute|minutes|min)\b/);
-  if (duration) {
+  const passive = /^(soften|turn|dim|listen|watch|rest|sit|hold|look|notice)\b/.test(normalized);
+  if (duration && !passive) {
     const minutes = Number(duration[1]);
     if (minutes <= 3) effort = Math.min(effort, 1.5);
     else if (minutes <= 8) effort = Math.max(effort, 2);
@@ -408,7 +412,7 @@ function inferEffort(text, pace) {
 
   if (HIGH_FRICTION_TERMS.test(normalized)) effort += 0.6;
   if (LOW_FRICTION_TERMS.test(normalized)) effort -= 0.45;
-  return Math.max(1, Math.min(5, Math.round(effort * 2) / 2));
+  return passive ? 1 : Math.max(1, Math.min(5, Math.round(effort * 2) / 2));
 }
 
 function inferFriction(text, effort) {
@@ -422,6 +426,7 @@ function inferFriction(text, effort) {
 
 function inferMode(text, pace, effort, friction) {
   const normalized = normalizeText(text);
+  if (/^(soften|turn|dim|listen|watch|rest|sit|hold|look|notice)\b/.test(normalized)) return "support";
   const stretchScore = (STRETCH_TERMS.test(normalized) ? 2 : 0) + (effort >= 3 ? 1 : 0) + (friction >= 3.5 ? 1 : 0);
   const supportScore = (SUPPORT_TERMS.test(normalized) ? 2 : 0) + (effort <= 2 ? 1 : 0) + (friction <= 2 ? 1 : 0);
 
@@ -472,7 +477,7 @@ function taskMetadata(text, pace) {
   const effort = inferEffort(text, pace);
   const friction = inferFriction(text, effort);
   const mode = inferMode(text, pace, effort, friction);
-  const canonicalKey = `${pace}:${slugify(text)}`;
+  const canonicalKey = `activity:${slugify(text).slice(0, 70)}`;
 
   return {
     text,
@@ -486,14 +491,90 @@ function taskMetadata(text, pace) {
     canonical_key: canonicalKey,
     repetitionFamily: repetitionFamily(text, domain),
     repetition_family: repetitionFamily(text, domain),
-    safetyReviewed: true,
-    safety_reviewed: true,
+    safetyReviewed: false,
+    safety_reviewed: false,
+    metadataSource: "legacy-inferred",
+    durationMinutes: activityDetails({ text }).durationMinutes,
+    ...ACTIVITY_REQUIREMENTS[canonicalKey],
   };
 }
 
-export const TASK_CATALOG = Object.entries(TASK_LIBRARY).flatMap(([pace, tasks]) =>
+const LEGACY_CATALOG = Object.entries(TASK_LIBRARY).flatMap(([pace, tasks]) =>
   tasks.map((text) => Object.freeze(taskMetadata(text, pace)))
 );
+
+// Explicit editorial metadata. These are everyday activities, not clinical advice.
+const EDITORIAL_ACTIVITIES = [
+  ["doodle-shape", "Draw one shape and add a few lines for 2 minutes", "creativity", "support", 1, 2, "Paper and a pen"],
+  ["imaginary-title", "Give an imaginary book a title in one minute", "creativity", "support", 1, 1, ""],
+  ["color-pair", "Notice two colors you like together for one minute", "creativity", "support", 1, 1, ""],
+  ["three-word-story", "Make up a three-word story in 2 minutes", "creativity", "stretch", 1, 2, ""],
+  ["hum-tune", "Hum a familiar tune quietly for one minute", "comfort", "support", 1, 1, ""],
+  ["favorite-lyric", "Recall a line from a song you enjoy for one minute", "comfort", "support", 1, 1, ""],
+  ["cloud-imagination", "Imagine a place you would like to visit for 2 minutes", "play", "support", 1, 2, ""],
+  ["word-game", "Think of five words starting with the same letter in 2 minutes", "play", "stretch", 1, 2, ""],
+  ["object-story", "Invent a tiny story about an object nearby for 2 minutes", "play", "stretch", 1, 2, ""],
+  ["kind-memory", "Recall one ordinary moment of kindness for one minute", "connection", "support", 1, 1, ""],
+  ["gratitude-draft", "Draft one thank-you sentence in 2 minutes, without sending it", "connection", "stretch", 1, 2, "Paper or notes"],
+  ["shared-interest", "Choose one thing you might enjoy sharing with a friend in 2 minutes", "connection", "stretch", 1, 2, ""],
+  ["permission-rest", "Choose one optional task to leave for another day in one minute", "regulation", "support", 1, 1, ""],
+  ["sound-break", "Listen to the sounds around you for one minute", "regulation", "support", 1, 1, ""],
+  ["soft-gaze", "Let your gaze settle on an object nearby for one minute", "regulation", "support", 1, 1, ""],
+  ["seat-comfort", "Adjust one cushion or layer within reach for one minute", "comfort", "support", 1, 1, "A cushion or layer nearby"],
+  ["one-question", "Write one question about something you are curious about in 2 minutes", "meaning", "stretch", 1, 2, "Paper or notes"],
+  ["small-interest", "Name one interest you would like to make room for in 2 minutes", "meaning", "stretch", 1, 2, ""],
+  ["pleasant-choice", "Choose one pleasant thing for later in one minute", "comfort", "support", 1, 1, ""],
+  ["first-line", "Write the first line of a story for 3 minutes", "creativity", "stretch", 2, 3, "Paper or notes"],
+  ["paper-pattern", "Draw a repeating pattern for 5 minutes", "creativity", "support", 2, 5, "Paper and a pen"],
+  ["read-for-fun", "Read something just for enjoyment for 5 minutes", "play", "support", 1, 5, "Something to read"],
+  ["puzzle-pause", "Try one small puzzle for 5 minutes, without needing to finish", "play", "stretch", 2, 5, "A puzzle"],
+  ["music-choice", "Choose a song to listen to for 3 minutes", "comfort", "support", 1, 3, "Something to listen on"],
+  ["photo-caption", "Write a playful caption for one photo in 3 minutes", "creativity", "stretch", 2, 3, "A photo and notes"],
+  ["next-question", "Write the one question that would unblock a task in 3 minutes", "practical", "stretch", 2, 3, "Paper or notes"],
+  ["tiny-learning", "Read about one thing you are curious about for 5 minutes", "meaning", "stretch", 2, 5, "Something to read"],
+  ["hobby-start", "Spend 10 minutes on a hobby with materials you already have", "play", "stretch", 3, 10, "Your hobby materials"],
+  ["alphabet-menu", "Invent a cafe menu with three imaginary dishes in 3 minutes", "play", "stretch", 1, 3, ""],
+  ["riddle-try", "Try one riddle for 3 minutes, then check the answer if you like", "play", "stretch", 2, 3, "A riddle with its answer"],
+  ["object-reuse", "Think of three playful uses for a familiar object in 2 minutes", "creativity", "stretch", 1, 2, ""],
+  ["mini-poem", "Write a two-line poem about an ordinary object for 3 minutes", "creativity", "stretch", 2, 3, "Paper or notes"],
+  ["memory-map", "Draw a tiny map of a familiar place for 5 minutes", "creativity", "support", 2, 5, "Paper and a pen"],
+  ["fictional-postcard", "Write two lines on an imaginary postcard for 3 minutes", "creativity", "stretch", 1, 3, "Paper or notes"],
+  ["rename-object", "Give three ordinary objects new names in 2 minutes", "play", "support", 1, 2, ""],
+  ["soundtrack-scene", "Imagine a scene that would suit a favorite song for 2 minutes", "creativity", "support", 1, 2, ""],
+  ["gentle-trivia", "Try three trivia questions for 5 minutes without keeping score", "play", "stretch", 2, 5, "Trivia questions"],
+  ["word-chain", "Make a word chain using each last letter for 3 minutes", "play", "stretch", 1, 3, ""],
+  ["tiny-comic", "Draw two panels of a comic with stick figures for 5 minutes", "creativity", "stretch", 2, 5, "Paper and a pen"],
+  ["story-ending", "Invent a different ending to a familiar story for 3 minutes", "creativity", "stretch", 1, 3, ""],
+  ["memory-shelf", "Recall the titles of three books or films you enjoyed in 2 minutes", "play", "support", 1, 2, ""],
+  ["spot-detail", "Look at a photo for one minute and notice a detail you missed", "play", "support", 1, 1, "A photo within reach"],
+  ["draw-sound", "Draw lines that match a sound you can hear for 2 minutes", "creativity", "support", 1, 2, "Paper and a pen"],
+  ["paper-maze", "Draw a small maze and trace a way through for 5 minutes", "play", "stretch", 2, 5, "Paper and a pen"],
+];
+
+const EDITORIAL_CATALOG = EDITORIAL_ACTIVITIES.map(([id, text, domain, mode, effort, durationMinutes, setup]) => ({
+  text, domain, mode, effort, friction: effort, durationMinutes, setup,
+  level: effort === 1 ? "rest" : effort === 2 ? "gentle" : "steady",
+  pace: effort === 1 ? "rest" : effort === 2 ? "gentle" : "steady",
+  canonicalKey: `attune:${id}`, repetitionFamily: id,
+  metadataSource: "editorial-v1", safetyReviewed: false,
+  canDoSeated: id !== "hobby-start", location: "either", physicalEffort: 1,
+  requirementsSource: "editorial-v2", durationKind: "timebox",
+}));
+
+// Reviewed aliases share a family even when their wording or domain differs.
+const FAMILY_OVERRIDES = {
+  "activity:pick-one-tiny-comfort-softer-light-quieter-sound-warmer-socks": "comfort:soften-sensory-input",
+  "activity:choose-one-softer-light-or-sound": "comfort:soften-sensory-input",
+  "activity:choose-one-pleasant-thing-to-do-after-this": "pleasant-choice",
+  "activity:choose-one-uncomfortable-but-safe-task-and-do-5-minutes-of-it": "practical:gentle-progress-start",
+  "activity:step-outside-and-look-at-the-sky-for-5-minutes": "body:outside-reset",
+  "activity:prepare-a-simple-meal-snack-or-bottle-of-water-for-later": "environment:food-drink-care",
+  "activity:do-one-focused-block-and-leave-your-phone-in-another-room": "progress:gentle-progress-start",
+};
+export const TASK_CATALOG = [...EDITORIAL_CATALOG, ...LEGACY_CATALOG].map(task => {
+  const family = FAMILY_OVERRIDES[task.canonicalKey];
+  return family ? Object.freeze({ ...task, repetitionFamily: family, repetition_family: family }) : task;
+});
 
 export const TASK_METADATA_BY_TEXT = Object.freeze(
   TASK_CATALOG.reduce((map, task) => {

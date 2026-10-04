@@ -1,0 +1,67 @@
+.pickScreen { padding: 20px 8px 32px; min-width: 0; letter-spacing: 0; }
+.pickScreen .activityPickerTitle { font-size: 26px; margin: 0 0 8px; }
+.pickExperience { margin-top: 18px; }
+.pickToolbar, .pickTools, .pickSectionHeading, .pickOptionMeta, .pickOptionBottom, .pickDetailMeta, .pickDialogHeader { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pickToolbar { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.pickTools { gap: 6px; }
+.pickCount, .pickReason, .pickOptionBottom, .pickSectionHeading > span { color: var(--muted); font-size: 13px; line-height: 1.55; }
+.pickIcon { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; flex: 0 0 40px; padding: 0; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: transparent; cursor: pointer; }
+.pickIcon:hover, .pickIcon.selected { background: var(--surface3); border-color: var(--brand); }
+.pickIcon:disabled { opacity: .45; cursor: default; }
+.pickExperience button:focus-visible, .pickDialog button:focus-visible, .pickExperience select:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.pickSectionHeading { margin: 20px 0 12px; }
+.pickSectionHeading h3 { margin: 0; font-size: 18px; }
+.pickFeatured { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pickOption { min-width: 0; display: flex; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--card98); }
+.pickOption.featured { border-top: 3px solid #549f91; }
+.pickOption.featured:nth-child(2) { border-top-color: #c29266; }
+.pickOption.featured:nth-child(3) { border-top-color: #8793dc; }
+.pickOptionMeta { align-items: flex-start; flex-wrap: wrap; font-size: 11px; color: var(--muted); text-transform: capitalize; }
+.pickOptionMeta > span:last-child { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pickOptionTitle { display: block; width: 100%; padding: 0; margin: 12px 0 6px; background: none; border: 0; color: var(--ink); font-family: inherit; font-size: 17px; line-height: 1.4; font-weight: 650; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.pickReason { margin: 4px 0 12px; }
+.pickOptionBottom { margin-top: auto; padding-top: 10px; gap: 8px; }
+.pickOptionBottom > span { overflow-wrap: anywhere; }
+.pickMore { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 16px 0; margin: 12px 0 0; border: 0; border-bottom: 1px solid var(--line); background: none; color: var(--ink); font: inherit; cursor: pointer; }
+.pickMore .open { transform: rotate(180deg); }
+.pickAlternatives { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.pickFilters { margin: 16px 0; padding: 12px 0; display: flex; flex-wrap: wrap; gap: 16px; border: 0; border-bottom: 1px solid var(--line); }
+.pickFilters legend { font-size: 15px; font-weight: 600; }
+.pickFilters label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.pickFilters .pickCheck { flex-direction: row; align-items: center; }
+.pickFilters input { width: 18px; height: 18px; margin: 0; accent-color: var(--brand); }
+.pickExperience select, .pickDialog select, .activityOutcome select { min-height: 42px; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--card98); color: var(--ink); font: inherit; max-width: 100%; }
+.pickStatus { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); padding: 10px 0; }
+.pickEmpty { padding: 24px 0; }
+.pickDialog { box-sizing: border-box; width: min(480px, calc(100% - 24px)); max-height: calc(100dvh - 32px - env(safe-area-inset-bottom)); padding: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--card98); color: var(--ink); overflow: auto; letter-spacing: 0; box-shadow: 0 16px 64px #0005; }
+.pickDialog::backdrop { background: #090e21a8; backdrop-filter: blur(5px); }
+.pickDialogInner { padding: 18px; min-width: 0; display: flex; flex-direction: column; box-sizing: border-box; max-height: calc(100dvh - 34px - env(safe-area-inset-bottom)); }
+.pickDialogBody { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pickDialogHeader { flex-shrink: 0; }
+.pickDialogHeader { align-items: flex-start; margin-bottom: 16px; }
+.pickDialogHeader h2 { font-size: 16px; margin: 8px 0; }
+.pickDetailMeta { text-transform: capitalize; font-size: 12px; color: var(--muted); }
+.pickDetailTitle { font-size: 22px; line-height: 1.35; margin: 12px 0; overflow-wrap: anywhere; }
+.pickDetails { display: flex; flex-wrap: wrap; gap: 20px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.pickDetails dt { color: var(--muted); font-size: 12px; }
+.pickDetails dd { margin: 4px 0 0; font-size: 14px; }
+.pickFeedback { display: grid; gap: 10px; padding: 12px 0; }
+.pickFeedback label { font-size: 13px; color: var(--muted); }
+.pickDialogActions { display: flex; flex-wrap: wrap; flex-shrink: 0; gap: 10px; padding: 16px 0 0; background: var(--card98); }
+.pickDialogActions .btn { flex: 1; min-height: 44px; white-space: normal; }
+.pickDialog .btn { display: inline-flex; justify-content: center; align-items: center; gap: 8px; border-radius: 8px; }
+.pickLibrary { list-style: none; padding: 0; }
+.pickLibrary li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.pickLibrary li span { overflow-wrap: anywhere; }
+.pickLibraryTitle { min-width: 0; padding: 0; border: 0; background: none; color: var(--ink); font: inherit; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
+.activityOutcome { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; width: 100%; font-size: 12px; color: var(--muted); order: 3; }
+.item:has(.activityOutcome) { flex-wrap: wrap; }
+@media (max-width: 700px) {
+  .pickFeatured { grid-template-columns: 1fr; }
+  .pickAlternatives { grid-template-columns: 1fr; }
+  .pickOption { padding: 14px; }
+  .pickScreen { padding: 14px 4px 28px; }
+  .pickScreen .activityPickerTitle { font-size: 24px; }
+  .pickOptionTitle { font-size: 17px; }
+}
+@media (prefers-reduced-motion: reduce) { .pickExperience *, .pickDialog * { transition: none; animation: none; } }

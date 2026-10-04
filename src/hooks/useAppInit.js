@@ -4,8 +4,7 @@
  * Responsibilities:
  *  1. Apply the persisted theme to the document.
  *  2. Run Capacitor-specific setup (deep links, status bar, splash).
- *  3. Restore the Supabase session.
- *  4. Prevent input-zoom on mobile.
+ *  3. Install client-side error capture.
  *
  * This hook should be called once, at the top of the App component.
  * It consolidates initialisation that previously lived in multiple
@@ -14,7 +13,7 @@
 
 import { useEffect, useRef } from "react";
 import { installClientErrorCapture } from "../lib/clientErrorCapture";
-import { initMobile, preventInputZoom } from "../lib/mobile";
+import { initMobile } from "../lib/mobile";
 
 export function useAppInit({ theme }) {
   const didRun = useRef(false);
@@ -26,9 +25,6 @@ export function useAppInit({ theme }) {
 
     // Capacitor deep-link listener, status bar, splash screen.
     initMobile();
-
-    // Prevent double-tap zoom on mobile inputs.
-    preventInputZoom();
 
     // Basic global runtime error capture for production diagnostics.
     installClientErrorCapture();

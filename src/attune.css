@@ -1,3 +1,4 @@
+@layer legacy {
 /* Phase 1 - Mobile Calm Pass
    Keep visual styling (colors, cards, typography) in src/index.css.
    This file focuses on layout + viewport safety + mobile navigation. */
@@ -805,6 +806,7 @@ html[data-theme="dark"] .bottomNavBtn.active {
     overflow: hidden;
     text-overflow: ellipsis;
   }
+}
 }
 
 /* Short-height wide displays (Nest Hub Max, compact landscape tablets/windows).

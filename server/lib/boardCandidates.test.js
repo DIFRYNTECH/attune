@@ -7,24 +7,17 @@ import {
   sanitizeGeneratedTaskCandidates,
 } from "./boardCandidates.js";
 
-test("board candidate schema requires 40-60 metadata-rich task candidates", () => {
+test("board selection schema returns only catalogue identities, not invented metadata", () => {
   const tasks = BOARD_CANDIDATE_RESPONSE_FORMAT.json_schema.schema.properties.tasks;
   const task = tasks.items;
 
   assert.equal(BOARD_CANDIDATE_RESPONSE_FORMAT.type, "json_schema");
   assert.equal(BOARD_CANDIDATE_RESPONSE_FORMAT.json_schema.strict, true);
-  assert.equal(tasks.minItems, 40);
+  assert.equal(tasks.minItems, 1);
   assert.equal(tasks.maxItems, 60);
   assert.equal(task.type, "object");
   assert.deepEqual(task.required, [
-    "text",
-    "mode",
-    "domain",
-    "effort",
-    "friction",
-    "pace",
     "canonicalKey",
-    "repetitionFamily",
   ]);
 });
 

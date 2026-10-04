@@ -4,6 +4,7 @@ import "./index.css";
 import "./attune.css";
 import "./landing.css";
 import "./privacy.css";
+import "./app-theme.css";
 import App from "./app/App.jsx";
 
 createRoot(document.getElementById('root')).render(
