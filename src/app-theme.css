@@ -1,84 +1,14 @@
-/* Unlayered app styles intentionally take precedence over the legacy layer. */
+/* Preserve the original palette in index.css while refining app layout. */
 :root {
-  --bg: #f7f8fa;
-  --card: #ffffff;
-  --ink: #202c2a;
-  --muted: #626e6c;
-  --line: #dfe5e3;
-  --divider: #e9edeb;
-  --lineStrong: #b8c5c1;
-  --brand: #226b59;
-  --brand2: #377c68;
-  --brandSoft: #e9f3ee;
-  --brandGlow: #226b5924;
   --onBrand: #ffffff;
-  --accentSoft: #f5edf1;
-  --accentInk: #804b69;
+  --accentSoft: var(--brandSoft);
+  --accentInk: var(--brand);
   --danger: #ad3943;
-  --surface1: #ffffff;
-  --surface2: #f7f9f8;
-  --surface3: #edf1ef;
-  --surfaceInset: #f1f4f3;
-  --card60: var(--card);
-  --card78: var(--card);
-  --card85: var(--card);
-  --card90: var(--card);
-  --card92: var(--card);
-  --card98: var(--card);
-  --shadowSoft: 0 2px 6px #202c2a06;
-  --shadow: 0 8px 24px #202c2a0a;
-  --bodyBg: var(--bg);
-  --heroBg: var(--card);
-  --myDayItemBg: var(--card);
-  --scrollThumb: #bcc9c3;
-  --scrollThumbHover: #91a79e;
-  --authInputBg: var(--card);
-  --authInputBorder: var(--lineStrong);
-  --authSecondaryBg: var(--card);
-  --authSecondaryBorder: var(--line);
-  --authHintBg: var(--surface2);
-  --authCheckboxBg: var(--card);
-  --authCheckboxBorder: var(--lineStrong);
 }
 
 html[data-theme="dark"] {
-  --bg: #171b1a;
-  --card: #202624;
-  --ink: #edf2ef;
-  --muted: #acb9b3;
-  --line: #36423c;
-  --divider: #2e3833;
-  --lineStrong: #5f7268;
-  --brand: #95d3b7;
-  --brand2: #7fc5a6;
-  --brandSoft: #2a4136;
-  --brandGlow: #95d3b72a;
-  --onBrand: #172a22;
-  --accentSoft: #3f303a;
-  --accentInk: #e2aecb;
+  --onBrand: #131723;
   --danger: #ffa2a9;
-  --surface1: #202624;
-  --surface2: #252e29;
-  --surface3: #2c3831;
-  --surfaceInset: #1b211e;
-  --card60: var(--card);
-  --card78: var(--card);
-  --card85: var(--card);
-  --card90: var(--card);
-  --card92: var(--card);
-  --card98: var(--card);
-  --bodyBg: var(--bg);
-  --heroBg: var(--card);
-  --myDayItemBg: var(--card);
-  --scrollThumb: #53685c;
-  --scrollThumbHover: #7a9485;
-  --authInputBg: var(--card);
-  --authInputBorder: var(--lineStrong);
-  --authSecondaryBg: var(--card);
-  --authSecondaryBorder: var(--line);
-  --authHintBg: var(--surface2);
-  --authCheckboxBg: var(--card);
-  --authCheckboxBorder: var(--lineStrong);
 }
 
 body::before, body::after { display: none; }
@@ -117,7 +47,7 @@ body::before, body::after { display: none; }
   backdrop-filter: none;
 }
 .wrap .brand { gap: 12px; }
-:is(.wrap, .authPage) .brandMark { background: #226b59; border: 0; border-radius: 10px; box-shadow: none; }
+:is(.wrap, .authPage) .brandMark { background: linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom)); border: 0; border-radius: 10px; box-shadow: none; }
 :is(.wrap, .authPage) .brandMark::after { display: none; }
 .wrap .brand h1 { font-size: 24px; line-height: 1.1; font-weight: 750; }
 .wrap .tag { font-size: 12px; margin-top: 5px; color: var(--muted); }
@@ -146,7 +76,7 @@ body::before, body::after { display: none; }
 :is(.wrap, .authPage, .appDialog) .fieldError { color: var(--danger); }
 
 /* Sign-in is a focused form, not a decorative hero. */
-.authPage, html[data-theme="dark"] .authPage { background: var(--bg); padding: 0; overflow-y: auto; height: 100dvh; }
+.authPage, html[data-theme="dark"] .authPage { background: var(--bodyBg); padding: 0; overflow-y: auto; height: 100dvh; }
 .authPage::before, .authPage::after { display: none; }
 .authPage .loginShell { width: 100%; min-height: 100%; height: auto; padding: 40px 24px; display: flex; align-items: center; justify-content: center; }
 .authPage .loginCard { width: 100%; max-width: 400px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; animation: none; overflow: visible; }
@@ -222,9 +152,9 @@ body::before, body::after { display: none; }
 .wrap .pickSectionHeading { margin: 24px 0 14px; }
 .wrap .pickSectionHeading h3 { font-size: 17px; font-weight: 650; }
 .wrap .pickOption { background: var(--card); padding: 20px; border-color: var(--line); box-shadow: var(--shadowSoft); }
-.wrap .pickOption.featured { border-top-color: #347b65; }
-.wrap .pickOption.featured:nth-child(2) { border-top-color: #b97d58; }
-.wrap .pickOption.featured:nth-child(3) { border-top-color: #9d748f; }
+.wrap .pickOption.featured { border-top-color: var(--brand); }
+.wrap .pickOption.featured:nth-child(2) { border-top-color: var(--brand2); }
+.wrap .pickOption.featured:nth-child(3) { border-top-color: var(--brand); }
 .wrap .pickOptionTitle { font-size: 17px; font-weight: 650; line-height: 1.5; margin-top: 15px; }
 .wrap .pickReason { font-size: 12px; line-height: 1.65; }
 .wrap .pickOptionBottom { border-top: 1px solid var(--divider); padding-top: 14px; }
@@ -240,7 +170,7 @@ body::before, body::after { display: none; }
 .daySummary progress::-webkit-progress-bar { background: var(--line); }
 .daySummary progress::-webkit-progress-value { background: var(--brand); }
 .daySummary progress::-moz-progress-bar { background: var(--brand); }
-.wrap .myDayCard .result.personalNote { margin: 0 0 24px; padding: 20px 0 20px 18px; border: 0; border-left: 3px solid #b97d58; border-radius: 0; background: none; box-shadow: none; }
+.wrap .myDayCard .result.personalNote { margin: 0 0 24px; padding: 20px 0 20px 18px; border: 0; border-left: 3px solid var(--brand); border-radius: 0; background: none; box-shadow: none; }
 .wrap .personalNote::before, .wrap .personalNote::after { display: none; }
 .wrap .personalNote .resultTitle { font-size: 12px; color: var(--muted); font-weight: 500; }
 .wrap .personalNoteTitle { font-size: 18px; font-weight: 600; margin: 12px 0 8px; }
@@ -325,7 +255,7 @@ body::before, body::after { display: none; }
 .wrap .toast { border-radius: 8px; background: var(--card); border: 1px solid var(--lineStrong); color: var(--ink); box-shadow: var(--shadow); max-width: calc(100% - 32px); font-size: 13px; }
 
 .appDialog.pickDialog { width: min(520px, calc(100% - 32px)); background: var(--card); border-color: var(--lineStrong); box-shadow: 0 24px 80px #0003; }
-.appDialog.pickDialog::backdrop { background: #111c18a6; backdrop-filter: blur(3px); }
+.appDialog.pickDialog::backdrop { background: #090e21a8; backdrop-filter: blur(3px); }
 .appDialog .pickDialogInner { padding: 24px; }
 .appDialog .pickDialogHeader { align-items: center; gap: 20px; margin-bottom: 20px; }
 .appDialog .pickDialogHeader h2 { font-size: 20px; font-weight: 650; line-height: 1.4; margin: 0; }
@@ -351,7 +281,7 @@ body::before, body::after { display: none; }
 .privacyPage .privacyPanel h1 { font-size: 32px; line-height: 1.3; font-weight: 700; }
 .privacyPage .privacyPanel :is(p, ul) { font-weight: 500; line-height: 1.8; }
 .privacyPage .privacySection p + p { margin-top: 12px; }
-.privacyPage .brandMark { background: #226b59; border: 0; border-radius: 8px; box-shadow: none; }
+.privacyPage .brandMark { background: linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom)); border: 0; border-radius: 8px; box-shadow: none; }
 .privacyPage .brandMark::after { display: none; }
 .privacyPage .privacySections { gap: 0; }
 

@@ -49,7 +49,7 @@ async function main() {
 
   const defaultAppId = target === "uat" ? "com.attune.app.uat" : "com.attune.app";
   const defaultAppName = target === "uat" ? "Attune UAT" : "Attune";
-  const defaultAuthHost = target === "uat" ? "uat.attune.app" : "app.attune.app";
+  const defaultAuthHost = target === "uat" ? "uat.useattune.co" : "app.useattune.co";
 
   const nextEnv = {
     ...process.env,

@@ -13,9 +13,9 @@
 .pickSectionHeading h3 { margin: 0; font-size: 18px; }
 .pickFeatured { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .pickOption { min-width: 0; display: flex; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--card98); }
-.pickOption.featured { border-top: 3px solid #549f91; }
-.pickOption.featured:nth-child(2) { border-top-color: #c29266; }
-.pickOption.featured:nth-child(3) { border-top-color: #8793dc; }
+.pickOption.featured { border-top: 3px solid var(--brand); }
+.pickOption.featured:nth-child(2) { border-top-color: var(--brand2); }
+.pickOption.featured:nth-child(3) { border-top-color: var(--brand); }
 .pickOptionMeta { align-items: flex-start; flex-wrap: wrap; font-size: 11px; color: var(--muted); text-transform: capitalize; }
 .pickOptionMeta > span:last-child { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .pickOptionTitle { display: block; width: 100%; padding: 0; margin: 12px 0 6px; background: none; border: 0; color: var(--ink); font-family: inherit; font-size: 17px; line-height: 1.4; font-weight: 650; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
