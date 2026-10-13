@@ -566,6 +566,8 @@ export default function Weekly({ state, actions }) {
               setShowWeekActivities(true);
             }}
             aria-label="Show how many activities you completed each day this week"
+            data-stat="completions"
+            data-active={tasksDone > 0 ? "true" : undefined}
           >
             <span className="weeklyDigestStatHeader">
               <span className="weeklyDigestStatLabel">Completions</span>

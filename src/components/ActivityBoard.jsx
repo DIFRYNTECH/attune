@@ -23,7 +23,7 @@ function ActivityOption({ activity, state, actions, preferences, featured, open,
     return () => observer.disconnect();
   }, [activity, actions]);
   return (
-    <article ref={ref} className={"pickOption" + (featured ? " featured" : "")}>
+    <article ref={ref} className={"pickOption" + (featured ? " featured" : "")} data-in-my-day={taken ? "true" : undefined}>
       <div className="pickOptionMeta"><span>{activity.domain || "Small step"}</span><span><Clock3 size={14} aria-hidden="true" />{details.timeLabel}</span></div>
       <button type="button" className="pickOptionTitle" onClick={() => open(activity)}>{activity.text}</button>
       {featured && <p className="pickReason">{activityReason(activity, { ...state.checkin, pace: state.level }, preferences)}</p>}

@@ -57,7 +57,7 @@ export default function Today({ state, actions }) {
 		<div className="card myDayCard">
 			<h2 className="myDayHeading">My Day</h2>
 			<div className="sub">A little space for what matters today.</div>
-			{myDay.length > 0 && <div className="daySummary">
+			{myDay.length > 0 && <div className="daySummary" data-complete={completed === myDay.length ? "true" : undefined}>
 				<progress value={completed} max={myDay.length} aria-label="Activities completed" />
 				<span>{completed} of {myDay.length} complete</span>
 			</div>}
@@ -133,8 +133,10 @@ export default function Today({ state, actions }) {
 			{myDay.length > 0 && (
 				<div className="myDayScroll" aria-label="My Day tasks">
 					<ul className="list" aria-label="My Day">
-						{myDay.map((t) => (
-							<li key={t.id} className={"item" + (t.done ? " done" : "")}>
+						{myDay.map((t) => {
+							const feedback = t.done ? latestTaskFeedback(state.events, t) || "" : "";
+							return (
+							<li key={t.id} className={"item" + (t.done ? " done" : "")} data-feedback={feedback || undefined}>
 								<label className="left itemMain">
 									<input
 										type="checkbox"
@@ -147,7 +149,7 @@ export default function Today({ state, actions }) {
 									</span>
 								</label>
 								{t.done && <label className="activityOutcome">How was it?
-									<select aria-label={`Feedback for ${t.text}`} value={latestTaskFeedback(state.events, t) || ""}
+									<select aria-label={`Feedback for ${t.text}`} value={feedback}
 										onChange={event => { if (event.target.value) actions.recordActivityFeedback(t, event.target.value); }}>
 										<option value="">Optional</option><option value="helped">It helped</option><option value="too_much">Too much today</option><option value="not_for_me">Not for me</option>
 									</select>
@@ -162,7 +164,8 @@ export default function Today({ state, actions }) {
 									<X size={18} aria-hidden="true" />
 								</button>
 							</li>
-						))}
+							);
+						})}
 					</ul>
 				</div>
 			)}

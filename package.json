@@ -33,10 +33,10 @@
     "video:render": "remotion render remotion/index.ts AttuneBrandVertical remotion/renders/attune-brand-vertical.mp4"
   },
   "dependencies": {
-    "@capacitor/android": "^8.2.0",
+    "@capacitor/android": "^8.4.3",
     "@capacitor/app": "^8.0.1",
-    "@capacitor/cli": "^8.2.0",
-    "@capacitor/core": "^8.2.0",
+    "@capacitor/cli": "^8.4.3",
+    "@capacitor/core": "^8.4.3",
     "@capacitor/keyboard": "^8.0.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.1",

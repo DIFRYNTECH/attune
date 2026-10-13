@@ -4,11 +4,23 @@
   --accentSoft: var(--brandSoft);
   --accentInk: var(--brand);
   --danger: #ad3943;
+  --positiveBg: #edf7f2;
+  --positiveAccent: #38745c;
+  --cautionBg: #fff6e8;
+  --cautionAccent: #90641f;
+  --reflectBg: #f7eef3;
+  --reflectAccent: #925b7c;
 }
 
 html[data-theme="dark"] {
   --onBrand: #131723;
   --danger: #ffa2a9;
+  --positiveBg: #1d302f;
+  --positiveAccent: #91c9ac;
+  --cautionBg: #322b24;
+  --cautionAccent: #dfb579;
+  --reflectBg: #302536;
+  --reflectAccent: #cba4c0;
 }
 
 body::before, body::after { display: none; }
@@ -134,11 +146,11 @@ body::before, body::after { display: none; }
 .wrap .pillIcon { --pillEmojiSize: 19px; }
 .wrap .paceTraceSvg { display: none; }
 .wrap .boardStyleStep { border-top: 1px solid var(--line); padding-top: 20px; }
-.wrap .boardStyleRow { align-items: center; }
+.wrap .boardStyleRow { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; gap: 12px; }
 .wrap .boardStyleLabel { color: var(--ink); font-size: 13px; }
-.wrap .boardStyleToggle { border: 1px solid var(--line); border-radius: 6px; padding: 3px; background: var(--surface3); box-shadow: none; }
-.wrap .boardStyleOption { min-height: 38px; padding: 8px 18px; border-radius: 4px; color: var(--muted); background: none; font-size: 12px; }
-.wrap .boardStyleOption.active { background: var(--card); color: var(--brand); box-shadow: 0 1px 3px #0001; }
+.wrap .boardStyleToggle { width: 100%; min-width: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 6px; padding: 3px; background: var(--surface3); box-shadow: none; }
+.wrap .boardStyleOption { display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 48px; padding: 10px 16px; border-radius: 4px; color: var(--muted); background: none; font-size: 14px; font-weight: 650; white-space: nowrap; overflow-wrap: normal; }
+.wrap .boardStyleOption.active { background: var(--brand); color: var(--onBrand); box-shadow: none; }
 .wrap .checkinNoteBlock { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .wrap .checkinNoteTitle { font-size: 13px; font-weight: 600; }
 .wrap .checkinNoteToggleBtn { width: 44px; height: 44px; min-height: 44px; border-radius: 6px; }
@@ -152,6 +164,7 @@ body::before, body::after { display: none; }
 .wrap .pickSectionHeading { margin: 24px 0 14px; }
 .wrap .pickSectionHeading h3 { font-size: 17px; font-weight: 650; }
 .wrap .pickOption { background: var(--card); padding: 20px; border-color: var(--line); box-shadow: var(--shadowSoft); }
+.wrap .pickOption[data-in-my-day="true"] { background: var(--brandSoft); border-color: var(--brand); }
 .wrap .pickOption.featured { border-top-color: var(--brand); }
 .wrap .pickOption.featured:nth-child(2) { border-top-color: var(--brand2); }
 .wrap .pickOption.featured:nth-child(3) { border-top-color: var(--brand); }
@@ -161,15 +174,17 @@ body::before, body::after { display: none; }
 .wrap .pickOptionBottom .pickIcon:last-child { color: var(--brand); background: var(--brandSoft); border-color: transparent; }
 .wrap .pickCount { font-weight: 600; }
 .wrap .pickFilters { gap: 20px; }
-.wrap .pickFilters label { flex: 1 1 120px; }
+.wrap .pickFilters label { min-width: 0; }
+.wrap .pickFilters .pickCheck:has(input:checked) { background: var(--brandSoft); border-radius: 4px; }
 .wrap .pickMore { font-size: 13px; font-weight: 600; }
 
 /* My Day is a readable list, with a quiet progress summary. */
 .wrap .daySummary { display: flex; align-items: center; gap: 12px; margin: 18px 0 24px; color: var(--muted); font-size: 12px; }
 .daySummary progress { width: 128px; height: 5px; appearance: none; border: 0; border-radius: 3px; overflow: hidden; background: var(--line); }
 .daySummary progress::-webkit-progress-bar { background: var(--line); }
-.daySummary progress::-webkit-progress-value { background: var(--brand); }
-.daySummary progress::-moz-progress-bar { background: var(--brand); }
+.daySummary progress::-webkit-progress-value { background: var(--progressAccent, var(--brand)); }
+.daySummary progress::-moz-progress-bar { background: var(--progressAccent, var(--brand)); }
+.wrap .daySummary[data-complete="true"] { --progressAccent: var(--positiveAccent); color: var(--positiveAccent); }
 .wrap .myDayCard .result.personalNote { margin: 0 0 24px; padding: 20px 0 20px 18px; border: 0; border-left: 3px solid var(--brand); border-radius: 0; background: none; box-shadow: none; }
 .wrap .personalNote::before, .wrap .personalNote::after { display: none; }
 .wrap .personalNote .resultTitle { font-size: 12px; color: var(--muted); font-weight: 500; }
@@ -178,13 +193,20 @@ body::before, body::after { display: none; }
 .wrap .sourceChip { border-radius: 4px; background: var(--surface3); border: 0; color: var(--muted); box-shadow: none; font-weight: 500; }
 .wrap .myDayScroll { max-height: none; overflow: visible; padding: 0; }
 .wrap .myDayCard .list { display: grid; gap: 10px; }
-.wrap .myDayCard .item { padding: 16px; gap: 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); box-shadow: none; }
+.wrap .myDayCard .item { --activityBg: var(--brandSoft); --activityAccent: var(--brand); padding: 16px; gap: 14px; border: 1px solid var(--line); border-inline-start-width: 3px; border-radius: 8px; background: var(--card); box-shadow: none; }
 .wrap .myDayCard .item::before { display: none; }
-.wrap .myDayCard .item.done { background: var(--surface2); opacity: 1; }
+.wrap .myDayCard .item.done { background: var(--brandSoft); border-inline-start-color: var(--brand); opacity: 1; }
+.wrap .myDayCard .item[data-feedback="helped"] { --activityBg: var(--positiveBg); --activityAccent: var(--positiveAccent); }
+.wrap .myDayCard .item[data-feedback="too_much"] { --activityBg: var(--cautionBg); --activityAccent: var(--cautionAccent); }
+.wrap .myDayCard .item[data-feedback="not_for_me"] { --activityBg: var(--reflectBg); --activityAccent: var(--reflectAccent); }
+.wrap .myDayCard .item[data-feedback] { background: var(--activityBg); border-inline-start-color: var(--activityAccent); }
+.wrap .myDayCard .item[data-feedback] input[type="checkbox"]:checked { background: var(--activityAccent); }
+.wrap .myDayCard .item[data-feedback] .activityOutcome select { border-color: var(--activityAccent); }
 .wrap .itemMain { flex: 1; min-width: 0; }
-.wrap .myDayCard .item .txt { font-size: 14px; font-weight: 500; line-height: 1.65; }
+.wrap .myDayCard .item .txt { color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1.65; }
 .wrap .myDayCard .item input[type="checkbox"] { width: 22px; height: 22px; min-width: 22px; accent-color: var(--brand); border-radius: 5px; box-shadow: none; }
-.wrap .activityOutcome { border-top: 1px solid var(--divider); padding-top: 12px; }
+.wrap .myDayCard .item input[type="checkbox"]:checked::after { border-color: var(--onBrand); }
+.wrap .activityOutcome { color: var(--ink); border-top: 1px solid var(--divider); padding-top: 12px; }
 .wrap .customTaskRow { margin-top: 18px; }
 .wrap .customTaskTrigger { display: flex; gap: 8px; align-items: center; color: var(--brand); font-size: 13px; min-height: 44px; padding: 8px 0; }
 .wrap .customTaskInputWrap { display: flex; gap: 8px; }
@@ -212,6 +234,7 @@ body::before, body::after { display: none; }
 .wrap .weeklyDigestStat + .weeklyDigestStat { padding-left: 24px; border-left: 1px solid var(--line); }
 .wrap .weeklyDigestStat:first-child { padding-right: 24px; }
 .wrap .weeklyDigestStatValue { font-size: 32px; font-weight: 650; }
+.wrap .weeklyDigestStat[data-stat="completions"][data-active="true"] .weeklyDigestStatValue { color: var(--positiveAccent); }
 .wrap .weeklyDigestStatLabel, .wrap .weeklyDigestStatText { font-size: 12px; }
 .wrap .weeklyDigestStatHeader { color: var(--muted); }
 .wrap .weeklyDigestStatCue { color: var(--muted); }
@@ -237,6 +260,7 @@ body::before, body::after { display: none; }
 .wrap .settingsSection { padding: 24px 0; margin: 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; background: none; box-shadow: none; }
 .wrap .settingsSectionHead { margin: 0 0 16px; }
 .wrap .settingsSectionTitle { font-size: 15px; font-weight: 650; }
+.wrap .settingsSection .badge.plus { background: var(--positiveBg); color: var(--positiveAccent); }
 .wrap .settingsFields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .wrap .settingRow { min-height: 68px; padding: 10px 0; border-radius: 0; border: 0; background: none; box-shadow: none; gap: 20px; }
 .wrap .settingRowTitle { font-size: 14px; font-weight: 600; }
