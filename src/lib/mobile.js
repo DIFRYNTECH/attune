@@ -13,6 +13,7 @@
 
 import { isNativePlatform } from "./platform";
 import { supabase } from "./supabase";
+import { KEYBOARD_VISIBILITY_EVENT } from "./inputViewport";
 
 export const AUTH_CALLBACK_ERROR_EVENT = "attune:auth-callback-error";
 
@@ -105,15 +106,15 @@ export async function initMobile() {
       // @capacitor/app not installed — skip.
     }
 
-    // --- Status bar ---
+    // Native IME events also cover WebViews that resize their layout viewport.
     try {
-      const { StatusBar, Style } = await import("@capacitor/status-bar");
-      // Read the current theme to choose a matching status-bar style.
-      const isDark = document.documentElement.dataset.theme === "dark";
-      StatusBar.setStyle({ style: isDark ? Style.Dark : Style.Light }).catch(() => {});
-      StatusBar.setBackgroundColor({ color: isDark ? "#0f121c" : "#f0f2f5" }).catch(() => {});
+      const { Keyboard } = await import("@capacitor/keyboard");
+      const notify = visible => window.dispatchEvent(new CustomEvent(KEYBOARD_VISIBILITY_EVENT, { detail: { visible } }));
+      await Keyboard.addListener("keyboardWillShow", () => notify(true));
+      await Keyboard.addListener("keyboardDidShow", () => notify(true));
+      await Keyboard.addListener("keyboardDidHide", () => notify(false));
     } catch {
-      // Plugin not installed — skip.
+      // VisualViewport remains available if native keyboard events are unavailable.
     }
 
     // --- Splash screen ---

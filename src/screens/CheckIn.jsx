@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { LEVELS } from "../data/levels";
 import EmojiIcon from "../components/EmojiIcon";
@@ -106,26 +106,13 @@ export default function CheckIn({ state, actions }) {
     ? (trimmedNote.length > 72 ? `${trimmedNote.slice(0, 72).trimEnd()}...` : trimmedNote)
     : "";
 
-  const autosizeNote = useCallback(() => {
-    const el = noteRef.current;
-    if (!el) return;
-    el.style.height = "0px";
-    el.style.height = `${el.scrollHeight}px`;
-  }, []);
-
-  useEffect(() => {
-    if(!isNoteExpanded) return;
-    autosizeNote();
-  }, [note, autosizeNote, isNoteExpanded]);
-
   const toggleNote = () => {
     const nextExpanded = !isNoteExpanded;
     setIsNoteExpanded(nextExpanded);
     if(!nextExpanded) return;
 
     requestAnimationFrame(() => {
-      autosizeNote();
-      noteRef.current?.focus?.();
+      noteRef.current?.focus?.({ preventScroll: true });
     });
   };
 
@@ -366,10 +353,9 @@ export default function CheckIn({ state, actions }) {
                     ref={noteRef}
                     value={note}
                     maxLength={200}
-                    rows={3}
+                    rows={4}
                     placeholder="Anything else you would like Attune to know about today?"
-                    onChange={(e) => actions.setCheckin({ note: e.target.value.slice(0, 200) })}
-                    onInput={autosizeNote}
+                    onChange={(e) => actions.setCheckin({ note: e.target.value })}
                     aria-label="Optional note"
                   />
                 </div>

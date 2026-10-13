@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppExperience } from "../../src/app/App.jsx";
 import { useAttuneStore } from "../../src/store/useAttuneStore.js";
 import { getEntitlements } from "../../src/lib/entitlements.js";
+import { KEYBOARD_VISIBILITY_EVENT } from "../../src/lib/inputViewport.js";
 import { todayKey } from "../../src/lib/storage.js";
 import { buildWeekRecordsFromHistory, computeWeekSummaryFromWeekRecords, weekStartMondayKey } from "../../src/lib/weeklyHistory.js";
 import "../../src/index.css";
@@ -30,6 +31,10 @@ export default function AppFixture() {
   const [screen, setScreen] = useState(initialScreen);
   const [auth, setAuth] = useState({ signedIn: !initialAuth, view: initialAuth || "signin", step: "request", status: "idle", rememberMe: false });
   const [profile, setProfile] = useState({ name: params.get("name") || "Alex", email: "alex@example.test", theme: params.get("theme") || "light" });
+  useEffect(() => {
+    if (params.get("keyboard") !== "shown") return;
+    window.dispatchEvent(new CustomEvent(KEYBOARD_VISIBILITY_EVENT, { detail: { visible: true } }));
+  }, []);
   const fixtureActions = useMemo(() => ({
     ...actions,
     go: next => { actions.go(next); setScreen(next); },

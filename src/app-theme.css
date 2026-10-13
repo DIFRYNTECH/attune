@@ -10,6 +10,8 @@
   --cautionAccent: #90641f;
   --reflectBg: #f7eef3;
   --reflectAccent: #925b7c;
+  --appSafeTop: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --appSafeBottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 
 html[data-theme="dark"] {
@@ -23,6 +25,7 @@ html[data-theme="dark"] {
   --reflectAccent: #cba4c0;
 }
 
+html, body, #root { height: 100%; }
 body::before, body::after { display: none; }
 :is(.wrap, .authPage, .appDialog, .privacyPage),
 :is(.wrap, .authPage, .appDialog, .privacyPage) * { letter-spacing: 0 !important; }
@@ -40,9 +43,9 @@ body::before, body::after { display: none; }
 /* One scrolling content region, with navigation outside it. */
 .wrap {
   width: min(100%, 1120px);
-  height: 100dvh;
+  height: var(--appViewportHeight, 100dvh);
   min-height: 0;
-  padding: env(safe-area-inset-top) 32px env(safe-area-inset-bottom);
+  padding: var(--appSafeTop) 32px var(--appSafeBottom);
 }
 .wrap .top {
   justify-content: space-between;
@@ -88,7 +91,7 @@ body::before, body::after { display: none; }
 :is(.wrap, .authPage, .appDialog) .fieldError { color: var(--danger); }
 
 /* Sign-in is a focused form, not a decorative hero. */
-.authPage, html[data-theme="dark"] .authPage { background: var(--bodyBg); padding: 0; overflow-y: auto; height: 100dvh; }
+.authPage, html[data-theme="dark"] .authPage { background: var(--bodyBg); padding: var(--appSafeTop) 0 var(--appSafeBottom); overflow-y: auto; height: var(--appViewportHeight, 100dvh); min-height: 0; scroll-padding-block: 20px; }
 .authPage::before, .authPage::after { display: none; }
 .authPage .loginShell { width: 100%; min-height: 100%; height: auto; padding: 40px 24px; display: flex; align-items: center; justify-content: center; }
 .authPage .loginCard { width: 100%; max-width: 400px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; backdrop-filter: none; animation: none; overflow: visible; }
@@ -154,7 +157,7 @@ body::before, body::after { display: none; }
 .wrap .checkinNoteBlock { padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
 .wrap .checkinNoteTitle { font-size: 13px; font-weight: 600; }
 .wrap .checkinNoteToggleBtn { width: 44px; height: 44px; min-height: 44px; border-radius: 6px; }
-.wrap .noteInput { min-height: 100px; max-height: 240px; padding: 12px; }
+.wrap .noteInput { height: 124px; min-height: 124px; max-height: 124px; padding: 12px; overflow-y: auto; scroll-margin-block: 16px; }
 .wrap .checkinBottom { margin-top: 24px; padding: 0; }
 .wrap .checkinContinue { min-width: 210px; }
 
@@ -310,16 +313,22 @@ body::before, body::after { display: none; }
 .privacyPage .privacySections { gap: 0; }
 
 @media (max-width: 900px) {
-  .wrap { padding: env(safe-area-inset-top) 24px 0; }
+  .wrap { padding: var(--appSafeTop) 24px 0; }
   .wrap .top { min-height: 76px; padding: 16px 0; }
   .wrap .nav { display: none; }
-  .wrap .bottomNav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: static; transform: none; flex: 0 0 auto; width: auto; min-height: 70px; height: auto; margin: 0 -24px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: var(--card); border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; backdrop-filter: none; gap: 4px; }
+  .wrap .bottomNav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: static; transform: none; flex: 0 0 auto; width: auto; min-height: 70px; height: auto; margin: 0 -24px; padding: 8px 12px calc(8px + var(--appSafeBottom)); background: var(--card); border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; backdrop-filter: none; gap: 4px; }
   .wrap .bottomNavBtn { min-height: 54px; height: auto; min-width: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 6px 0; color: var(--muted); border: 0; border-radius: 6px; background: none; box-shadow: none; }
   .wrap .bottomNavBtn::before, .wrap .bottomNavBtn::after { display: none; }
   .wrap .bottomNavBtn.active { color: var(--brand); background: var(--brandSoft); box-shadow: none; }
   .wrap .bottomNavLabel { font-size: 10px; font-weight: 600; line-height: 1.2; }
   .wrap .grid > main { padding-top: 28px; padding-bottom: 32px; }
   .wrap .toast { bottom: calc(88px + env(safe-area-inset-bottom)); }
+  html[data-keyboard-open="true"] .wrap .top,
+  html[data-keyboard-open="true"] .wrap .bottomNav { display: none; }
+  html[data-keyboard-open="true"] .authPage .loginHeader { margin-bottom: 20px; }
+  html[data-keyboard-open="true"] .authPage :is(.loginBrand, .loginLead) { display: none; }
+  html[data-keyboard-open="true"] .authPage .loginTitle { font-size: 24px; margin-bottom: 0; }
+  html[data-keyboard-open="true"] .authPage .loginShell { align-items: flex-start; padding-top: 20px; padding-bottom: 20px; }
   .wrap .checkinFlow { grid-template-columns: 1fr; }
 }
 

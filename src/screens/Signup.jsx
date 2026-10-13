@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { PRIVACY_PATH } from "../content/privacy";
 import { validateDisplayName, validateEmail } from "../lib/authValidation";
+import { isNativePlatform } from "../lib/platform";
 
 export default function Signup({ state, actions }) {
   const OTP_LENGTH = 8;
@@ -24,11 +25,11 @@ export default function Signup({ state, actions }) {
 
   useEffect(() => {
     if(authStep === "verify"){
-      codeRef.current?.focus?.();
+      codeRef.current?.focus?.({ preventScroll: true });
       return;
     }
 
-    nameRef.current?.focus?.();
+    if (!isNativePlatform()) nameRef.current?.focus?.({ preventScroll: true });
   }, [authStep]);
 
   const canSubmit = useMemo(() => {

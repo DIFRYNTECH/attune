@@ -32,11 +32,12 @@ const config: CapacitorConfig = {
     },
     Keyboard: {
       resize: "body",
-      resizeOnFullScreen: true,
+      // SystemBars already applies Android IME insets; a second resize leaves a blank pane.
+      resizeOnFullScreen: false,
     },
-    StatusBar: {
-      style: "LIGHT",
-      backgroundColor: "#f0f2f5",
+    SystemBars: {
+      insetsHandling: "css",
+      style: "DEFAULT",
     },
   },
 };

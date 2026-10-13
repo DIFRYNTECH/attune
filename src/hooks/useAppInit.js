@@ -14,9 +14,13 @@
 import { useEffect, useRef } from "react";
 import { installClientErrorCapture } from "../lib/clientErrorCapture";
 import { initMobile } from "../lib/mobile";
+import { installInputViewport } from "../lib/inputViewport";
+import { isNativePlatform } from "../lib/platform";
 
 export function useAppInit({ theme }) {
   const didRun = useRef(false);
+
+  useEffect(() => installInputViewport(), []);
 
   // --- One-time initialisation ---
   useEffect(() => {
@@ -34,5 +38,10 @@ export function useAppInit({ theme }) {
   useEffect(() => {
     const t = theme === "dark" ? "dark" : "light";
     document.documentElement.dataset.theme = t;
+    if (isNativePlatform()) {
+      import("@capacitor/core").then(({ SystemBars, SystemBarsStyle }) => {
+        return SystemBars.setStyle({ style: t === "dark" ? SystemBarsStyle.Dark : SystemBarsStyle.Light });
+      }).catch(() => {});
+    }
   }, [theme]);
 }
