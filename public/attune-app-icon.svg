@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <title>Attune</title>
+  <defs>
+    <linearGradient id="tile" x1="64" y1="0" x2="448" y2="512" gradientUnits="userSpaceOnUse"><stop stop-color="#97a4de"/><stop offset="1" stop-color="#7f8fcf"/></linearGradient>
+    <linearGradient id="ribbon" x1="390" y1="232" x2="552" y2="522" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#eef1ff"/></linearGradient>
+    <linearGradient id="face" x1="340" y1="244" x2="235" y2="522" gradientUnits="userSpaceOnUse"><stop stop-color="#eef1ff"/><stop offset=".55" stop-color="#dce3ff"/><stop offset="1" stop-color="#eef1ff"/></linearGradient>
+    <linearGradient id="path" x1="329" y1="470" x2="437" y2="380" gradientUnits="userSpaceOnUse"><stop stop-color="#dce3ff"/><stop offset="1" stop-color="#ffffff"/></linearGradient>
+  </defs>
+<rect width="512" height="512" rx="112" fill="url(#tile)"/>
+  <g>
+    <g transform="translate(-132 -121)">
+      <path d="M202 522C243 447 282 371 320 298C339 264 352 246 366 242C381 232 395 229 410 232C459 241 484 306 510 365L575 522C518 526 483 510 469 463C450 407 436 337 416 288C412 278 409 272 405 270C391 265 381 291 365 331L317 454C300 505 265 527 202 522Z" fill="url(#ribbon)"/>
+      <path d="M202 522C243 447 282 371 320 298C339 264 352 246 366 242C382 241 398 254 405 270C391 265 381 291 365 331L317 454C300 505 265 527 202 522Z" fill="url(#face)"/>
+      <path d="M366 242C382 241 398 254 405 270" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M315 483C342 426 376 382 437 380L447 417C397 419 357 449 315 483Z" fill="url(#path)"/>
+    </g>
+  </g>
+</svg>

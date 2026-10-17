@@ -62,7 +62,7 @@ body::before, body::after { display: none; }
   backdrop-filter: none;
 }
 .wrap .brand { gap: 12px; }
-:is(.wrap, .authPage) .brandMark { background: linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom)); border: 0; border-radius: 10px; box-shadow: none; }
+:is(.wrap, .authPage) .brandMark { background: url("/attune-app-icon.svg?v=2") center / contain no-repeat; border: 0; border-radius: 10px; box-shadow: none; }
 :is(.wrap, .authPage) .brandMark::after { display: none; }
 .wrap .brand h1 { font-size: 24px; line-height: 1.1; font-weight: 750; }
 .wrap .tag { font-size: 12px; margin-top: 5px; color: var(--muted); }
@@ -308,7 +308,7 @@ body::before, body::after { display: none; }
 .privacyPage .privacyPanel h1 { font-size: 32px; line-height: 1.3; font-weight: 700; }
 .privacyPage .privacyPanel :is(p, ul) { font-weight: 500; line-height: 1.8; }
 .privacyPage .privacySection p + p { margin-top: 12px; }
-.privacyPage .brandMark { background: linear-gradient(145deg, var(--logoTileTop), var(--logoTileBottom)); border: 0; border-radius: 8px; box-shadow: none; }
+.privacyPage .brandMark { background: url("/attune-app-icon.svg?v=2") center / contain no-repeat; border: 0; border-radius: 8px; box-shadow: none; }
 .privacyPage .brandMark::after { display: none; }
 .privacyPage .privacySections { gap: 0; }
 

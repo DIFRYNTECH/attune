@@ -78,37 +78,16 @@
 }
 
 .landingLogoMark {
-  --logoMarkScale: 188%;
-  --logoMarkX: 48%;
-  --logoMarkY: 56%;
-  --logoMarkInset: 5%;
   position: relative;
   display: inline-block;
   width: 44px;
   height: 44px;
   flex: 0 0 auto;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, .48);
-  border-radius: 16px;
-  background:
-    radial-gradient(22px 20px at 30% 24%, rgba(255, 255, 255, .34), transparent 58%),
-    linear-gradient(145deg, #486f96, #6f8fad);
-  box-shadow: 0 10px 18px rgba(38, 66, 94, .18);
-}
-
-.landingLogoMark::before {
-  content: "";
-  position: absolute;
-  inset: var(--logoMarkInset);
-  background: #fff;
-  -webkit-mask-image: url("/attune-logo-final.svg");
-  -webkit-mask-position: var(--logoMarkX) var(--logoMarkY);
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-size: var(--logoMarkScale);
-  mask-image: url("/attune-logo-final.svg");
-  mask-position: var(--logoMarkX) var(--logoMarkY);
-  mask-repeat: no-repeat;
-  mask-size: var(--logoMarkScale);
+  border: 0;
+  border-radius: 10px;
+  background: url("/attune-app-icon.svg?v=2") center / contain no-repeat;
+  box-shadow: none;
 }
 
 .landingLogoMark-sm {

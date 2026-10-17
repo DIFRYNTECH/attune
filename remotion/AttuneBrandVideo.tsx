@@ -438,37 +438,18 @@ function AppChrome({
 }
 
 function LogoMark({ size = 60 }: { size?: number }) {
-  const markUrl = staticFile("attune-logo-final.svg");
+  const markUrl = staticFile("attune-app-icon.svg");
   return (
     <div
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.34,
-        background:
-          "radial-gradient(28px 26px at 30% 24%, rgba(255,255,255,.18), transparent 58%), linear-gradient(145deg, #7f8fcf, #9ca9df)",
-        border: "1px solid rgba(230,237,255,.22)",
-        boxShadow: "0 14px 28px rgba(5,8,24,.26)",
+        borderRadius: size * 0.22,
+        background: `url(${markUrl}) center / contain no-repeat`,
         position: "relative",
         overflow: "hidden",
       }}
-    >
-      <div
-        style={{
-          position: "absolute",
-          inset: "3%",
-          background: "#f7f9ff",
-          WebkitMaskImage: `url(${markUrl})`,
-          WebkitMaskPosition: "48% 56%",
-          WebkitMaskRepeat: "no-repeat",
-          WebkitMaskSize: "206%",
-          maskImage: `url(${markUrl})`,
-          maskPosition: "48% 56%",
-          maskRepeat: "no-repeat",
-          maskSize: "206%",
-        }}
-      />
-    </div>
+    />
   );
 }
 
