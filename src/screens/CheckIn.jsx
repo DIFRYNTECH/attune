@@ -324,7 +324,7 @@ export default function CheckIn({ state, actions }) {
                   <div className="checkinNoteTitleRow">
                     <span className="checkinNoteTitle">Optional note</span>
                     <InfoTip label="How this note is used">
-                      If AI is enabled in Profile for your optional note, Attune can use it to personalize your options and make today&apos;s board more relevant.
+                      If you allow note context in Profile, Attune can use this note to tailor today&apos;s activity suggestions.
                     </InfoTip>
                   </div>
                   {!isNoteExpanded && trimmedNote ? <span className="checkinNoteSummary">{notePreview}</span> : null}

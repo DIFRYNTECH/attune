@@ -107,7 +107,7 @@ export default function PrivacyPolicy() {
 
             <PrivacySection title="AI features">
               <p>
-                Plus features may use AI to generate boards or daily notes. Your optional check-in
+                Plus features may use AI to suggest activities or generate daily notes. Your optional check-in
                 note is only included in AI requests when you allow note context in Profile. Attune
                 limits, filters, and validates AI requests and responses, but AI output is not
                 medical advice and is not a diagnosis, treatment, or replacement for professional

@@ -58,6 +58,6 @@ export default function AppFixture() {
     entitlements: getEntitlements(plan), history: params.has("empty") ? [] : history,
     weeklySummaries: [...new Map([...(params.has("empty") ? [] : summaries), ...state.weeklySummaries].map(week => [week.weekStart, week])).values()],
     events: { ...(params.has("empty") ? {} : sampleEvents), ...state.events },
-    ai: { status: "error", error: "" }, aiDailyNote: { status: "idle" },
+    ai: { status: params.get("ai") === "loading" ? "loading" : "error", error: "" }, aiDailyNote: { status: "idle" },
   }} actions={fixtureActions} />;
 }

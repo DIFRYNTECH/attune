@@ -14,6 +14,19 @@ in both themes; the standalone mark retains its periwinkle ribbon shading.
   SVG image support varies between mail clients.
 - Native resources take effect in the next Android build, not through a web deployment.
 
+For a UAT Android release, run `npm run cap:sync:uat`, build `assembleRelease`,
+then run `./scripts/verify-android-assets.ps1 -ApkPath <release-apk>` from the
+repository root. This checks every packaged runtime file against the fresh web
+build and checks the logo assets against `public`. Install the new signed APK
+over the old version; refreshing the website cannot replace an installed bundle.
+
+## Product Language
+
+The product presents activity suggestions, not a board. Help, loading states,
+Plus descriptions, privacy text and activity explanations use that terminology.
+`src/content/productLanguage.test.mjs` guards the runtime copy. Legacy internal
+API paths and persisted state identifiers stay compatible with existing accounts.
+
 ## Hosted Emails
 
 `supabase/email-templates/*.html` contains the UAT bodies for all 13 authentication

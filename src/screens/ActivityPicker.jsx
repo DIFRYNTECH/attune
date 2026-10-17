@@ -30,7 +30,7 @@ export default function ActivityPicker({ state, actions }) {
     !isPlus
       ? ""
       : boardLoading
-      ? "Building your AI board from your check-in…"
+      ? "Finding activity suggestions for your check-in…"
       : aiStatus === "error"
         ? (state.ai?.error || "Using built-in suggestions for now.")
         : hasAiBoard

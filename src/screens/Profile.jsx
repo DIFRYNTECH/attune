@@ -458,7 +458,7 @@ export default function Profile({ state, actions }) {
                 Plus makes Attune more personal over time without turning it into another heavy planning app.
               </div>
               <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.35 }}>
-                It adds AI boards, adaptive picking, note memory, exports, and deeper Weekly insights.
+                It adds AI activity suggestions, adaptive picking, note memory, exports, and deeper Weekly insights.
               </div>
             </div>
           }
@@ -478,8 +478,8 @@ export default function Profile({ state, actions }) {
                 </span>
                 <span className="settingsFeatureSummaryText">
                   {isPlus
-                    ? "AI boards, adaptive picks, note memory, exports, and Weekly insight."
-                    : "AI boards, smarter picking, note memory, exports, and deeper Weekly insight."}
+                    ? "AI activity suggestions, adaptive picks, note memory, exports, and Weekly insight."
+                    : "AI activity suggestions, smarter picking, note memory, exports, and deeper Weekly insight."}
                 </span>
               </span>
               <span className="settingsFeatureSummaryMeta">
@@ -493,7 +493,7 @@ export default function Profile({ state, actions }) {
                 <div className="settingsFeatureBody">
                   <ul className="settingsBullets" aria-label="Attune Plus features">
                     <li>
-                      <b>AI boards</b> generated from your check-in, then refined by your picks, completions, and skips.
+                      <b>AI activity suggestions</b> shaped by your check-in, then refined by your picks, completions, and skips.
                     </li>
                     <li>
                       <b>Note memory</b> to use your check-in notes for more personal suggestions.

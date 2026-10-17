@@ -186,7 +186,7 @@ export function registerAiRoutes({
             providerUsage: generated.providerUsage,
           },
         });
-        res.status(502).json({ error: generated.error || "Invalid board" });
+        res.status(502).json({ error: generated.error || "Invalid activity suggestions" });
         return;
       }
 
@@ -272,7 +272,7 @@ export function registerAiRoutes({
         errorCode,
         error: summarizeError(err),
       });
-      res.status(500).json({ error: "Failed to generate board" });
+      res.status(500).json({ error: "Failed to generate activity suggestions" });
     }
   });
 

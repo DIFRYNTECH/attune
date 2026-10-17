@@ -174,7 +174,7 @@ export function validateBoardPayload(payload, allowedContextLower, groundingFrag
 
   if (Array.isArray(groundingFragments) && groundingFragments.length > 0) {
     const minimumGrounded = Math.max(3, Math.ceil(expectedCount * 0.55));
-    if (groundedCount < minimumGrounded) warnings.push("Board text is only lightly grounded in the check-in.");
+    if (groundedCount < minimumGrounded) warnings.push("Activity suggestions are only lightly grounded in the check-in.");
   }
 
   return { ok: true, warnings };
@@ -243,7 +243,7 @@ export function buildBoardRequest({
     "Do not generate or rewrite activities, identities, metadata, advice, or explanations. " +
     "Choose distinct options using today's pace, energy, body, mood words and optional note. " +
     "Respect all time, indoor and seated constraints. Never infer diagnoses or medical restrictions. " +
-    "For steady boards favor support; for challenge boards include small achievable progress without exceeding capacity. " +
+    "For steady suggestions favor support; for challenge suggestions include small achievable progress without exceeding capacity. " +
     "Balance comfort, regulation, creativity, play, connection and practical steps. " +
     "Avoid recent repeats and excluded activities. Keep a few favorites or previously helpful choices, with room for discovery. " +
     "No shame, pressure, risky suggestions, treatment advice, or weekly reflection. " +
@@ -409,7 +409,7 @@ export async function generateBoardWithRetries(client, {
       { minCount: 1, totalTaskCount },
     );
     if (!validated.ok) {
-      lastError = validated.error || "Invalid board";
+      lastError = validated.error || "Invalid activity suggestions";
       modelErrors.push({ model, error: lastError });
       continue;
     }
@@ -436,7 +436,7 @@ export async function generateBoardWithRetries(client, {
     const removed = Array.isArray(parsed?.tasks) ? parsed.tasks.length - sanitizedTasks.length : 0;
     if (removed > 0) lastWarnings = [...lastWarnings, "Removed invalid, repeated or excess activity candidates."];
     if (selected.meta?.fallbackCount > 0) lastWarnings = [...lastWarnings, "Filled weaker AI candidates with curated fallback tasks."];
-    if (selected.meta?.rejectedCount > 0) lastWarnings = [...lastWarnings, "Rejected low-quality AI candidates before showing the board."];
+    if (selected.meta?.rejectedCount > 0) lastWarnings = [...lastWarnings, "Rejected low-quality AI candidates before showing activity suggestions."];
     return {
       ok: true,
       tasks: selected.tasks,
@@ -451,7 +451,7 @@ export async function generateBoardWithRetries(client, {
 
   return {
     ok: false,
-    error: lastError || "Invalid board",
+    error: lastError || "Invalid activity suggestions",
     warnings: lastWarnings,
     attemptedModels,
     modelErrors,

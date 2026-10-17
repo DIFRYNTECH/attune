@@ -33,7 +33,7 @@ function featureBlurb(feature) {
 }
 
 const plusFeatures = [
-  ["AI boards", "Personalized small-step boards shaped by your check-in."],
+  ["AI activity suggestions", "Personalized small steps shaped by your check-in."],
   ["Note memory", "Your optional notes can become useful context over time."],
   ["Weekly insights", "Exact Momentum, past weeks, and gentle pattern callouts."],
   ["Data exports", "Download a readable copy or backup when you need it."],

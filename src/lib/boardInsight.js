@@ -98,14 +98,14 @@ export function buildLearningBoardInsight({ canSmartPick, board, events } = {}) 
   if (completedDomain && completedDomain[1] >= 2 && boardHasDomain(board, completedDomain[0])) {
     const label = DOMAIN_LABELS[completedDomain[0]] || "similar steps";
     return {
-      title: "Why this board",
+      title: "Why these suggestions",
       body: `You've been finishing ${label} lately, so Attune kept a few of those options close today.`,
     };
   }
 
   if (higherEffortRemoved >= 2) {
     return {
-      title: "Why this board",
+      title: "Why these suggestions",
       body: "You've set aside higher-effort steps recently, so Attune kept today's stretch options more bounded.",
     };
   }
@@ -121,15 +121,15 @@ export function buildLearningBoardInsight({ canSmartPick, board, events } = {}) 
 
     if (lowPicked / pickedTotal >= 0.6) {
       return {
-        title: "Why this board",
-        body: "You've been choosing lower-friction steps lately, so Attune kept the board small and easy to enter.",
+        title: "Why these suggestions",
+        body: "You've been choosing lower-friction steps lately, so Attune suggested simple activities that are easy to start.",
       };
     }
 
     if (highPicked / pickedTotal >= 0.35) {
       return {
-        title: "Why this board",
-        body: "You've been choosing more active steps lately, so Attune left room for stretch without making the whole board heavy.",
+        title: "Why these suggestions",
+        body: "You've been choosing more active steps lately, so Attune included stretch options without making every activity demanding.",
       };
     }
   }

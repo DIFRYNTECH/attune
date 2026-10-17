@@ -446,7 +446,7 @@ export default function Landing() {
           </div>
           <div className="landingFeatureGrid">
             <FeatureItem title="Check-ins with texture" body="Mood, energy, body, and pace give Attune enough context to suggest steps that feel realistic." />
-            <FeatureItem title="AI-assisted suggestions" body="Plus users can get a board shaped by today’s check-in, including optional note context when they allow it." />
+            <FeatureItem title="AI-assisted suggestions" body="Plus users can get activity suggestions shaped by today’s check-in, including optional note context when they allow it." />
             <FeatureItem title="My Day without pressure" body="Keep a short list of doable steps, remove what does not fit, and check off what you actually finish." />
             <FeatureItem title="A weekly rhythm" body="Weekly summaries, history, and notes help users remember the shape of life around the numbers." />
           </div>
@@ -468,7 +468,7 @@ export default function Landing() {
             <span className="landingEyebrow">Attune Plus</span>
             <h2>More personal, still low-pressure.</h2>
             <p>
-              Plus adds smarter boards, note memory, exports, and richer weekly insight. It is there to make Attune more useful, not more demanding.
+              Plus adds smarter activity suggestions, note memory, exports, and richer weekly insight. It is there to make Attune more useful, not more demanding.
             </p>
             <div className="landingPlusTrust">
               <span>No pressure streaks</span>
